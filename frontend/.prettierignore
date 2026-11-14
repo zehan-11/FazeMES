@@ -10,3 +10,6 @@
 /src/components/Tinyflow/ui/**
 /docs/**/*
 CHANGELOG
+
+# Preserve upstream formatting in the MIT rendering subset.
+/src/vendor/galaxy-view/**

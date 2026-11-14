@@ -43,6 +43,15 @@
       ],
       "adaptation": "Loopback SFace worker, YuNet landmark alignment and self-enrollment protected by the current password. Features are encrypted per tenant/user; no upstream personal face photographs are copied.",
       "modelNotices": "face-auth/model-sources.json"
+    },
+    {
+      "feature": "Galaxy knowledge graph visualization prototype",
+      "repository": "https://github.com/Longwind1984/galaxy-view",
+      "commit": "b49b60cb04687783153f24ff7f9b0a0af59334af",
+      "license": "MIT, Copyright (c) 2026 Rick",
+      "implementation": "frontend/src/vendor/galaxy-view",
+      "adaptation": "Rendering subset reused with standalone type contracts; Vue lifecycle, orbit controls and entity adapter replace Obsidian integration. Synthetic demo data only; Neo4j and GraphRAG not connected.",
+      "licenseFile": "frontend/src/vendor/galaxy-view/LICENSE"
     }
   ]
 }

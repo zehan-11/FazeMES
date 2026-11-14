@@ -18,7 +18,8 @@ export default tseslint.config(
       'node_modules/',
       'src/main.ts',
       'src/types/auto-components.d.ts',
-      'src/components/Tinyflow/ui/**'
+      'src/components/Tinyflow/ui/**',
+      'src/vendor/galaxy-view/**' // Vendored MIT rendering code; keep upstream style.
     ]
   },
 

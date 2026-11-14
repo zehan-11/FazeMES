@@ -28,6 +28,9 @@
       class="assistant-alert"
     />
     <el-tabs v-model="tab">
+      <el-tab-pane v-if="canKnowledge || canManage" label="知识图谱" name="graph">
+        <KnowledgeGraph v-if="tab === 'graph'" />
+      </el-tab-pane>
       <el-tab-pane v-if="canBusiness" label="业务 Agent" name="business">
         <BusinessAssistant :active="tab === 'business'" @navigate="openBusinessAnalysis" />
       </el-tab-pane>
@@ -471,7 +474,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, nextTick, onMounted, reactive, ref } from 'vue'
+import { computed, defineAsyncComponent, nextTick, onMounted, reactive, ref } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import type { UploadFile, UploadInstance } from 'element-plus'
 import {
@@ -489,6 +492,8 @@ import { checkPermi } from '@/utils/permission'
 import { formatAssistantTime as time } from './assistantTime'
 import BusinessAssistant from '@/views/mes/insight/BusinessAssistant.vue'
 
+const KnowledgeGraph = defineAsyncComponent(() => import('@/views/mes/graph/KnowledgeGraph.vue'))
+
 defineOptions({ name: 'MesAssistant' })
 const canChat = checkPermi(['mes:assistant:chat'])
 const canKnowledge = checkPermi(['mes:assistant:knowledge'])
@@ -497,14 +502,17 @@ const canConfig = computed(() => checkPermi(['mes:assistant:config']))
 const canBusiness = computed(
   () => checkPermi(['mes:insight:query']) && checkPermi(['mes:insight:chat'])
 )
+const assistantRoute = useRoute()
 const tab = ref(
-  canBusiness.value
-    ? 'business'
-    : canChat || canKnowledge
-      ? 'chat'
-      : canManage
-        ? 'knowledge'
-        : 'config'
+  assistantRoute.query.tab === 'graph' && (canKnowledge || canManage)
+    ? 'graph'
+    : canBusiness.value
+      ? 'business'
+      : canChat || canKnowledge
+        ? 'chat'
+        : canManage
+          ? 'knowledge'
+          : 'config'
 )
 const businessRouter = useRouter()
 function openBusinessAnalysis(topic: string) {
