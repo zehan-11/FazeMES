@@ -11,9 +11,9 @@ force workers and camera director are intentionally not imported.
 settings.ts and settings/graphJsonImport.ts are standalone type contracts.
 FazeMES uses its existing Three.js 0.160 dependency; no Obsidian runtime needed.
 The Vue wrapper supplies orbit controls, lifecycle, entity metadata and selection.
-Prototype positions are deterministic, not a migration of upstream force physics.
+Positions are deterministic, not a migration of upstream force physics.
 
 The application entry is views/mes/graph/KnowledgeGraph.vue, lazy mounted in the
 AI assistant's knowledge graph tab. The adapter accepts stable string entity and
-relation IDs for a later backend/Neo4j response; no database credentials or calls
-are present. All example data and source excerpts are synthetic and labelled.
+relation IDs from the backend/Neo4j response. Database credentials remain on the
+backend. Graph data is supplied by authenticated Spring Boot APIs backed by Neo4j.

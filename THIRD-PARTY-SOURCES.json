@@ -45,12 +45,12 @@
       "modelNotices": "face-auth/model-sources.json"
     },
     {
-      "feature": "Galaxy knowledge graph visualization prototype",
+      "feature": "Galaxy knowledge graph visualization",
       "repository": "https://github.com/Longwind1984/galaxy-view",
       "commit": "b49b60cb04687783153f24ff7f9b0a0af59334af",
       "license": "MIT, Copyright (c) 2026 Rick",
       "implementation": "frontend/src/vendor/galaxy-view",
-      "adaptation": "Rendering subset reused with standalone type contracts; Vue lifecycle, orbit controls and entity adapter replace Obsidian integration. Synthetic demo data only; Neo4j and GraphRAG not connected.",
+      "adaptation": "Rendering subset reused with standalone type contracts; Vue lifecycle and orbit controls replace Obsidian integration. Authenticated Spring Boot APIs query user/tenant-scoped Neo4j data; no browser database credentials. File ingestion and GraphRAG generation are not included.",
       "licenseFile": "frontend/src/vendor/galaxy-view/LICENSE"
     }
   ]

@@ -9,7 +9,8 @@ const compiled = ts.transpileModule(fs.readFileSync(path.join(__dirname, '../src
 }).outputText
 const moduleObject = { exports: {} }
 vm.runInNewContext(compiled, { module: moduleObject, exports: moduleObject.exports, Map, Set, Error })
-const { toGalaxyData, demoGraph } = moduleObject.exports
+const { toGalaxyData, mergeKnowledgeGraph } = moduleObject.exports
+const demoGraph = JSON.parse(fs.readFileSync(path.join(__dirname, '../../database/graph/fan-knowledge.json'), 'utf8'))
 const node = id => ({ id, name: id, kind: '部件', description: '' })
 const edge = (id, source, target) => ({ id, source, target, type: '关联', sourceEvidence: {} })
 
@@ -32,10 +33,24 @@ test('rejects ambiguous IDs and dangling relationships at the renderer boundary'
   assert.throws(() => toGalaxyData({nodes:[node('a')],relations:[edge('r','a','missing')]}), /不存在/)
   assert.throws(() => toGalaxyData({nodes:[node('a')],relations:[edge('r','a','a'),edge('r','a','a')]}), /重复/)
 })
-test('demo graph is internally valid and all relation sources identify synthetic provenance', () => {
+test('seed graph is internally valid and all relationships retain their source', () => {
   const data = toGalaxyData(demoGraph)
   assert.equal(data.nodes.length, 15)
   assert.equal(data.links.length, 16)
-  for (const relation of demoGraph.relations) assert.match(relation.sourceEvidence.excerpt, /演示数据/)
+  for (const relation of demoGraph.relations) assert.ok(relation.sourceEvidence.title && relation.sourceEvidence.excerpt)
   assert.equal(toGalaxyData({nodes:[],relations:[]}).links.length, 0)
+})
+
+test('neighbor merging is idempotent, preserves parallel relations, and never mutates prior data', () => {
+  const current = {nodes:[node('a')], relations:[]}
+  const incoming = {nodes:[node('a'),node('b')], relations:[edge('r1','a','b'),edge('r2','a','b')]}
+  const result = mergeKnowledgeGraph(current,incoming)
+  const repeated = mergeKnowledgeGraph(result,incoming)
+  assert.equal(result.nodes.length,2); assert.equal(repeated.nodes.length,2); assert.equal(repeated.relations.length,2)
+  assert.equal(current.nodes.length,1)
+})
+test('merged graph enforces node and relation caps without dangling edges', () => {
+  const nodes = Array.from({length:205},(_,i)=>node(String(i)))
+  const result = mergeKnowledgeGraph({nodes:[],relations:[]},{nodes,relations:[edge('r','0','204')]})
+  assert.equal(result.nodes.length,200); assert.equal(result.relations.length,0); assert.equal(result.hasMore,true)
 })

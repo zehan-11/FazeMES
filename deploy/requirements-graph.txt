@@ -1,0 +1,2 @@
+# Python tooling for explicit graph import and checks.
+neo4j==5.15.0

@@ -187,6 +187,15 @@ function contextLost(e: Event) {
   stop()
 }
 watch(() => props.selected, selectFocus)
+watch(
+  () => props.graph,
+  () => {
+    dispose()
+    labels.value = []
+    error.value = ''
+    initialize()
+  }
+)
 onMounted(initialize)
 onBeforeUnmount(dispose)
 defineExpose({ reset, focusNode })

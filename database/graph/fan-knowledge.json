@@ -1,0 +1,272 @@
+{
+  "nodes": [
+    {
+      "id": "fan",
+      "name": "电风扇",
+      "kind": "设备",
+      "description": "整机与部件、故障及处理方法的关联。"
+    },
+    {
+      "id": "motor",
+      "name": "电机",
+      "kind": "部件",
+      "description": "驱动叶片旋转的部件。"
+    },
+    {
+      "id": "blade",
+      "name": "叶片",
+      "kind": "部件",
+      "description": "产生气流的部件。"
+    },
+    {
+      "id": "base",
+      "name": "底座",
+      "kind": "部件",
+      "description": "支撑整机的部件。"
+    },
+    {
+      "id": "bearing",
+      "name": "轴承",
+      "kind": "部件",
+      "description": "与电机转动相关的部件。"
+    },
+    {
+      "id": "bolt",
+      "name": "固定螺栓",
+      "kind": "部件",
+      "description": "部件装配连接的紧固件。"
+    },
+    {
+      "id": "vibration",
+      "name": "异常振动",
+      "kind": "故障",
+      "description": "设备运行过程中的异常振动现象。"
+    },
+    {
+      "id": "heat",
+      "name": "电机温升异常",
+      "kind": "故障",
+      "description": "电机运行过程中的温升异常现象。"
+    },
+    {
+      "id": "noise",
+      "name": "运行异响",
+      "kind": "故障",
+      "description": "设备运行过程中的异常声音。"
+    },
+    {
+      "id": "loose",
+      "name": "螺栓松动",
+      "kind": "原因",
+      "description": "固定连接的紧固状态异常。"
+    },
+    {
+      "id": "wear",
+      "name": "轴承磨损",
+      "kind": "原因",
+      "description": "轴承部件的磨损状态。"
+    },
+    {
+      "id": "block",
+      "name": "通风受阻",
+      "kind": "原因",
+      "description": "设备通风条件受限。"
+    },
+    {
+      "id": "tighten",
+      "name": "检查紧固状态",
+      "kind": "措施",
+      "description": "检查固定螺栓及相关紧固连接的状态。"
+    },
+    {
+      "id": "inspect",
+      "name": "检查轴承状态",
+      "kind": "措施",
+      "description": "检查轴承及相关转动部件的状态。"
+    },
+    {
+      "id": "vent",
+      "name": "检查通风条件",
+      "kind": "措施",
+      "description": "检查设备通风与散热条件。"
+    }
+  ],
+  "relations": [
+    {
+      "id": "fan-relation-1",
+      "source": "fan",
+      "target": "motor",
+      "type": "包含部件",
+      "sourceEvidence": {
+        "title": "电风扇维护关系",
+        "section": "关系条目 1",
+        "excerpt": "电风扇 —包含部件→ 电机"
+      }
+    },
+    {
+      "id": "fan-relation-2",
+      "source": "fan",
+      "target": "blade",
+      "type": "包含部件",
+      "sourceEvidence": {
+        "title": "电风扇维护关系",
+        "section": "关系条目 2",
+        "excerpt": "电风扇 —包含部件→ 叶片"
+      }
+    },
+    {
+      "id": "fan-relation-3",
+      "source": "fan",
+      "target": "base",
+      "type": "包含部件",
+      "sourceEvidence": {
+        "title": "电风扇维护关系",
+        "section": "关系条目 3",
+        "excerpt": "电风扇 —包含部件→ 底座"
+      }
+    },
+    {
+      "id": "fan-relation-4",
+      "source": "motor",
+      "target": "bearing",
+      "type": "包含部件",
+      "sourceEvidence": {
+        "title": "电风扇维护关系",
+        "section": "关系条目 4",
+        "excerpt": "电机 —包含部件→ 轴承"
+      }
+    },
+    {
+      "id": "fan-relation-5",
+      "source": "base",
+      "target": "bolt",
+      "type": "装配连接",
+      "sourceEvidence": {
+        "title": "电风扇维护关系",
+        "section": "关系条目 5",
+        "excerpt": "底座 —装配连接→ 固定螺栓"
+      }
+    },
+    {
+      "id": "fan-relation-6",
+      "source": "motor",
+      "target": "vibration",
+      "type": "关联现象",
+      "sourceEvidence": {
+        "title": "电风扇维护关系",
+        "section": "关系条目 6",
+        "excerpt": "电机 —关联现象→ 异常振动"
+      }
+    },
+    {
+      "id": "fan-relation-7",
+      "source": "motor",
+      "target": "heat",
+      "type": "关联现象",
+      "sourceEvidence": {
+        "title": "电风扇维护关系",
+        "section": "关系条目 7",
+        "excerpt": "电机 —关联现象→ 电机温升异常"
+      }
+    },
+    {
+      "id": "fan-relation-8",
+      "source": "bearing",
+      "target": "noise",
+      "type": "关联现象",
+      "sourceEvidence": {
+        "title": "电风扇维护关系",
+        "section": "关系条目 8",
+        "excerpt": "轴承 —关联现象→ 运行异响"
+      }
+    },
+    {
+      "id": "fan-relation-9",
+      "source": "vibration",
+      "target": "loose",
+      "type": "可能原因",
+      "sourceEvidence": {
+        "title": "电风扇维护关系",
+        "section": "关系条目 9",
+        "excerpt": "异常振动 —可能原因→ 螺栓松动"
+      }
+    },
+    {
+      "id": "fan-relation-10",
+      "source": "noise",
+      "target": "wear",
+      "type": "可能原因",
+      "sourceEvidence": {
+        "title": "电风扇维护关系",
+        "section": "关系条目 10",
+        "excerpt": "运行异响 —可能原因→ 轴承磨损"
+      }
+    },
+    {
+      "id": "fan-relation-11",
+      "source": "heat",
+      "target": "block",
+      "type": "可能原因",
+      "sourceEvidence": {
+        "title": "电风扇维护关系",
+        "section": "关系条目 11",
+        "excerpt": "电机温升异常 —可能原因→ 通风受阻"
+      }
+    },
+    {
+      "id": "fan-relation-12",
+      "source": "loose",
+      "target": "bolt",
+      "type": "涉及部件",
+      "sourceEvidence": {
+        "title": "电风扇维护关系",
+        "section": "关系条目 12",
+        "excerpt": "螺栓松动 —涉及部件→ 固定螺栓"
+      }
+    },
+    {
+      "id": "fan-relation-13",
+      "source": "wear",
+      "target": "bearing",
+      "type": "涉及部件",
+      "sourceEvidence": {
+        "title": "电风扇维护关系",
+        "section": "关系条目 13",
+        "excerpt": "轴承磨损 —涉及部件→ 轴承"
+      }
+    },
+    {
+      "id": "fan-relation-14",
+      "source": "loose",
+      "target": "tighten",
+      "type": "建议检查",
+      "sourceEvidence": {
+        "title": "电风扇维护关系",
+        "section": "关系条目 14",
+        "excerpt": "螺栓松动 —建议检查→ 检查紧固状态"
+      }
+    },
+    {
+      "id": "fan-relation-15",
+      "source": "wear",
+      "target": "inspect",
+      "type": "建议检查",
+      "sourceEvidence": {
+        "title": "电风扇维护关系",
+        "section": "关系条目 15",
+        "excerpt": "轴承磨损 —建议检查→ 检查轴承状态"
+      }
+    },
+    {
+      "id": "fan-relation-16",
+      "source": "block",
+      "target": "vent",
+      "type": "建议检查",
+      "sourceEvidence": {
+        "title": "电风扇维护关系",
+        "section": "关系条目 16",
+        "excerpt": "通风受阻 —建议检查→ 检查通风条件"
+      }
+    }
+  ]
+}

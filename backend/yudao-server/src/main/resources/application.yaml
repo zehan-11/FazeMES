@@ -1,4 +1,6 @@
 spring:
+  config:
+    import: optional:file:.runtime/application-graph.local.yaml
   application:
     name: yudao-server
 
