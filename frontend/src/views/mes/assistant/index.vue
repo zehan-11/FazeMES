@@ -62,7 +62,8 @@
                 multiple
                 collapse-tags
                 collapse-tags-tooltip
-                placeholder="全部已发布知识库"
+                placeholder="全部可访问的已发布知识库"
+                aria-label="检索知识库范围"
                 class="assistant-base-select"
               >
                 <el-option
@@ -72,7 +73,30 @@
                   :value="base.id"
                 />
               </el-select>
-              <span class="assistant-method">中文 BM25 · 词法检索</span>
+              <label class="assistant-method"
+                >检索模式
+                <el-select
+                  v-model="retrievalMode"
+                  aria-label="检索模式"
+                  class="assistant-mode-select"
+                  :disabled="sending"
+                >
+                  <el-option label="文档检索" value="DOCUMENT" />
+                  <el-option label="图谱检索" value="GRAPH" />
+                  <el-option label="混合检索" value="HYBRID" />
+                </el-select>
+              </label>
+              <label v-if="retrievalMode !== 'DOCUMENT'" class="assistant-method"
+                >关联范围
+                <el-select
+                  v-model="retrievalHops"
+                  aria-label="图谱检索跳数"
+                  class="assistant-hop-select"
+                >
+                  <el-option label="一跳关系" :value="1" />
+                  <el-option label="两跳关系" :value="2" />
+                </el-select>
+              </label>
               <el-button v-if="sessionId" text :disabled="sending" @click="renameSession"
                 >重命名</el-button
               >
@@ -142,40 +166,23 @@
                   >
                 </div>
               </article>
-              <section v-if="searchResult" class="assistant-search-result">
-                <h3>检索结果 · {{ searchResult.items.length }} 段</h3
-                ><p
-                  >在
-                  {{ searchResult.eligibleChunkCount }}
-                  个已发布片段中检索；以下为原文片段，没有生成模型答复。</p
-                >
-                <el-empty
-                  v-if="!searchResult.items.length"
-                  description="未找到匹配内容，请调整关键词或检查文档是否发布"
-                  :image-size="60"
-                />
-                <button
-                  v-for="(citation, index) in searchResult.items"
-                  :key="citation.chunkId"
-                  class="assistant-search-card"
-                  @click="viewCitation(citation)"
-                  ><b>[{{ index + 1 }}] {{ citation.title }} · {{ citation.heading }}</b
-                  ><small
-                    >{{ citation.pageNumber ? `第${citation.pageNumber}页 · ` : '' }}第{{
-                      citation.chunkIndex + 1
-                    }}段 · BM25 {{ citation.score }}</small
-                  ><span>{{ citation.content }}</span></button
-                >
-              </section>
+              <EvidenceResults v-if="searchResult" :result="searchResult" />
             </div>
             <div class="assistant-composer">
+              <p v-if="retrievalMode !== 'DOCUMENT'" class="assistant-field-help"
+                >先检索并核对实体、关系和来源；图谱与混合模式的生成问答将在下一步接入。</p
+              >
               <el-input
                 v-model="question"
                 type="textarea"
                 :rows="3"
                 maxlength="4000"
                 show-word-limit
-                placeholder="例如：设备点检发现异常时，应如何处理？Ctrl + Enter 发送"
+                :placeholder="
+                  retrievalMode === 'DOCUMENT'
+                    ? '例如：设备点检发现异常时，应如何处理？Ctrl + Enter 发送'
+                    : '例如：电风扇有哪些关联故障？点击检索证据'
+                "
                 :disabled="sending"
                 @keydown.ctrl.enter.prevent="send"
               />
@@ -185,12 +192,12 @@
                   :loading="searching"
                   :disabled="sending || !question.trim() || question.length > 1000"
                   @click="search"
-                  >仅检索文档</el-button
+                  >检索证据</el-button
                 ><el-button
                   v-if="canChat && canKnowledge"
                   type="primary"
                   :loading="sending"
-                  :disabled="!question.trim()"
+                  :disabled="!question.trim() || searching || retrievalMode !== 'DOCUMENT'"
                   @click="send"
                   >发送提问</el-button
                 ></div
@@ -640,9 +647,14 @@ import {
   type KnowledgeDocument,
   type DocumentVersion,
   type ModelConfig,
-  type ModelStatus,
-  type SearchResult
+  type ModelStatus
 } from '@/api/mes/assistant'
+import EvidenceResults from './EvidenceResults.vue'
+import {
+  searchEvidence,
+  type EvidenceSearchResult,
+  type RetrievalMode
+} from '@/api/mes/assistant/evidence'
 import { checkPermi } from '@/utils/permission'
 import { formatAssistantTime as time } from './assistantTime'
 import BusinessAssistant from '@/views/mes/insight/BusinessAssistant.vue'
@@ -687,7 +699,15 @@ const chatNotice = ref('')
 const sending = ref(false)
 const searching = ref(false)
 const historyLoading = ref(false)
-const searchResult = ref<SearchResult>()
+const searchResult = ref<EvidenceSearchResult>()
+const retrievalMode = ref<RetrievalMode>('DOCUMENT')
+const retrievalHops = ref<1 | 2>(2)
+let evidenceRequest = 0
+watch([retrievalMode, retrievalHops, question, () => selectedBases.value.join(',')], () => {
+  ++evidenceRequest
+  searchResult.value = undefined
+  searching.value = false
+})
 const messagesElement = ref<HTMLElement>()
 const documents = ref<KnowledgeDocument[]>([])
 const documentsLoading = ref(false)
@@ -769,6 +789,8 @@ async function loadSessions() {
 }
 async function newSession() {
   if (sending.value) return
+  ++evidenceRequest
+  searching.value = false
   sessionId.value = undefined
   messages.value = []
   searchResult.value = undefined
@@ -776,6 +798,8 @@ async function newSession() {
   question.value = ''
 }
 async function openSession(id: number) {
+  ++evidenceRequest
+  searching.value = false
   historyLoading.value = true
   error.value = ''
   try {
@@ -816,7 +840,15 @@ async function removeSession() {
   }
 }
 async function send() {
-  if (!canChat || !canKnowledge || sending.value || !question.value.trim()) return
+  if (
+    !canChat ||
+    !canKnowledge ||
+    sending.value ||
+    searching.value ||
+    retrievalMode.value !== 'DOCUMENT' ||
+    !question.value.trim()
+  )
+    return
   sending.value = true
   error.value = ''
   searchResult.value = undefined
@@ -840,17 +872,27 @@ async function send() {
   }
 }
 async function search() {
-  if (!canKnowledge || searching.value || !question.value.trim()) return
+  if (!canKnowledge || searching.value || sending.value || !question.value.trim()) return
   if (question.value.length > 1000) return ElMessage.warning('独立检索问题最多1000字')
+  const request = ++evidenceRequest
   searching.value = true
+  searchResult.value = undefined
   error.value = ''
   try {
-    searchResult.value = await AssistantApi.search(question.value.trim(), selectedBases.value)
+    const result = await searchEvidence({
+      query: question.value.trim(),
+      knowledgeBaseIds: [...selectedBases.value],
+      mode: retrievalMode.value,
+      hops: retrievalHops.value,
+      limit: 10
+    })
+    if (assistantDisposed || request !== evidenceRequest) return
+    searchResult.value = result
     await scrollMessages()
   } catch (exception) {
-    failure(exception, '检索失败')
+    if (request === evidenceRequest) failure(exception, '检索失败')
   } finally {
-    searching.value = false
+    if (request === evidenceRequest) searching.value = false
   }
 }
 async function selectBase(id: number) {
@@ -914,6 +956,7 @@ watch(tab, (value) => {
   if (value === 'knowledge') void loadDocuments()
 })
 onBeforeUnmount(() => {
+  ++evidenceRequest
   assistantDisposed = true
   ++documentRequest
   clearTimeout(graphPoll)
@@ -1260,6 +1303,14 @@ onMounted(async () => {
 .assistant-chat-toolbar {
   justify-content: flex-start;
   flex-wrap: wrap;
+}
+
+.assistant-mode-select {
+  width: 140px;
+}
+
+.assistant-hop-select {
+  width: 125px;
 }
 
 .assistant-base-select {

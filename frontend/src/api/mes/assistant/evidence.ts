@@ -20,15 +20,42 @@ export interface RetrievalEvidence {
   nodeIds: string[]
   relationIds: string[]
 }
+export type RetrievalMode = 'DOCUMENT' | 'GRAPH' | 'HYBRID'
+export interface EvidenceEntity {
+  id: string
+  name: string
+  kind: string
+  description: string
+}
+export interface EvidenceRelation {
+  id: string
+  source: string
+  target: string
+  type: string
+  evidence: RetrievalEvidence
+}
+export interface GraphEvidenceResult {
+  matchedEntities: { entity: EvidenceEntity; matchMethod: 'name_mention' | 'name_fragment' }[]
+  nodes: EvidenceEntity[]
+  relations: EvidenceRelation[]
+  paths: { rootId: string; nodeIds: string[]; relationIds: string[] }[]
+  hops: number
+  hasMore: boolean
+}
+export interface EvidenceSearchResult {
+  schemaVersion: number
+  query: string
+  mode: RetrievalMode
+  eligibleChunkCount?: number
+  graph?: GraphEvidenceResult
+  items: RetrievalEvidence[]
+  hasMore: boolean
+}
 export const searchEvidence = (data: {
   query: string
   knowledgeBaseIds?: number[]
+  mode?: RetrievalMode
+  hops?: 1 | 2
   sources?: ('DOCUMENT' | 'GRAPH')[]
   limit?: number
-}) =>
-  request.post<{
-    schemaVersion: number
-    query: string
-    items: RetrievalEvidence[]
-    hasMore: boolean
-  }>({ url: '/mes/assistant/evidence/search', data })
+}) => request.post<EvidenceSearchResult>({ url: '/mes/assistant/evidence/search', data })

@@ -63,6 +63,16 @@ class MesKnowledgeAccessTest extends MesAssistantTestDatabase {
         @SuppressWarnings("unchecked")var items=(List<MesRetrievalEvidence>)evidence.get("items");assertEquals(2,items.size());assertEquals(Set.of("DOCUMENT","GRAPH"),new HashSet<>(items.stream().map(MesRetrievalEvidence::sourceType).toList()));
         assertEquals(items.get(0).documentId(),items.get(1).documentId());assertEquals(items.get(0).documentVersion(),items.get(1).documentVersion());assertEquals(items.get(0).chunkHash(),items.get(1).chunkHash());assertEquals(items.get(0).text(),items.get(1).text());
     }
+    @Test void multiHopRetrievalUsesCurrentLibraryAuthorizationBeforeEntityLinking(){
+        graphRows.add(edge(privateDoc));graphRows.add(edge(publicDoc));graphRows.add(edge(draft));login(1,20);
+        var retrieval=new MesEvidenceService(service,view);
+        var allowed=retrieval.search("请问电机包含哪些部件？",List.of(),null,10,"HYBRID",2);
+        var graph=(MesGraphEvidenceRetriever.Result)allowed.get("graph");assertEquals(1,graph.relations().size());assertEquals(publicDoc,graph.relations().get(0).evidence().documentId());
+        assertTrue(((MesGraphEvidenceRetriever.Result)retrieval.search("机密型号",List.of(),null,10,"GRAPH",2).get("graph")).matchedEntities().isEmpty());
+        jdbc.update("DELETE FROM mes_assistant_base_role WHERE knowledge_base_id=?",rules);
+        var revoked=retrieval.search("请问电机包含哪些部件？",List.of(),null,10,"HYBRID",2);assertTrue(((List<?>)revoked.get("items")).isEmpty());assertTrue(((MesGraphEvidenceRetriever.Result)revoked.get("graph")).nodes().isEmpty());
+        assertThrows(RuntimeException.class,()->retrieval.search("电机",List.of(rules),null,10,"GRAPH",2));
+    }
     @Test void revokedSourcesAreRedactedInHistoryAndExcludedFromNewModelContext() throws Exception {
         login(1,20);var citations=service.search("电机",List.of(rules),5).get("items");long session=service.createSession("已有会话",20);String snapshot=json.writeValueAsString(citations);
         for(String role:List.of("user","assistant"))jdbc.update("INSERT INTO mes_assistant_message(session_id,user_id,role,content_text,status,citations_json,tenant_id) VALUES(?,20,?,'ROLESECRET','ANSWERED',?,1)",session,role,snapshot);

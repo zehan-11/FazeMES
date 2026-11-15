@@ -12,8 +12,8 @@ import java.util.List;
 public class MesEvidenceController {
     private final MesEvidenceService service;
     public MesEvidenceController(MesEvidenceService service){this.service=service;}
-    public record Query(String query,List<Long> knowledgeBaseIds,List<String> sources,Integer limit) {}
+    public record Query(String query,List<Long> knowledgeBaseIds,List<String> sources,Integer limit,String mode,Integer hops) {}
     @PostMapping("/search") @PreAuthorize("@ss.hasAnyPermissions('mes:assistant:knowledge','mes:assistant:manage')")
     @ApiAccessLog(requestEnable=false,responseEnable=false)
-    public CommonResult<?> search(@RequestBody Query query){return CommonResult.success(service.search(query.query(),query.knowledgeBaseIds(),query.sources(),query.limit()==null?5:query.limit()));}
+    public CommonResult<?> search(@RequestBody Query query){return CommonResult.success(service.search(query.query(),query.knowledgeBaseIds(),query.sources(),query.limit()==null?5:query.limit(),query.mode(),query.hops()==null?2:query.hops()));}
 }
