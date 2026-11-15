@@ -39,7 +39,7 @@ public class MesAssistantModelGateway {
                           double temperature, int maxTokens, boolean enabled, int contextTokens) {}
     record Target(URI uri, InetAddress address, int port) {}
 
-    public enum Purpose { KNOWLEDGE_CHAT, BUSINESS_INSIGHT, MODEL_CONNECTION_TEST, JEV_TRIAGE, JEV_CONNECTION_TEST }
+    public enum Purpose { KNOWLEDGE_CHAT, BUSINESS_INSIGHT, MODEL_CONNECTION_TEST, KNOWLEDGE_EMBEDDING, EMBEDDING_CONNECTION_TEST, JEV_TRIAGE, JEV_CONNECTION_TEST }
     @Autowired
     public MesAssistantModelGateway(JdbcTemplate jdbc, ObjectMapper json, MesAssistantSecretStore secrets) {
         this(jdbc,json,secrets,"https://api.typesafe.ai/v1",75_000);
@@ -100,8 +100,110 @@ public class MesAssistantModelGateway {
         return Map.of("connected", true, "provider", config.provider(), "model", config.model(), "message", "连接成功，模型已返回真实响应");
     }
 
+    public record EmbeddingSettings(String model, Integer dimensions, boolean enabled) {}
+    public record EmbeddingBatch(String model, int dimensions, String spaceId, List<List<Double>> vectors, int inputTokens) {
+        @Override public String toString() { return "EmbeddingBatch[model=" + model + ", dimensions=" + dimensions + ", count=" + vectors.size() + "]"; }
+    }
+
+    private EmbeddingSettings embeddingConfiguration() {
+        return jdbc.query("SELECT model_name,dimensions,enabled FROM mes_assistant_embedding_config WHERE tenant_id=?",
+                (rs, index) -> new EmbeddingSettings(rs.getString(1), rs.getInt(2), rs.getBoolean(3)),
+                TenantContextHolder.getRequiredTenantId()).stream().findFirst()
+                .orElse(new EmbeddingSettings("text-embedding-3-small", 1536, false));
+    }
+    private static boolean embeddingConnectionReady(Config connection) {
+        return connection != null && "openai".equals(connection.provider())
+                && connection.ciphertext() != null && !connection.ciphertext().isBlank();
+    }
+    public Map<String,Object> embeddingSettings() {
+        var settings = embeddingConfiguration(); var connection = configuration();
+        boolean ready = embeddingConnectionReady(connection);
+        return Map.of("model", settings.model(), "dimensions", settings.dimensions(), "enabled", settings.enabled(),
+                "connectionReady", ready, "configured", ready && settings.enabled(),
+                "baseUrl", connection == null ? "" : connection.baseUrl());
+    }
+    public Map<String,Object> saveEmbeddingSettings(EmbeddingSettings settings, long userId) {
+        String model = settings == null || settings.model() == null ? "" : settings.model().strip();
+        if (!model.matches("[A-Za-z0-9][A-Za-z0-9._:/@+\\-]{0,199}") || settings.dimensions() == null
+                || settings.dimensions() < 1 || settings.dimensions() > 4096)
+            throw MesAssistantErrors.invalid("请填写有效的Embedding模型名称和1至4096的向量维度");
+        if ((model.equals("text-embedding-3-small") && settings.dimensions() > 1536)
+                || (model.equals("text-embedding-3-large") && settings.dimensions() > 3072))
+            throw MesAssistantErrors.invalid("向量维度超过该Embedding模型支持的上限");
+        if (settings.enabled() && !embeddingConnectionReady(configuration()))
+            throw MesAssistantErrors.invalid("请先在模型配置中保存OpenAI兼容接口和API Key");
+        jdbc.update("""
+                INSERT INTO mes_assistant_embedding_config(tenant_id,model_name,dimensions,enabled,updater)
+                VALUES(?,?,?,?,?) ON DUPLICATE KEY UPDATE model_name=VALUES(model_name),dimensions=VALUES(dimensions),
+                enabled=VALUES(enabled),updater=VALUES(updater),update_time=CURRENT_TIMESTAMP
+                """, TenantContextHolder.getRequiredTenantId(), model, settings.dimensions(), settings.enabled(), userId);
+        return embeddingSettings();
+    }
+    public Map<String,Object> testEmbeddingConnection() {
+        var result = embed(Purpose.EMBEDDING_CONNECTION_TEST, List.of("设备点检发现异常时，应按操作规程处理。"));
+        return Map.of("connected", true, "model", result.model(), "dimensions", result.dimensions(),
+                "vectorCount", result.vectors().size(), "inputTokens", result.inputTokens(),
+                "message", "Embedding连接成功：已生成" + result.dimensions() + "维真实向量；仅发送测试文字。");
+    }
+    public EmbeddingBatch embed(List<String> inputs) { return embed(Purpose.KNOWLEDGE_EMBEDDING, inputs); }
+    private EmbeddingBatch embed(Purpose purpose, List<String> inputs) {
+        noTransaction();
+        var settings = embeddingConfiguration(); var connection = configuration();
+        if (!settings.enabled() || !embeddingConnectionReady(connection))
+            throw MesAssistantErrors.model("Embedding未启用或OpenAI接口与密钥未配置完整");
+        if (inputs == null || inputs.isEmpty() || inputs.size() > 16)
+            throw MesAssistantErrors.invalid("每批Embedding需包含1至16段文本");
+        int total = 0;
+        for (String input : inputs) {
+            if (input == null || input.isBlank()) throw MesAssistantErrors.invalid("Embedding文本不能为空");
+            int bytes = input.getBytes(StandardCharsets.UTF_8).length;
+            if (bytes > 8192) throw MesAssistantErrors.invalid("单段Embedding文本超过保守输入上限，请缩小分块");
+            total += bytes;
+        }
+        if (total > 65536) throw MesAssistantErrors.invalid("Embedding批次文本超过64KB，请减少批量");
+        try {
+            Target target = configuredTarget(connection.baseUrl());
+            byte[] body = json.writeValueAsBytes(Map.of("model", settings.model(), "input", List.copyOf(inputs),
+                    "dimensions", settings.dimensions(), "encoding_format", "float"));
+            byte[] response = invoke(purpose, "EMBEDDING", connection.provider(), settings.model(), total, 0,
+                    target, target.uri().getRawPath() + "/embeddings", body,
+                    secrets.decrypt(connection.ciphertext(), TenantContextHolder.getRequiredTenantId()));
+            var parsed = json.readTree(response);
+            var vectors = decodeEmbeddings(parsed, inputs.size(), settings.dimensions());
+            int tokens = parsed.path("usage").path("prompt_tokens").canConvertToInt()
+                    ? Math.max(0, parsed.path("usage").path("prompt_tokens").intValue()) : 0;
+            String identity = connection.baseUrl() + "\n" + settings.model() + "\n" + settings.dimensions();
+            String space = HexFormat.of().formatHex(java.security.MessageDigest.getInstance("SHA-256")
+                    .digest(identity.getBytes(StandardCharsets.UTF_8)));
+            return new EmbeddingBatch(settings.model(), settings.dimensions(), space, vectors, tokens);
+        } catch (cn.iocoder.yudao.framework.common.exception.ServiceException exception) { throw exception; }
+        catch (Exception exception) { throw MesAssistantErrors.model("Embedding连接失败或返回的向量无效，请检查接口、模型名称和维度"); }
+    }
+    static List<List<Double>> decodeEmbeddings(JsonNode response, int count, int dimensions) {
+        JsonNode data = response.path("data");
+        if (!data.isArray() || data.size() != count) throw MesAssistantErrors.model("Embedding返回的向量数量不匹配");
+        List<List<Double>> vectors = new ArrayList<>(Collections.nCopies(count, null));
+        for (var item : data) {
+            var position = item.path("index"); var vector = item.path("embedding");
+            if (!position.isIntegralNumber() || !position.canConvertToInt() || position.intValue() < 0
+                    || position.intValue() >= count || vectors.get(position.intValue()) != null
+                    || !vector.isArray() || vector.size() != dimensions)
+                throw MesAssistantErrors.model("Embedding返回的索引或向量维度不匹配");
+            List<Double> values = new ArrayList<>(dimensions); double norm = 0;
+            for (var coordinate : vector) {
+                double value = coordinate.doubleValue();
+                if (!coordinate.isNumber() || !Double.isFinite(value)) throw MesAssistantErrors.model("Embedding包含无效数值");
+                values.add(value); norm += value * value;
+            }
+            if (!Double.isFinite(norm) || norm <= 0) throw MesAssistantErrors.model("Embedding返回了无效的零向量或溢出向量");
+            vectors.set(position.intValue(), List.copyOf(values));
+        }
+        return List.copyOf(vectors);
+    }
+
     public void reset() {
         long tenant = TenantContextHolder.getRequiredTenantId();
+        jdbc.update("DELETE FROM mes_assistant_embedding_config WHERE tenant_id=?", tenant);
         jdbc.update("DELETE FROM mes_assistant_model_config WHERE tenant_id=?", tenant);
     }
 
@@ -147,7 +249,7 @@ public class MesAssistantModelGateway {
             if("JEV".equals(channel)&&response.status==451)throw MesAssistantErrors.model("TypeSafe官方Jev拒绝当前网络地区访问（HTTP 451）。更换密钥或模型名无法解除地区限制，请使用服务商支持的接入地区或其他可直连的异常分流模型。");
             if(response.status!=200)throw MesAssistantErrors.model("模型服务返回HTTP "+response.status+"，请检查连接配置");
             JsonNode parsed=json.readTree(response.body);
-            if(!("JEV".equals(channel)?validJev(body,parsed):validContent(parsed,provider)))throw MesAssistantErrors.model("模型未返回有效文本或响应格式不兼容");
+            if(!("JEV".equals(channel)?validJev(body,parsed):"EMBEDDING".equals(channel)?parsed.path("data").isArray():validContent(parsed,provider)))throw MesAssistantErrors.model("模型未返回有效文本或响应格式不兼容");
             return response.body;
         } catch(cn.iocoder.yudao.framework.common.exception.ServiceException ex){throw ex;}
         catch(Exception ex){throw MesAssistantErrors.model("模型连接失败或响应格式不兼容，请检查管理员配置和服务状态");}

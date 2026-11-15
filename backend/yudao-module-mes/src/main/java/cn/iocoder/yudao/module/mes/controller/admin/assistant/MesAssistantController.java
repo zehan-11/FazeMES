@@ -105,6 +105,14 @@ public class MesAssistantController {
     @DeleteMapping("/model-config") @PreAuthorize("@ss.hasPermission('mes:assistant:config')")
     @ApiAccessLog(requestEnable = false, responseEnable = false)
     public CommonResult<?> resetModelConfig() { models.reset(); return success(true); }
+    @GetMapping("/embedding-config") @PreAuthorize("@ss.hasPermission('mes:assistant:config')")
+    public CommonResult<?> embeddingConfig() { return success(models.embeddingSettings()); }
+    @PutMapping("/embedding-config") @PreAuthorize("@ss.hasPermission('mes:assistant:config')")
+    @ApiAccessLog(requestEnable = false, responseEnable = false)
+    public CommonResult<?> saveEmbeddingConfig(@RequestBody MesAssistantModelGateway.EmbeddingSettings body) { return success(models.saveEmbeddingSettings(body, user())); }
+    @PostMapping("/embedding-config/test") @PreAuthorize("@ss.hasPermission('mes:assistant:config')") @ApiAccessLog(requestEnable = false)
+    public CommonResult<?> testEmbeddingConfig() { return success(models.testEmbeddingConnection()); }
+
     @PostMapping("/model-config/test") @PreAuthorize("@ss.hasPermission('mes:assistant:config')") @ApiAccessLog(requestEnable = false)
     public CommonResult<?> testModelConfig() { return success(models.testConnection()); }
 }

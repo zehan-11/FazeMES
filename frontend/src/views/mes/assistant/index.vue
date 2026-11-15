@@ -366,7 +366,7 @@
       <el-tab-pane v-if="canConfig" label="模型配置" name="config">
         <div class="assistant-config">
           <el-alert
-            title="本项目不设置模型计费、次数或Token累计配额；模型平台自身额度仍以服务商为准。文档检索不调用模型。"
+            title="本项目不设置模型计费、次数或Token累计配额；模型平台自身额度仍以服务商为准。当前文档关键词检索不调用模型；Embedding测试会调用已配置的平台。"
             type="info"
             :closable="false"
           />
@@ -379,6 +379,7 @@
           <el-form
             label-width="120px"
             :model="config"
+            :disabled="embeddingTesting || embeddingSaving"
             v-loading="configLoading"
             class="assistant-config-form"
             @submit.prevent
@@ -459,6 +460,63 @@
             v-if="connectionMessage"
             :title="connectionMessage"
             :type="connectionSuccess ? 'success' : 'error'"
+            show-icon
+            :closable="false"
+          />
+          <el-divider content-position="left">文档向量模型（Embedding）</el-divider>
+          <p class="assistant-field-help">
+            复用上方已保存的OpenAI接口和API
+            Key，单独设置向量模型。连接测试仅发送测试文字；文档自动向量化将在后续步骤接通。
+          </p>
+          <el-form
+            label-width="120px"
+            :model="embedding"
+            :disabled="embeddingTesting || embeddingSaving || configSaving"
+            v-loading="configLoading"
+            class="assistant-config-form"
+            @submit.prevent
+          >
+            <el-form-item label="Embedding模型">
+              <el-input
+                v-model="embedding.model"
+                maxlength="200"
+                placeholder="text-embedding-3-small"
+              />
+            </el-form-item>
+            <el-form-item label="向量维度">
+              <el-input-number v-model="embedding.dimensions" :min="1" :max="4096" :step="1" />
+              <p class="assistant-field-help"
+                >text-embedding-3-small默认1536维。维度须与模型支持范围一致。</p
+              >
+            </el-form-item>
+            <el-form-item label="启用Embedding">
+              <el-switch v-model="embedding.enabled" />
+            </el-form-item>
+            <el-form-item>
+              <el-button
+                type="primary"
+                :loading="embeddingSaving"
+                :disabled="embeddingTesting || configSaving"
+                @click="saveEmbeddingConfig"
+              >
+                保存Embedding配置
+              </el-button>
+              <el-button
+                :loading="embeddingTesting"
+                :disabled="embeddingSaving || configSaving || !embeddingCanTest"
+                @click="testEmbeddingConfig"
+              >
+                测试已保存Embedding连接
+              </el-button>
+              <p class="assistant-field-help">先保存接口、密钥和Embedding配置，再测试连接。</p>
+            </el-form-item>
+          </el-form>
+          <el-alert
+            v-if="embeddingMessage"
+            :title="embeddingMessage"
+            :type="embeddingSuccess ? 'success' : 'error'"
+            role="status"
+            aria-live="polite"
             show-icon
             :closable="false"
           />
@@ -787,6 +845,31 @@ const config = reactive<ModelConfig>({
   contextTokens: 8192,
   enabled: false
 })
+const embedding = reactive({
+  model: 'text-embedding-3-small',
+  dimensions: 1536,
+  enabled: false,
+  connectionReady: false,
+  configured: false,
+  baseUrl: ''
+})
+const savedEmbedding = ref('')
+const embeddingSaving = ref(false)
+const embeddingTesting = ref(false)
+const embeddingMessage = ref('')
+const embeddingSuccess = ref(false)
+const embeddingSelection = () =>
+  JSON.stringify([embedding.model, embedding.dimensions, embedding.enabled])
+const embeddingCanTest = computed(
+  () =>
+    embedding.configured &&
+    embedding.enabled &&
+    embeddingSelection() === savedEmbedding.value &&
+    config.provider === 'openai' &&
+    config.baseUrl === embedding.baseUrl &&
+    !apiKey.value &&
+    !clearApiKey.value
+)
 const apiKey = ref('')
 const clearApiKey = ref(false)
 const configLoading = ref(false)
@@ -794,6 +877,20 @@ const configSaving = ref(false)
 const testing = ref(false)
 const connectionMessage = ref('')
 const connectionSuccess = ref(false)
+watch(
+  [
+    () => embedding.model,
+    () => embedding.dimensions,
+    () => embedding.enabled,
+    () => config.baseUrl,
+    () => config.provider,
+    apiKey,
+    clearApiKey
+  ],
+  () => {
+    embeddingMessage.value = ''
+  }
+)
 const failure = (exception: unknown, fallback: string) => {
   error.value = exception instanceof Error ? exception.message : fallback
 }
@@ -1166,7 +1263,8 @@ function changeProvider() {
     config.baseUrl = 'https://api.openai.com/v1'
 }
 async function saveConfig() {
-  if (!canConfig.value || configSaving.value) return
+  if (!canConfig.value || configSaving.value || embeddingTesting.value || embeddingSaving.value)
+    return
   if (!config.model.trim() || !config.baseUrl.trim())
     return ElMessage.warning('请填写服务地址和实际模型名称')
   configSaving.value = true
@@ -1185,6 +1283,11 @@ async function saveConfig() {
     apiKey.value = ''
     clearApiKey.value = false
     modelStatus.value = await AssistantApi.status()
+    const connection = await AssistantApi.embeddingConfig()
+    embedding.connectionReady = connection.connectionReady
+    embedding.configured = connection.configured
+    embedding.baseUrl = connection.baseUrl
+    embeddingMessage.value = ''
     ElMessage.success('配置已安全保存')
   } catch (exception) {
     failure(exception, '配置保存失败')
@@ -1208,6 +1311,53 @@ async function testConfig() {
     testing.value = false
   }
 }
+async function saveEmbeddingConfig() {
+  if (!canConfig.value || embeddingSaving.value || embeddingTesting.value || configSaving.value)
+    return
+  embeddingSaving.value = true
+  embeddingMessage.value = ''
+  try {
+    Object.assign(
+      embedding,
+      await AssistantApi.saveEmbeddingConfig({
+        model: embedding.model,
+        dimensions: embedding.dimensions,
+        enabled: embedding.enabled
+      })
+    )
+    savedEmbedding.value = embeddingSelection()
+    ElMessage.success('Embedding配置已保存')
+  } catch (exception) {
+    embeddingSuccess.value = false
+    embeddingMessage.value =
+      exception instanceof Error ? exception.message : 'Embedding配置保存失败'
+  } finally {
+    embeddingSaving.value = false
+  }
+}
+async function testEmbeddingConfig() {
+  if (
+    !canConfig.value ||
+    embeddingTesting.value ||
+    embeddingSaving.value ||
+    configSaving.value ||
+    !embeddingCanTest.value
+  )
+    return
+  embeddingTesting.value = true
+  embeddingMessage.value = ''
+  try {
+    const result = await AssistantApi.testEmbeddingConfig()
+    embeddingSuccess.value = true
+    embeddingMessage.value = result.message
+  } catch (exception) {
+    embeddingSuccess.value = false
+    embeddingMessage.value =
+      exception instanceof Error ? exception.message : 'Embedding连接测试失败'
+  } finally {
+    embeddingTesting.value = false
+  }
+}
 onMounted(async () => {
   try {
     modelStatus.value = await AssistantApi.status()
@@ -1216,6 +1366,8 @@ onMounted(async () => {
     if (canConfig.value) {
       configLoading.value = true
       Object.assign(config, await AssistantApi.modelConfig())
+      Object.assign(embedding, await AssistantApi.embeddingConfig())
+      savedEmbedding.value = embeddingSelection()
     }
   } catch (exception) {
     failure(exception, '助手初始化失败')

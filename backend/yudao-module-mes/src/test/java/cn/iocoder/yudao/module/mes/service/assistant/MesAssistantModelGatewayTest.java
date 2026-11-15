@@ -164,8 +164,11 @@ class MesAssistantModelGatewayTest extends MesAssistantTestDatabase {
             assertFalse(citations.isEmpty()); assertTrue(citations.size() < 5);
             String system = json.readTree(captured.get()).get("messages").get(0).get("content").asText();
             for (int index = 0; index < citations.size(); index++) {
-                assertTrue(system.contains("[" + (index + 1) + "] " + citations.get(index).get("title")));
-                assertTrue(system.contains(citations.get(index).get("content").toString()));
+                String prefix = "[" + (index + 1) + "] ";
+                String evidenceLine = system.lines().filter(line -> line.startsWith(prefix)).findFirst().orElseThrow();
+                var source = json.readTree(evidenceLine.substring(prefix.length()));
+                assertEquals(citations.get(index).get("title"), source.path("title").asText());
+                assertEquals(citations.get(index).get("content"), source.path("content").asText());
             }
             assertFalse(system.contains("[" + (citations.size() + 1) + "]"));
             @SuppressWarnings("unchecked") var messages = (List<Map<String, Object>>) service.session(session, 10).get("messages");

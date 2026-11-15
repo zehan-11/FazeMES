@@ -308,7 +308,7 @@ def normalize_master_snapshots(ctx):
                     'SET p.value_code=m.code,p.value_name=m.name WHERE p.deleted=0 AND p.type=%s',(kind,))
 
 
-MANUAL_CONFIG = ('mes_face_credential','mes_assistant_model_config','mes_insight_jev_config')
+MANUAL_CONFIG = ('mes_face_credential','mes_assistant_model_config','mes_assistant_embedding_config','mes_insight_jev_config')
 
 def retained_counts(ctx):
     counts = {}

@@ -45,6 +45,9 @@ class MesAssistantControllerPolicyTest extends MesAssistantTestDatabase {
             context.registerBean(MesAssistantController.class, () -> new MesAssistantController(service, models, permissionService));
             context.refresh();
             var controller = context.getBean(MesAssistantController.class);
+            assertThrows(AccessDeniedException.class, controller::embeddingConfig);
+            assertThrows(AccessDeniedException.class, controller::testEmbeddingConfig);
+            assertThrows(AccessDeniedException.class, () -> controller.saveEmbeddingConfig(new MesAssistantModelGateway.EmbeddingSettings("model", 3, true)));
             assertThrows(AccessDeniedException.class, controller::modelConfig);
             assertThrows(AccessDeniedException.class, controller::testModelConfig);
             assertThrows(AccessDeniedException.class, controller::resetModelConfig);
@@ -56,6 +59,7 @@ class MesAssistantControllerPolicyTest extends MesAssistantTestDatabase {
             assertThrows(AccessDeniedException.class, controller::modelConfig);
             permissions.add("mes:assistant:config");
             assertNotNull(controller.modelConfig().getData());
+            assertNotNull(controller.embeddingConfig().getData());
             permissions.clear(); permissions.add("mes:assistant:chat");
             assertThrows(AccessDeniedException.class,()->controller.documentVersions(1));
             assertThrows(AccessDeniedException.class,()->controller.updateDocument(1,1,null,new org.springframework.mock.web.MockMultipartFile("file","a.md","text/markdown",new byte[]{65})));

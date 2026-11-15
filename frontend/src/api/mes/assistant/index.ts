@@ -108,6 +108,14 @@ export interface ModelConfig {
   contextTokens: number
   enabled: boolean
 }
+export interface EmbeddingConfig {
+  model: string
+  dimensions: number
+  enabled: boolean
+  connectionReady: boolean
+  configured: boolean
+  baseUrl: string
+}
 export interface SearchResult {
   mode: 'lexical_bm25'
   query: string
@@ -193,6 +201,14 @@ export const AssistantApi = {
         timeout: 90000
       }
     ),
+  embeddingConfig: () => request.get<EmbeddingConfig>({ url: `${url}/embedding-config` }),
+  saveEmbeddingConfig: (data: Pick<EmbeddingConfig, 'model' | 'dimensions' | 'enabled'>) =>
+    request.put<EmbeddingConfig>({ url: `${url}/embedding-config`, data }),
+  testEmbeddingConfig: () =>
+    request.post<{ connected: boolean; message: string; model: string; dimensions: number }>({
+      url: `${url}/embedding-config/test`,
+      timeout: 90000
+    }),
   modelConfig: () => request.get<ModelConfig>({ url: `${url}/model-config` }),
   saveModelConfig: (
     data: Omit<ModelConfig, 'apiKeyConfigured'> & { apiKey: string; clearApiKey: boolean }

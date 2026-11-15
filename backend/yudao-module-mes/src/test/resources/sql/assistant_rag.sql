@@ -28,3 +28,5 @@ CREATE TABLE system_user_role(id BIGINT AUTO_INCREMENT PRIMARY KEY,user_id BIGIN
 
 ALTER TABLE mes_assistant_message ADD COLUMN retrieval_mode VARCHAR(16) DEFAULT 'DOCUMENT';
 ALTER TABLE mes_assistant_message ADD COLUMN retrieval_hops INT DEFAULT 2;
+
+CREATE TABLE mes_assistant_embedding_config(tenant_id BIGINT PRIMARY KEY,model_name VARCHAR(200) NOT NULL,dimensions INT NOT NULL,enabled BOOLEAN DEFAULT FALSE,updater BIGINT NOT NULL,update_time TIMESTAMP DEFAULT CURRENT_TIMESTAMP);
