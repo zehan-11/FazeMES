@@ -91,6 +91,47 @@ public class MesAssistantService {
         return Map.of("id", id, "title", title, "chunkCount", parsed.chunks().size(), "status", "DRAFT", "version", 1);
     }
 
+    /** Replaces the current file atomically, retaining an immutable old file/chunk snapshot. */
+    @Transactional
+    public Map<String,Object> updateDocument(long id,int expectedVersion,String title,String fileName,byte[] bytes,long userId){
+        long tenant=tenant();requireUser(userId);
+        if(expectedVersion<1)throw MesAssistantErrors.invalid("文档版本无效");
+        var parsed=parser.parse(fileName,bytes);
+        var locked=jdbc.queryForList("SELECT d.version,d.title FROM mes_assistant_document d JOIN mes_assistant_knowledge_base b ON b.id=d.knowledge_base_id AND b.tenant_id=d.tenant_id AND b.deleted=0 WHERE d.tenant_id=? AND d.id=? AND d.deleted=0 FOR UPDATE",tenant,id);
+        if(locked.isEmpty())throw MesAssistantErrors.missing();
+        int previous=((Number)locked.get(0).get("version")).intValue();
+        if(previous!=expectedVersion)throw MesAssistantErrors.invalid("文档版本已变更，请刷新列表后重试");
+        if(previous==Integer.MAX_VALUE)throw MesAssistantErrors.invalid("文档版本超出范围");
+        var old=document(id,true);String chunkSnapshot=encode(old.get("chunks"));
+        jdbc.update("""
+            INSERT INTO mes_assistant_document_revision(tenant_id,document_id,version,knowledge_base_id,title,file_name,file_type,file_size,file_sha256,original_bytes,content_text,chunk_count,chunks_json,status,creator,changed_by,create_time)
+            SELECT tenant_id,id,version,knowledge_base_id,title,file_name,file_type,file_size,file_sha256,original_bytes,content_text,chunk_count,?,status,creator,?,create_time FROM mes_assistant_document WHERE tenant_id=? AND id=? AND deleted=0
+            """,chunkSnapshot,userId,tenant,id);
+        String nextTitle=title==null||title.isBlank()?locked.get(0).get("title").toString():text(title,200,"文档标题");
+        int version=previous+1;
+        jdbc.update("UPDATE mes_assistant_document SET title=?,file_name=?,file_type=?,file_size=?,file_sha256=?,original_bytes=?,content_text=?,chunk_count=?,version=?,status='DRAFT',update_time=CURRENT_TIMESTAMP WHERE tenant_id=? AND id=? AND deleted=0",nextTitle,parsed.fileName(),parsed.type(),bytes.length,parsed.hash(),bytes,parsed.text(),parsed.chunks().size(),version,tenant,id);
+        // IDs and complete metadata of the removed chunks are retained in the archived version.
+        jdbc.update("DELETE FROM mes_assistant_chunk WHERE tenant_id=? AND document_id=?",tenant,id);
+        for(var chunk:parsed.chunks())jdbc.update("INSERT INTO mes_assistant_chunk(document_id,chunk_index,heading,page_number,start_offset,end_offset,content_text,content_sha256,tenant_id) VALUES(?,?,?,?,?,?,?,?,?)",id,chunk.index(),chunk.heading(),chunk.pageNumber(),chunk.startOffset(),chunk.endOffset(),chunk.text(),chunk.hash(),tenant);
+        if(documentGraph!=null)documentGraph.stage(id,false);
+        return Map.of("id",id,"version",version,"status","DRAFT","chunkCount",parsed.chunks().size());
+    }
+    @Transactional(readOnly=true,isolation=org.springframework.transaction.annotation.Isolation.REPEATABLE_READ)
+    public List<Map<String,Object>> documentVersions(long id){
+        var current=document(id,true);List<Map<String,Object>> versions=new ArrayList<>();
+        var latest=new LinkedHashMap<>(current);latest.remove("contentText");latest.remove("chunks");latest.put("isCurrent",true);versions.add(latest);
+        var history=rows("SELECT document_id AS id,title,file_name,file_type,file_size,file_sha256,chunk_count,version,status,archived_at FROM mes_assistant_document_revision WHERE tenant_id=? AND document_id=? ORDER BY version DESC",tenant(),id);
+        for(var revision:history){revision.put("isCurrent",false);versions.add(revision);}return versions;
+    }
+    @Transactional(readOnly=true,isolation=org.springframework.transaction.annotation.Isolation.REPEATABLE_READ)
+    public Map<String,Object> document(long id,boolean manage,Integer version){
+        var current=document(id,manage);
+        if(version==null||version.equals(((Number)current.get("version")).intValue()))return current;
+        if(!manage||version<1)throw MesAssistantErrors.missing();
+        var history=rows("SELECT document_id AS id,knowledge_base_id,title,file_name,file_type,file_size,file_sha256,content_text,chunk_count,version,status,chunks_json FROM mes_assistant_document_revision WHERE tenant_id=? AND document_id=? AND version=?",tenant(),id,version);
+        if(history.isEmpty())throw MesAssistantErrors.missing();var revision=history.get(0);revision.put("chunks",decode(revision.remove("chunksJson")));return revision;
+    }
+    @Transactional(readOnly=true,isolation=org.springframework.transaction.annotation.Isolation.REPEATABLE_READ)
     public Map<String, Object> document(long id, boolean manage) {
         long tenant = tenant();
         var documents = rows("SELECT d.id,d.knowledge_base_id,d.title,d.file_name,d.file_type,d.file_size,d.file_sha256,d.content_text,d.chunk_count,d.version,d.status,d.create_time"
@@ -104,6 +145,7 @@ public class MesAssistantService {
     }
 
     public record Download(String name, byte[] bytes) {}
+    @Transactional(readOnly=true,isolation=org.springframework.transaction.annotation.Isolation.REPEATABLE_READ)
     public Download download(long id, boolean manage) {
         document(id, manage); // verifies document and knowledge-base visibility without trusting the caller's base ID
         long tenant = tenant();
@@ -111,9 +153,22 @@ public class MesAssistantService {
                 (rs, index) -> new Download(rs.getString(1), rs.getBytes(2)), id, tenant).stream().findFirst().orElseThrow(MesAssistantErrors::missing);
     }
 
+    @Transactional(readOnly=true,isolation=org.springframework.transaction.annotation.Isolation.REPEATABLE_READ)
+    public Download download(long id,boolean manage,Integer version){
+        var current=document(id,manage);
+        if(version==null||version.equals(((Number)current.get("version")).intValue()))return download(id,manage);
+        if(!manage||version<1)throw MesAssistantErrors.missing();
+        return jdbc.query("SELECT file_name,original_bytes FROM mes_assistant_document_revision WHERE tenant_id=? AND document_id=? AND version=?",(rs,index)->new Download(rs.getString(1),rs.getBytes(2)),tenant(),id,version).stream().findFirst().orElseThrow(MesAssistantErrors::missing);
+    }
+
     @Transactional
-    public void publish(long id, boolean published) {
-        long tenant = tenant(); document(id, true);
+    public void publish(long id,boolean published){publish(id,published,null);}
+    @Transactional
+    public void publish(long id, boolean published,Integer expectedVersion) {
+        long tenant = tenant();
+        var locked=jdbc.queryForList("SELECT d.version FROM mes_assistant_document d JOIN mes_assistant_knowledge_base b ON b.id=d.knowledge_base_id AND b.tenant_id=d.tenant_id AND b.deleted=0 WHERE d.tenant_id=? AND d.id=? AND d.deleted=0 FOR UPDATE",tenant,id);
+        if(locked.isEmpty())throw MesAssistantErrors.missing();
+        if(expectedVersion!=null&&expectedVersion.intValue()!=((Number)locked.get(0).get("version")).intValue())throw MesAssistantErrors.invalid("文档版本已变更，请重新审核后再发布或撤回");
         jdbc.update("UPDATE mes_assistant_document SET status=?,update_time=CURRENT_TIMESTAMP WHERE id=? AND tenant_id=? AND deleted=0",
                 published ? "PUBLISHED" : "DRAFT", id, tenant);
         if(documentGraph!=null)documentGraph.stage(id,false);

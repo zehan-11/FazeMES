@@ -32,6 +32,18 @@ export interface KnowledgeDocument {
   graphAttempts: number
   createTime: number | string
 }
+export interface DocumentVersion {
+  id: number
+  version: number
+  title: string
+  fileName: string
+  fileType: string
+  fileSize: number
+  fileSha256: string
+  chunkCount: number
+  status: 'DRAFT' | 'PUBLISHED'
+  isCurrent: boolean
+}
 export interface Citation {
   chunkId: number
   documentId: number
@@ -95,10 +107,10 @@ export const AssistantApi = {
   deleteBase: (id: number) => request.delete({ url: `${url}/base`, params: { id } }),
   documents: (knowledgeBaseId: number) =>
     request.get<KnowledgeDocument[]>({ url: `${url}/documents`, params: { knowledgeBaseId } }),
-  document: (id: number) =>
+  document: (id: number, version?: number) =>
     request.get<KnowledgeDocument & { contentText: string; chunks: Citation[] }>({
       url: `${url}/document`,
-      params: { id }
+      params: { id, version }
     }),
   upload: (knowledgeBaseId: number, title: string, file: File) => {
     const data = new FormData()
@@ -111,13 +123,27 @@ export const AssistantApi = {
       headersType: 'multipart/form-data'
     })
   },
+  updateDocument: (id: number, expectedVersion: number, title: string, file: File) => {
+    const data = new FormData()
+    data.append('id', String(id))
+    data.append('expectedVersion', String(expectedVersion))
+    data.append('title', title)
+    data.append('file', file)
+    return request.post<{ id: number; version: number; chunkCount: number }>({
+      url: `${url}/document/update`,
+      data,
+      headersType: 'multipart/form-data'
+    })
+  },
+  documentVersions: (id: number) =>
+    request.get<DocumentVersion[]>({ url: `${url}/document/versions`, params: { id } }),
   rebuildGraph: (id: number) =>
     request.post({ url: `${url}/document/graph/rebuild`, params: { id } }),
-  publish: (id: number, published: boolean) =>
-    request.put({ url: `${url}/document/publish`, params: { id, published } }),
+  publish: (id: number, published: boolean, expectedVersion?: number) =>
+    request.put({ url: `${url}/document/publish`, params: { id, published, expectedVersion } }),
   deleteDocument: (id: number) => request.delete({ url: `${url}/document`, params: { id } }),
-  download: (id: number) =>
-    request.download<Blob>({ url: `${url}/document/download`, params: { id } }),
+  download: (id: number, version?: number) =>
+    request.download<Blob>({ url: `${url}/document/download`, params: { id, version } }),
   search: (query: string, knowledgeBaseIds: number[]) =>
     request.post<SearchResult>({
       url: `${url}/search`,

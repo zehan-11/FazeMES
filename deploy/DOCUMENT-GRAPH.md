@@ -27,8 +27,8 @@ CSV 支持双引号和转义引号，不支持跨行字段。实体名称最多1
    此时不发布到图谱。
 2. 发布：任务变为 PENDING。后台每5秒扫描已提交任务（每批最多5份），通过独立
    MySQL 事务锁住任务行，将该文档的关系在 Neo4j 单事务中替换，然后记为 SYNCED。
-3. 失败：文件仍保留，任务记为 ERROR，不显示同步成功；自动退避重试，最多10次，
-   也可在文档列表点「重新建图」。启动恢复后继续处理持久化任务。
+3. 失败：文件仍保留，任务记为 ERROR，不显示同步成功；发布建图自动退避重试，最多10次，
+   也可在文档列表点「重新建图」。撤回、更新后草稿及删除的清理任务超过10次后仍每60秒继续重试，避免数据库长时间停机后留下旧关系。启动恢复后继续处理持久化任务。
 4. 撤回/删除：进入移除队列，只移除该文档贡献的关系。其他文档的关系保持不变；
    仅删除没有任何关系的文档来源实体，既有初始化图谱节点不会被清理。
 5. 回滚：文件事务回滚时建图任务一同回滚，后台无法读到未提交任务。
@@ -49,8 +49,35 @@ pageNumber（PDF）、startOffset/endOffset（规范化原文中的 UTF-16 位�
 sourceTitle、sourceSection、sourceExcerpt、extractionMethod=explicit_v1。
 关系原文必须与对应位置的子串一致，且整个关系行必须位于一个可核对的片段中。
 实体 ID 根据类型和规范化名称计算；关系 ID 包含文档、版本和原文位置。
-已提交同步任务保存不可变来源快照。当前没有新增文档替换/版本管理页面，
-版本号沿用文档原有字段；之后接入替换上传或模型抽取时可复用同一交付链路。
+已提交同步任务保存不可变来源快照。更新文件自动递增版本；历史文件与分块快照保存在 mes_assistant_document_revision，当前检索仅使用最新、已发布版本。
+
+## 文件更新、版本与删除同步
+
+文档列表中选择「更新文件」，上传替换文件，保存时需要携带列表中的 expectedVersion。
+同一文档 ID 和原上传者保持不变，成功后版本递增，新版回到草稿；旧版立即退出新检索，
+其图谱关系进入异步清理队列。审核并重新发布后，后台替换该文档贡献的关系，
+来源字段使用新版版本号、片段 ID、哈希和原文位置。新版本没有明确关系时显示 EMPTY，
+不会保留旧关系来代替新版结果。
+
+更新前在同一 MySQL 事务中归档旧文件字节、解析全文、元数据和包含旧片段 ID 的分块快照，
+再更新当前文件及活动分块。解析失败、过时版本请求和事务回滚不会覆盖原文件。
+两人同时从相同版本更新时只有先保存的请求成功，后者需刷新；不会悄悄覆盖。
+格式错误的新稿仍会清理旧图谱，并显示 INVALID，修正前不能发布。
+
+「历史版本」可由具备 mes:assistant:manage 权限的维护者查看旧原文与分块、下载旧文件。
+历史版本不参与当前检索或建图，历史会话已有引用快照保持不变。文档删除后版本下载
+入口也关闭；历史引用继续依靠消息中的快照核对，不因此公开已删除文件。
+
+删除文件时在文件事务内持久化移除任务；Neo4j 单事务只删除该文件贡献的关系，
+其他文件和原图谱的关系、共用实体保持不变。更新、撤回、删除先提交文件状态、
+再异步同步 Neo4j；清理失败不会冒充完成，任务持续重试。磁盘原文件的外部修改
+不受监控，修改后需从网页上传替换文件。
+
+接口：
+- POST /admin-api/mes/assistant/document/update：multipart 的 id、expectedVersion、title（可选）、file。
+- GET /admin-api/mes/assistant/document/versions?id=...：当前及历史版本元数据。
+- GET /admin-api/mes/assistant/document?id=...&version=...：读取指定版本原文及快照。
+- GET /admin-api/mes/assistant/document/download?id=...&version=...：下载指定版本；省略 version 仍下载当前文件。
 
 ## 实体类型识别与原图谱融合
 
@@ -81,14 +108,14 @@ sourceTitle、sourceSection、sourceExcerpt、extractionMethod=explicit_v1。
 
 ## 运维与验证
 
-- 迁移：database/migrations/20261115_document_graph_ingestion.sql。
+- 迁移：database/migrations/20261115_document_graph_ingestion.sql、20261115_document_version_sync.sql。
 - 建图状态：mes_assistant_graph_state；查看 status/attempts/error_message 即可定位失败。
 - 手动重建：POST /admin-api/mes/assistant/document/graph/rebuild?id=...，要求
   mes:assistant:manage 权限，并校验当前租户内文档可见性。
 - 原有上传、发布、撤回、删除接口不变；文档列表增加建图状态、数量与错误信息。
 - 模型语义抽取和 GraphRAG 问答仍未包含在本轮实现中。
 
-测试：MesEntityAlignmentTest、MesDocumentRelationExtractorTest、MesDocumentGraphPipelineTest、
+测试：MesDocumentVersionSyncTest、MesEntityAlignmentTest、MesDocumentRelationExtractorTest、MesDocumentGraphPipelineTest、
 MesDocumentGraphLiveTest（设置 FAZEMES_GRAPH_TEST_CONFIG 后连接本机 Neo4j）。
 真实图谱测试使用独立随机租户范围，测试后清理该范围内的文档节点。
 
@@ -101,3 +128,10 @@ python -X utf8 deploy/verify-document-graph.py --exercise-retry
 ```
 
 脚本使用本机管理员凭据；当前验收要求图谱未超过 overview 接口的容量。
+
+文件版本及删除的端到端验收（仅操作本次 UUID 命名的临时文件）：
+
+```powershell
+python -X utf8 deploy/verify-document-version.py
+python -X utf8 deploy/verify-document-version.py --exercise-retry
+```

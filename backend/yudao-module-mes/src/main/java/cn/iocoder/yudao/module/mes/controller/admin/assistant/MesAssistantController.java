@@ -54,19 +54,27 @@ public class MesAssistantController {
         if (file.isEmpty() || file.getSize() > MesAssistantDocumentParser.MAX_FILE_BYTES) throw MesAssistantErrors.invalid("文件为空或超过5MB");
         return success(service.upload(knowledgeBaseId, title, file.getOriginalFilename(), file.getBytes(), user()));
     }
+    @PostMapping(value="/document/update",consumes=MediaType.MULTIPART_FORM_DATA_VALUE)
+    @PreAuthorize("@ss.hasPermission('mes:assistant:manage')") @ApiAccessLog(requestEnable=false,responseEnable=false)
+    public CommonResult<?> updateDocument(@RequestParam long id,@RequestParam int expectedVersion,@RequestParam(required=false) String title,@RequestPart("file") MultipartFile file) throws java.io.IOException {
+        if(file.isEmpty()||file.getSize()>MesAssistantDocumentParser.MAX_FILE_BYTES)throw MesAssistantErrors.invalid("文件为空或超过5MB");
+        return success(service.updateDocument(id,expectedVersion,title,file.getOriginalFilename(),file.getBytes(),user()));
+    }
+    @GetMapping("/document/versions") @PreAuthorize("@ss.hasPermission('mes:assistant:manage')") @ApiAccessLog(requestEnable=false,responseEnable=false)
+    public CommonResult<?> documentVersions(@RequestParam long id){return success(service.documentVersions(id));}
     @GetMapping("/document") @PreAuthorize("@ss.hasAnyPermissions('mes:assistant:knowledge','mes:assistant:manage')")
-    public CommonResult<?> document(@RequestParam long id) { return success(service.document(id, manage())); }
+    public CommonResult<?> document(@RequestParam long id,@RequestParam(required=false) Integer version) { return success(service.document(id, manage(),version)); }
     @PostMapping("/document/graph/rebuild") @PreAuthorize("@ss.hasPermission('mes:assistant:manage')") @ApiAccessLog(requestEnable=false,responseEnable=false)
     public CommonResult<?> rebuildGraph(@RequestParam long id){service.rebuildGraph(id);return success(true);}
     @GetMapping("/document/download") @PreAuthorize("@ss.hasAnyPermissions('mes:assistant:knowledge','mes:assistant:manage')")
-    public ResponseEntity<byte[]> download(@RequestParam long id) {
-        var file = service.download(id, manage());
+    public ResponseEntity<byte[]> download(@RequestParam long id,@RequestParam(required=false) Integer version) {
+        var file = service.download(id, manage(),version);
         return ResponseEntity.ok().contentType(MediaType.APPLICATION_OCTET_STREAM)
                 .header(HttpHeaders.CONTENT_DISPOSITION, ContentDisposition.attachment().filename(file.name(), StandardCharsets.UTF_8).build().toString())
                 .header("X-Content-Type-Options", "nosniff").body(file.bytes());
     }
     @PutMapping("/document/publish") @PreAuthorize("@ss.hasPermission('mes:assistant:manage')")
-    public CommonResult<?> publish(@RequestParam long id, @RequestParam boolean published) { service.publish(id, published); return success(true); }
+    public CommonResult<?> publish(@RequestParam long id, @RequestParam boolean published,@RequestParam(required=false) Integer expectedVersion) { service.publish(id, published,expectedVersion); return success(true); }
     @DeleteMapping("/document") @PreAuthorize("@ss.hasPermission('mes:assistant:manage')")
     public CommonResult<?> deleteDocument(@RequestParam long id) { service.deleteDocument(id); return success(true); }
     @PostMapping("/search") @PreAuthorize("@ss.hasPermission('mes:assistant:knowledge')") @ApiAccessLog(requestEnable = false)

@@ -224,7 +224,7 @@
                 ><div v-if="canManage"
                   ><el-button @click="editBase(currentBase)">编辑</el-button
                   ><el-button type="danger" plain @click="removeBase">删除知识库</el-button
-                  ><el-button type="primary" @click="uploadVisible = true">上传文档</el-button></div
+                  ><el-button type="primary" @click="openUpload()">上传文档</el-button></div
                 ></div
               >
               <el-alert
@@ -262,6 +262,7 @@
                   show-overflow-tooltip
                 />
                 <el-table-column prop="fileType" label="格式" width="80" />
+                <el-table-column prop="version" label="版本" width="70" />
                 <el-table-column prop="chunkCount" label="分块" width="75" />
                 <el-table-column label="状态" width="90"
                   ><template #default="{ row }"
@@ -289,10 +290,13 @@
                     <small v-if="row.graphError">{{ row.graphError }}</small>
                   </template>
                 </el-table-column>
-                <el-table-column label="操作" min-width="300"
+                <el-table-column label="操作" min-width="400"
                   ><template #default="{ row }"
                     ><el-button link type="primary" @click="preview(row.id)">原文与分块</el-button
                     ><el-button link @click="downloadDocument(row)">下载</el-button
+                    ><el-button v-if="canManage" link type="primary" @click="openUpload(row)"
+                      >更新文件</el-button
+                    ><el-button v-if="canManage" link @click="showVersions(row)">历史版本</el-button
                     ><el-button
                       v-if="canManage"
                       link
@@ -437,10 +441,29 @@
   >
   <el-dialog
     v-model="uploadVisible"
-    title="上传并解析知识文档"
-    width="560px"
+    :title="uploadTarget ? `更新文件 · 当前 v${uploadTarget.version}` : '上传并解析知识文档'"
+    width="min(560px, 94vw)"
     :close-on-click-modal="false"
-    ><el-input
+    :close-on-press-escape="!uploading"
+    :show-close="!uploading"
+    ><el-alert
+      v-if="uploadTarget"
+      type="warning"
+      :closable="false"
+      show-icon
+      title="更新后保存为新版本草稿，并移除旧版图谱关系。审核并重新发布后，新版才参与检索和建图；历史版本保留。"
+      class="mb-16px"
+    />
+    <el-alert
+      v-if="uploadError"
+      :title="uploadError"
+      type="error"
+      :closable="false"
+      class="mb-16px"
+    />
+    <label for="knowledge-upload-title">文档标题</label>
+    <el-input
+      id="knowledge-upload-title"
       v-model="uploadTitle"
       placeholder="文档标题（留空使用文件名）"
       maxlength="200"
@@ -462,7 +485,7 @@
         :loading="uploading"
         :disabled="!uploadFile"
         @click="uploadDocument"
-        >上传并分块</el-button
+        >{{ uploadTarget ? '保存新版本' : '上传并分块' }}</el-button
       ></template
     ></el-dialog
   >
@@ -482,6 +505,38 @@
       ></template
     ></el-dialog
   >
+  <el-dialog
+    v-model="versionsVisible"
+    :title="`${versionsDocument?.title || '文档'} · 版本记录`"
+    width="min(820px, 94vw)"
+  >
+    <el-table
+      :data="versions"
+      v-loading="versionsLoading"
+      row-key="version"
+      empty-text="暂无版本记录"
+    >
+      <el-table-column label="版本" width="100"
+        ><template #default="{ row }"
+          >v{{ row.version }}<el-tag v-if="row.isCurrent" size="small">当前</el-tag></template
+        ></el-table-column
+      >
+      <el-table-column prop="fileName" label="文件" min-width="160" show-overflow-tooltip />
+      <el-table-column prop="chunkCount" label="分块" width="75" />
+      <el-table-column label="保存时状态" width="110"
+        ><template #default="{ row }">{{
+          row.status === 'PUBLISHED' ? '已发布' : '草稿'
+        }}</template></el-table-column
+      >
+      <el-table-column label="操作" width="170"
+        ><template #default="{ row }"
+          ><el-button link type="primary" @click="preview(row.id, row.version)">查看原文</el-button
+          ><el-button link @click="downloadDocument(row, row.version)">下载</el-button></template
+        ></el-table-column
+      >
+    </el-table>
+    <p>历史版本用于核对来源，不参与当前检索或建图。更新文件不会自动发布。</p>
+  </el-dialog>
   <el-dialog v-model="previewVisible" title="原文与分块" width="85%"
     ><div v-loading="previewLoading" v-if="previewDocument"
       ><h3>{{ previewDocument.title }} · v{{ previewDocument.version }}</h3
@@ -533,6 +588,7 @@ import {
   type Citation,
   type KnowledgeBase,
   type KnowledgeDocument,
+  type DocumentVersion,
   type ModelConfig,
   type ModelStatus,
   type SearchResult
@@ -592,6 +648,12 @@ const baseForm = reactive<{ id?: number; name: string; description: string }>({
   description: ''
 })
 const uploadVisible = ref(false)
+const uploadTarget = ref<KnowledgeDocument>()
+const uploadError = ref('')
+const versionsVisible = ref(false)
+const versionsLoading = ref(false)
+const versionsDocument = ref<KnowledgeDocument>()
+const versions = ref<DocumentVersion[]>([])
 const uploadTitle = ref('')
 const uploadFile = ref<File>()
 const uploadElement = ref<UploadInstance>()
@@ -758,7 +820,9 @@ async function loadDocuments() {
     if (
       tab.value === 'knowledge' &&
       result.some(
-        (d) => d.graphStatus === 'PENDING' || (d.graphStatus === 'ERROR' && d.graphAttempts < 10)
+        (d) =>
+          d.graphStatus === 'PENDING' ||
+          (d.graphStatus === 'ERROR' && (d.graphAttempts < 10 || d.status === 'DRAFT'))
       )
     ) {
       graphPoll = setTimeout(() => void loadDocuments(), 3000)
@@ -821,9 +885,38 @@ async function removeBase() {
     if (!cancelled(exception)) failure(exception, '删除失败')
   }
 }
+function openUpload(document?: KnowledgeDocument) {
+  uploadTarget.value = document ? { ...document } : undefined
+  uploadTitle.value = document?.title || ''
+  uploadFile.value = undefined
+  uploadError.value = ''
+  uploadVisible.value = true
+  void nextTick(() => uploadElement.value?.clearFiles())
+}
+async function showVersions(document: KnowledgeDocument) {
+  versionsDocument.value = document
+  versions.value = []
+  versionsVisible.value = true
+  versionsLoading.value = true
+  try {
+    versions.value = await AssistantApi.documentVersions(document.id)
+  } catch (exception) {
+    failure(exception, '版本记录加载失败')
+  } finally {
+    versionsLoading.value = false
+  }
+}
 function fileChanged(file: UploadFile) {
+  uploadError.value = ''
+  if (!/\.(txt|md|csv|docx|pdf)$/i.test(file.name)) {
+    uploadError.value = '请选择 TXT、MD、CSV、DOCX 或文本型 PDF 文件'
+    uploadElement.value?.clearFiles()
+    uploadFile.value = undefined
+    return
+  }
   if (file.size && file.size > 5 * 1024 * 1024) {
-    ElMessage.warning('文件不能超过5MB')
+    uploadError.value = '文件不能超过5MB'
+    ElMessage.warning(uploadError.value)
     uploadElement.value?.clearFiles()
     uploadFile.value = undefined
     return
@@ -834,12 +927,21 @@ async function uploadDocument() {
   if (!knowledgeBaseId.value || !uploadFile.value) return
   uploading.value = true
   try {
-    const result = await AssistantApi.upload(
-      knowledgeBaseId.value,
-      uploadTitle.value,
-      uploadFile.value
+    uploadError.value = ''
+    const target = uploadTarget.value
+    const result = target
+      ? await AssistantApi.updateDocument(
+          target.id,
+          target.version,
+          uploadTitle.value,
+          uploadFile.value
+        )
+      : await AssistantApi.upload(knowledgeBaseId.value, uploadTitle.value, uploadFile.value)
+    ElMessage.success(
+      target
+        ? '新版本已保存为草稿，旧版图谱进入清理队列，请审核后重新发布'
+        : `解析完成，生成${result.chunkCount}个片段，请审核后发布`
     )
-    ElMessage.success(`解析完成，生成${result.chunkCount}个片段，请审核后发布`)
     uploadVisible.value = false
     uploadTitle.value = ''
     uploadFile.value = undefined
@@ -847,7 +949,8 @@ async function uploadDocument() {
     await loadBases()
     await loadDocuments()
   } catch (exception) {
-    failure(exception, '文档解析失败')
+    uploadError.value =
+      exception instanceof Error ? exception.message : '文件更新或解析失败，请重试'
   } finally {
     uploading.value = false
   }
@@ -860,7 +963,7 @@ async function publishDocument(document: KnowledgeDocument) {
         : '确认已审核原文？发布后可供当前租户知识检索，明确关系将同步到上传者的个人图谱。',
       document.status === 'PUBLISHED' ? '撤回文档' : '发布文档'
     )
-    await AssistantApi.publish(document.id, document.status !== 'PUBLISHED')
+    await AssistantApi.publish(document.id, document.status !== 'PUBLISHED', document.version)
     await loadBases()
     await loadDocuments()
   } catch (exception) {
@@ -881,11 +984,11 @@ async function removeDocument(document: KnowledgeDocument) {
     if (!cancelled(exception)) failure(exception, '删除文档失败')
   }
 }
-async function preview(id: number) {
+async function preview(id: number, version?: number) {
   previewLoading.value = true
   error.value = ''
   try {
-    previewDocument.value = await AssistantApi.document(id)
+    previewDocument.value = await AssistantApi.document(id, version)
     previewVisible.value = true
   } catch (exception) {
     failure(exception, '原文不存在、已撤回或无权访问')
@@ -898,9 +1001,12 @@ function viewCitation(citation: Citation) {
   activeCitation.value = citation
   citationVisible.value = true
 }
-async function downloadDocument(document: KnowledgeDocument) {
+async function downloadDocument(
+  document: Pick<KnowledgeDocument, 'id' | 'fileName'>,
+  version?: number
+) {
   try {
-    const blob = await AssistantApi.download(document.id)
+    const blob = await AssistantApi.download(document.id, version)
     const objectUrl = URL.createObjectURL(blob)
     const link = window.document.createElement('a')
     link.href = objectUrl

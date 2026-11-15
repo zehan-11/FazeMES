@@ -25,7 +25,7 @@ class MesAssistantControllerPolicyTest extends MesAssistantTestDatabase {
     @Configuration(proxyBeanMethods = false) @EnableMethodSecurity
     static class MethodSecurityConfiguration {}
 
-    @Test void springActuallyRejectsCallsWithoutTheIndependentConfigurationPermission() {
+    @Test void springActuallyRejectsCallsWithoutTheIndependentConfigurationPermission() throws Exception {
         Set<String> permissions = new HashSet<>();
         SecurityFrameworkService permissionService = new SecurityFrameworkService() {
             public boolean hasPermission(String permission) { return permissions.contains(permission); }
@@ -56,6 +56,9 @@ class MesAssistantControllerPolicyTest extends MesAssistantTestDatabase {
             assertThrows(AccessDeniedException.class, controller::modelConfig);
             permissions.add("mes:assistant:config");
             assertNotNull(controller.modelConfig().getData());
+            permissions.clear(); permissions.add("mes:assistant:knowledge");
+            assertThrows(AccessDeniedException.class,()->controller.documentVersions(1));
+            assertThrows(AccessDeniedException.class,()->controller.updateDocument(1,1,null,new org.springframework.mock.web.MockMultipartFile("file","a.md","text/markdown",new byte[]{65})));
             permissions.clear(); permissions.add("mes:assistant:chat");
             assertThrows(AccessDeniedException.class, () -> controller.message(new MesAssistantController.Message(1L, "test", List.of())));
         } finally { SecurityContextHolder.clearContext(); }

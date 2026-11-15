@@ -6,3 +6,16 @@ CREATE TABLE mes_assistant_message(id BIGINT AUTO_INCREMENT PRIMARY KEY,session_
 CREATE TABLE mes_assistant_model_config(id BIGINT AUTO_INCREMENT PRIMARY KEY,tenant_id BIGINT NOT NULL UNIQUE,provider VARCHAR(20),base_url VARCHAR(500),model_name VARCHAR(200),secret_ciphertext CLOB,temperature DECIMAL(4,2),max_tokens INT,enabled BOOLEAN,updater BIGINT,context_tokens INT DEFAULT 8192,update_time TIMESTAMP DEFAULT CURRENT_TIMESTAMP);
 
 CREATE TABLE mes_assistant_graph_state(tenant_id BIGINT NOT NULL,document_id BIGINT NOT NULL,owner_id BIGINT NOT NULL,document_version INT NOT NULL,generation BIGINT NOT NULL DEFAULT 1,desired_state VARCHAR(16) NOT NULL,status VARCHAR(24) NOT NULL,extraction_method VARCHAR(32) DEFAULT 'explicit_v1',entity_count INT DEFAULT 0,relation_count INT DEFAULT 0,payload_json CLOB NOT NULL,attempts INT DEFAULT 0,error_message VARCHAR(500) DEFAULT '',next_attempt_at TIMESTAMP,update_time TIMESTAMP DEFAULT CURRENT_TIMESTAMP,synced_at TIMESTAMP,PRIMARY KEY(tenant_id,document_id));
+
+CREATE TABLE IF NOT EXISTS mes_assistant_document_revision (
+ tenant_id BIGINT NOT NULL, document_id BIGINT NOT NULL, version INT NOT NULL,
+ knowledge_base_id BIGINT NOT NULL, title VARCHAR(200) NOT NULL,
+ file_name VARCHAR(200) NOT NULL, file_type VARCHAR(20) NOT NULL,
+ file_size BIGINT NOT NULL, file_sha256 CHAR(64) NOT NULL,
+ original_bytes BLOB NOT NULL, content_text CLOB NOT NULL,
+ chunk_count INT NOT NULL, chunks_json CLOB NOT NULL,
+ status VARCHAR(20) NOT NULL, creator BIGINT NOT NULL, changed_by BIGINT NOT NULL,
+ create_time TIMESTAMP NOT NULL, archived_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+ PRIMARY KEY(tenant_id,document_id,version)
+);
+ALTER TABLE mes_assistant_graph_state ADD COLUMN validation_error VARCHAR(500) NOT NULL DEFAULT '';
