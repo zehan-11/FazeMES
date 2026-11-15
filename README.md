@@ -16,7 +16,7 @@ FazeMES 是基于 Spring Boot、Vue 3 和 TypeScript 的生产执行管理系统
 - **AI 与知识库**：文档上传解析、分块检索与来源引用、独立会话；支持配置 OpenAI 兼容 API Key 或本地 Ollama。
 - **知识图谱**：通过 Spring Boot 查询按用户和租户隔离的 Neo4j 实体与关系，以 Galaxy View 星系图展示，支持搜索、邻居展开与来源查看；启动与配置见[知识图谱说明](deploy/KNOWLEDGE-GRAPH.md)。
 - **模型网络连接**：支持系统 HTTP 代理及 OpenAI 虚拟 IP 的真实 DNS 恢复，见[连接配置与验证](deploy/MODEL-NETWORK.md)。
-- **文档建图**：知识库文档上传后解析明确关系，发布后异步写入 Neo4j，保留文档、版本、片段和原文来源；支持失败重试及撤回清理，见[文档建图说明](deploy/DOCUMENT-GRAPH.md)。
+- **文档建图**：知识库文档上传后解析明确关系，发布后异步写入 Neo4j，按名称与类型对齐原图谱，保留每份文档、版本、片段和原文来源；支持失败重试及撤回清理，见[文档建图说明](deploy/DOCUMENT-GRAPH.md)。
 - **Jev 异常分流试点**：异常分类、实际部门建议、人工确认与采纳记录；使用独立的 TypeSafe 密钥，详见 [Jev 接入说明](deploy/JEV-TRIAGE.md)。
 - **业务助手成本查询**：按产品／工单编码查询标准及实际成本，复用价格与成本模块和独立查询权限；协作更新与 Agent 适配见[合并说明](deploy/UPSTREAM-INTEGRATION.md)。
 - **客户门户**：独立客户账号、发布产品目录、订购申请审核及本客户生产进度查询。

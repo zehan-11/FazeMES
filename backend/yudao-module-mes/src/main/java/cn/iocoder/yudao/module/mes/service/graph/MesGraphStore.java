@@ -36,6 +36,7 @@ public class MesGraphStore implements AutoCloseable {
                 TransactionConfig.builder().withTimeout(Duration.ofSeconds(5)).build());
         }
     }
+    private static final String CATALOG="MATCH (n:FazeEntity) WHERE n.tenantId=$tenant AND n.ownerId=$owner RETURN n.id AS id,n.name AS name,n.kind AS kind,n.origin AS origin,n.aliases AS aliases ORDER BY n.id LIMIT 10001";
     private boolean documentSchemaReady;
     private synchronized void documentSchema(){
         if(documentSchemaReady)return;
@@ -51,6 +52,9 @@ public class MesGraphStore implements AutoCloseable {
         Map<String,Object> p=new HashMap<>();p.put("tenant",scope.tenant());p.put("owner",scope.owner());p.put("document",documentId);p.put("version",version);p.put("facts",facts);
         try(var session=driver().session(SessionConfig.builder().withDatabase(database).withDefaultAccessMode(AccessMode.WRITE).build())){
             session.executeWrite(tx->{
+                var catalog=tx.run(CATALOG,p).list(record->record.asMap());
+                if(catalog.size()>10000)throw new IllegalStateException("Entity alignment catalog exceeds capacity");
+                p.put("facts",MesEntityAlignment.align(facts,catalog));
                 tx.run("MATCH (a:FazeEntity)-[r:FazeRelation]->(b:FazeEntity) WHERE r.tenantId=$tenant AND r.ownerId=$owner AND r.documentId=$document AND a.tenantId=$tenant AND a.ownerId=$owner AND b.tenantId=$tenant AND b.ownerId=$owner DELETE r",p).consume();
                 tx.run("""
                     UNWIND $facts AS f
@@ -62,7 +66,11 @@ public class MesGraphStore implements AutoCloseable {
                     SET r.type=f.relation,r.sourceTitle=f.sourceTitle,r.sourceSection=f.sourceSection,r.sourceExcerpt=f.sourceExcerpt,
                         r.knowledgeBaseId=f.knowledgeBaseId,r.documentId=$document,r.documentVersion=$version,
                         r.chunkId=f.chunkId,r.chunkHash=f.chunkHash,r.pageNumber=f.pageNumber,
-                        r.startOffset=f.startOffset,r.endOffset=f.endOffset,r.extractionMethod=f.extractionMethod
+                        r.startOffset=f.startOffset,r.endOffset=f.endOffset,r.extractionMethod=f.extractionMethod,
+                        r.sourceOriginalName=f.sourceOriginalName,r.sourceOriginalKind=f.sourceOriginalKind,
+                        r.targetOriginalName=f.targetOriginalName,r.targetOriginalKind=f.targetOriginalKind,
+                        r.sourceTypingMethod=f.sourceTypingMethod,r.targetTypingMethod=f.targetTypingMethod,
+                        r.sourceAlignmentMethod=f.sourceAlignmentMethod,r.targetAlignmentMethod=f.targetAlignmentMethod
                     """,p).consume();
                 tx.run("MATCH (n:FazeEntity) WHERE n.tenantId=$tenant AND n.ownerId=$owner AND n.origin='DOCUMENT' AND NOT (n)--() DELETE n",p).consume();
                 return null;
