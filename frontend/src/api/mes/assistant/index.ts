@@ -1,5 +1,11 @@
 import request from '@/config/axios'
-import type { RetrievalEvidence, RetrievalMode } from './evidence'
+import type {
+  RetrievalEvidence,
+  RetrievalMode,
+  DocumentStrategy,
+  DocumentRetrievalInfo,
+  RetrievalDetails
+} from './evidence'
 
 export interface KnowledgeBase {
   id: number
@@ -73,6 +79,8 @@ export interface DocumentVersion {
   isCurrent: boolean
 }
 export interface Citation {
+  retrievalMethod?: RetrievalEvidence['retrievalMethod']
+  retrievalDetails?: RetrievalDetails
   evidence?: RetrievalEvidence
   sourceType?: 'DOCUMENT' | 'GRAPH'
   relation?: { source: string; type: string; target: string }
@@ -106,6 +114,8 @@ export interface AssistantMessage {
   modelName: string
   retrievalMode?: RetrievalMode
   retrievalHops?: number
+  documentStrategy?: DocumentStrategy
+  documentRetrieval?: DocumentRetrievalInfo
   createTime: number | string
 }
 export interface AssistantSession {
@@ -140,7 +150,9 @@ export interface EmbeddingConfig {
   baseUrl: string
 }
 export interface SearchResult {
-  mode: 'lexical_bm25'
+  mode: 'lexical_bm25' | 'vector_cosine' | 'document_rrf'
+  documentStrategy?: DocumentStrategy
+  documentRetrieval?: DocumentRetrievalInfo
   query: string
   eligibleChunkCount: number
   items: Citation[]
@@ -200,10 +212,15 @@ export const AssistantApi = {
   deleteDocument: (id: number) => request.delete({ url: `${url}/document`, params: { id } }),
   download: (id: number, version?: number) =>
     request.download<Blob>({ url: `${url}/document/download`, params: { id, version } }),
-  search: (query: string, knowledgeBaseIds: number[]) =>
+  search: (
+    query: string,
+    knowledgeBaseIds: number[],
+    documentStrategy: DocumentStrategy = 'COMBINED'
+  ) =>
     request.post<SearchResult>({
       url: `${url}/search`,
-      data: { query, knowledgeBaseIds, limit: 5 }
+      data: { query, knowledgeBaseIds, limit: 5, documentStrategy },
+      timeout: 90000
     }),
   sessions: () => request.get<AssistantSession[]>({ url: `${url}/sessions` }),
   createSession: (title = '新会话') =>
@@ -217,13 +234,14 @@ export const AssistantApi = {
     question: string,
     knowledgeBaseIds: number[],
     mode: RetrievalMode = 'DOCUMENT',
-    hops: 1 | 2 = 2
+    hops: 1 | 2 = 2,
+    documentStrategy: DocumentStrategy = 'COMBINED'
   ) =>
     request.post<{ status: string; message: string; answer: string | null; citations: Citation[] }>(
       {
         url: `${url}/message`,
-        data: { sessionId, question, knowledgeBaseIds, mode, hops },
-        timeout: 90000
+        data: { sessionId, question, knowledgeBaseIds, mode, hops, documentStrategy },
+        timeout: 240000
       }
     ),
   embeddingConfig: () => request.get<EmbeddingConfig>({ url: `${url}/embedding-config` }),

@@ -47,6 +47,7 @@ final class MesAnswerContext {
     }
     static Map<String,Object> citation(MesRetrievalEvidence evidence,Map<String,Object> relation,MesKnowledgeAccess.Actor actor){
         var row=new LinkedHashMap<String,Object>();row.put("evidence",evidence);row.put("knowledgeBaseId",evidence.knowledgeBaseId());row.put("documentId",evidence.documentId());row.put("version",evidence.documentVersion());row.put("chunkId",evidence.chunkId());row.put("contentHash",evidence.chunkHash());row.put("content",evidence.text());row.put("title",evidence.title());row.put("heading",evidence.section());row.put("pageNumber",evidence.pageNumber());row.put("startOffset",evidence.startOffset());row.put("endOffset",evidence.endOffset());row.put("sourceType",evidence.sourceType());
+        row.put("retrievalMethod",evidence.retrievalMethod());row.put("retrievalDetails",evidence.retrievalDetails());
         if(relation!=null)row.put("relation",relation);
         if(evidence.libraryType().equals("LEGACY_PRIVATE")&&actor!=null){row.put("graphOwnerId",actor.user());row.put("graphTenantId",actor.tenant());}
         return row;

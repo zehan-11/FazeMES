@@ -30,6 +30,12 @@ class MesDocumentVectorStoreLiveTest {
                 assertEquals(1,row.get("version").asInt());assertEquals("1".repeat(64),row.get("hash").asString());assertEquals(10,row.get("base").asInt());assertEquals(3,row.get("dimensions").asInt());assertEquals(0,row.get("start").asInt());assertEquals(7,row.get("end").asInt());
                 var hits=session.run("CALL db.index.vector.queryNodes($index,5,$query) YIELD node,score WHERE node.tenantId=$t RETURN node.documentId AS document,score",Map.of("index",index,"query",List.of(1.0,.2,.3),"t",tenant)).list();
                 assertEquals(2,hits.size());assertTrue(hits.stream().allMatch(h->h.get("score").asDouble()>.99));
+                var closer=new HashMap<>(chunk);closer.put("embedding",List.of(1.0,0.0,0.0));
+                assertTrue(store.replaceVectorDocument(scope,2,1,2,11,"独立文件",space,"test-model",3,List.of(closer),true));
+                var scoped=store.searchVectorChunks(tenant,space,List.of(1L),List.of(1.0,0.0,0.0),1);
+                assertEquals(1,scoped.size());assertEquals(1L,((Number)((Map<?,?>)scoped.get(0).get("chunk")).get("documentId")).longValue());
+                assertEquals(1,store.vectorSources(tenant,space,List.of(1L),List.of(100L)).size());
+
                 assertTrue(store.replaceVectorDocument(scope,1,2,2,10,"新版来源",space,"test-model",3,List.of(chunk),true));
                 assertFalse(store.replaceVectorDocument(scope,1,1,1,10,"旧任务",space,"test-model",3,List.of(chunk),true));
                 assertEquals(2,session.run("MATCH (n:FazeVectorChunk {tenantId:$t,documentId:1}) RETURN n.documentVersion AS v",Map.of("t",tenant)).single().get("v").asInt());

@@ -2,6 +2,17 @@
   <section class="evidence-results" aria-live="polite">
     <h3>{{ labels[result.mode] }} · {{ result.query }}</h3>
     <p>以下为检索证据，可点击来源核对原文。</p>
+    <p v-if="result.documentRetrieval?.effectiveStrategy">
+      文档策略：{{ strategyLabels[result.documentRetrieval.requestedStrategy || 'LEXICAL'] }} ·
+      实际使用：{{ strategyLabels[result.documentRetrieval.effectiveStrategy] }}
+    </p>
+    <el-alert
+      v-for="warning in result.documentRetrieval?.warnings || []"
+      :key="warning"
+      :title="warning"
+      :type="result.documentRetrieval?.degraded ? 'warning' : 'info'"
+      :closable="false"
+    />
     <template v-if="result.graph">
       <h4>定位实体</h4>
       <div class="evidence-entities">
@@ -48,9 +59,12 @@
     <p v-if="result.eligibleChunkCount !== undefined"
       >在 {{ result.eligibleChunkCount }} 个可访问的已发布片段中检索文档。</p
     >
+    <p v-if="result.documentRetrieval?.vectorEligibleChunkCount != null">
+      其中 {{ result.documentRetrieval.vectorEligibleChunkCount }} 个片段已完成当前模型向量索引。
+    </p>
     <el-empty
       v-if="!result.items.length"
-      description="未找到匹配证据，请调整问题、知识库范围，或检查文件是否已发布并完成建图。"
+      description="未找到匹配证据，请调整问题、知识库范围，或检查文件是否已发布，并已完成所选策略需要的向量索引或建图。"
       :image-size="50"
     />
     <button
@@ -66,6 +80,10 @@
         }}{{ item.documentVersion ? ` · v${item.documentVersion}` : ''
         }}{{ item.pageNumber ? ` · 第${item.pageNumber}页` : '' }}</small
       >
+      <small
+        >{{ methodLabels[item.retrievalMethod]
+        }}{{ ranking(item) ? ` · ${ranking(item)}` : '' }}</small
+      >
       <span>{{ item.text }}</span>
     </button>
     <p v-if="result.hasMore">当前展示部分候选证据，可缩小范围进一步核对。</p>
@@ -75,6 +93,13 @@
         <p
           >{{ active.section
           }}{{ active.documentVersion ? ` · v${active.documentVersion}` : '' }}</p
+        >
+        <p
+          >{{ methodLabels[active.retrievalMethod]
+          }}{{ ranking(active) ? ` · ${ranking(active)}` : '' }}</p
+        >
+        <p v-if="active.retrievalMethod !== 'graph_query'"
+          >检索分数用于排列候选，不表示结论可信度。</p
         >
         <pre class="evidence-source">{{ active.text }}</pre>
         <p v-if="active.chunkId"
@@ -95,6 +120,26 @@ import { computed, ref } from 'vue'
 import { AssistantApi } from '@/api/mes/assistant'
 import type { EvidenceSearchResult, RetrievalEvidence } from '@/api/mes/assistant/evidence'
 const props = defineProps<{ result: EvidenceSearchResult }>()
+const strategyLabels = { LEXICAL: '关键词', SEMANTIC: '语义', COMBINED: '综合' }
+const methodLabels = {
+  lexical_bm25: '关键词命中',
+  vector_cosine: '语义命中',
+  document_rrf: '综合排名',
+  graph_query: '图谱关系'
+}
+function ranking(item: RetrievalEvidence) {
+  const details = item.retrievalDetails
+  const parts: string[] = []
+  if (details?.lexicalRank) parts.push(`关键词第${details.lexicalRank}名`)
+  if (details?.semanticRank) parts.push(`语义第${details.semanticRank}名`)
+  if (typeof details?.semanticScore === 'number')
+    parts.push(`向量相似度 ${details.semanticScore.toFixed(3)}`)
+  else if (item.retrievalMethod === 'vector_cosine' && typeof item.score === 'number')
+    parts.push(`向量相似度 ${item.score.toFixed(3)}`)
+  if (!parts.length && typeof item.score === 'number')
+    parts.push(`排名分数 ${item.score.toFixed(4)}`)
+  return parts.join(' · ')
+}
 const labels = { DOCUMENT: '文档检索', GRAPH: '图谱检索', HYBRID: '混合检索' }
 const nodes = computed(() => new Map(props.result.graph?.nodes.map((n) => [n.id, n])))
 const edges = computed(() => new Map(props.result.graph?.relations.map((r) => [r.id, r])))

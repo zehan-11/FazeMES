@@ -2,9 +2,9 @@
 
 入口：AI助手与知识库 → 知识助手。选择知识库范围和检索模式，输入问题后点击「检索证据」。
 
-- 文档检索：沿用已发布文档的中文 BM25，显示片段和来源。
+- 文档检索：可选关键词（BM25）、语义（Neo4j向量）或综合（RRF排名融合），显示片段、命中方式、相似度/排名和来源。
 - 图谱检索：在当前授权图谱中匹配问题提到的实体，选择一跳或两跳关联，显示实体、关系路径和各条关系的来源。
-- 混合检索：分别执行前两种检索，轮流合并候选；不把两类检索分数视为可直接比较。
+- 混合检索：按所选文档策略检索，再与图谱候选轮流合并；文档的“综合”与文档＋图谱的“混合”是两种不同选择，不直接比较图谱和文档原始分数。
 
 例如，已发布资料分别包含「风扇 → 包含部件 → 轴承」「轴承 → 可能原因 → 润滑不足」，
 输入「请问风扇的关联原因有哪些？」。一跳只到轴承，两跳可看到经轴承到润滑不足的路径。
@@ -20,10 +20,12 @@
 POST `/admin-api/mes/assistant/evidence/search`：
 
 ```json
-{"query":"请问风扇的关联原因有哪些？","knowledgeBaseIds":[],"mode":"HYBRID","hops":2,"limit":10}
+{"query":"请问风扇的关联原因有哪些？","knowledgeBaseIds":[],"mode":"HYBRID","hops":2,"limit":10,"documentStrategy":"COMBINED"}
 ```
 
 mode 为 DOCUMENT / GRAPH / HYBRID，默认 DOCUMENT；hops 为 1 / 2，默认 2；limit 为 1..10。
+documentStrategy为LEXICAL / SEMANTIC / COMBINED；旧API省略时默认LEXICAL，网页默认COMBINED，纯图谱模式不使用问题Embedding。
+语义权限、来源与降级边界见[向量检索说明](EMBEDDING.md)。返回documentRetrieval保存实际策略和警告。
 兼容原 sources 参数；若同时传入 mode，二者须一致。空知识库范围表示当前可访问范围，
 显式指定无权访问的库会拒绝请求，不能通过猜测知识库或实体 ID 绕过授权。
 

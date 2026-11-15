@@ -86,6 +86,19 @@
                   <el-option label="混合检索" value="HYBRID" />
                 </el-select>
               </label>
+              <label v-if="retrievalMode !== 'GRAPH'" class="assistant-method">
+                文档策略
+                <el-select
+                  v-model="documentStrategy"
+                  aria-label="文档检索策略"
+                  class="assistant-mode-select"
+                  :disabled="sending"
+                >
+                  <el-option label="综合（关键词＋语义）" value="COMBINED" />
+                  <el-option label="语义检索" value="SEMANTIC" />
+                  <el-option label="关键词检索" value="LEXICAL" />
+                </el-select>
+              </label>
               <label v-if="retrievalMode !== 'DOCUMENT'" class="assistant-method"
                 >关联范围
                 <el-select
@@ -137,9 +150,23 @@
                         ? ` · ${item.retrievalHops || 2}跳`
                         : ''
                     }}
+                    {{
+                      item.retrievalMode !== 'GRAPH'
+                        ? ` · ${strategyLabels[item.documentStrategy || 'LEXICAL']}`
+                        : ''
+                    }}
                     · {{ time(item.createTime) }}</small
                   ></div
                 >
+                <template v-if="item.role === 'assistant' || item.status !== 'ANSWERED'">
+                  <el-alert
+                    v-for="warning in item.documentRetrieval?.warnings || []"
+                    :key="warning"
+                    :title="warning"
+                    :type="item.documentRetrieval?.degraded ? 'warning' : 'info'"
+                    :closable="false"
+                  />
+                </template>
                 <AnswerText
                   v-if="item.role === 'assistant'"
                   :content="item.content"
@@ -187,6 +214,9 @@
               <EvidenceResults v-if="searchResult" :result="searchResult" />
             </div>
             <div class="assistant-composer">
+              <p v-if="retrievalMode !== 'GRAPH'" class="assistant-field-help">
+                语义或综合检索会调用已配置的Embedding平台处理本次问题。相似度用于排序，请结合原文核对。
+              </p>
               <p v-if="retrievalMode !== 'DOCUMENT'" class="assistant-field-help"
                 >可先检索核对实体、关系和来源，再发送提问生成带引用的答复。</p
               >
@@ -414,7 +444,7 @@
       <el-tab-pane v-if="canConfig" label="模型配置" name="config">
         <div class="assistant-config">
           <el-alert
-            title="本项目不设置模型计费、次数或Token累计配额；模型平台自身额度仍以服务商为准。当前文档关键词检索不调用模型；Embedding测试会调用已配置的平台。"
+            title="本项目不设置模型计费、次数或Token累计配额；模型平台自身额度仍以服务商为准。关键词检索不调用模型；语义检索和Embedding测试会调用已配置的平台。"
             type="info"
             :closable="false"
           />
@@ -785,6 +815,7 @@ import AnswerText from './AnswerText.vue'
 import {
   searchEvidence,
   type EvidenceSearchResult,
+  type DocumentStrategy,
   type RetrievalMode
 } from '@/api/mes/assistant/evidence'
 import { checkPermi } from '@/utils/permission'
@@ -834,13 +865,18 @@ const historyLoading = ref(false)
 const searchResult = ref<EvidenceSearchResult>()
 const modeLabels = { DOCUMENT: '文档问答', GRAPH: '图谱问答', HYBRID: '混合问答' }
 const retrievalMode = ref<RetrievalMode>('DOCUMENT')
+const documentStrategy = ref<DocumentStrategy>('COMBINED')
+const strategyLabels = { LEXICAL: '关键词', SEMANTIC: '语义', COMBINED: '综合' }
 const retrievalHops = ref<1 | 2>(2)
 let evidenceRequest = 0
-watch([retrievalMode, retrievalHops, question, () => selectedBases.value.join(',')], () => {
-  ++evidenceRequest
-  searchResult.value = undefined
-  searching.value = false
-})
+watch(
+  [retrievalMode, documentStrategy, retrievalHops, question, () => selectedBases.value.join(',')],
+  () => {
+    ++evidenceRequest
+    searchResult.value = undefined
+    searching.value = false
+  }
+)
 const messagesElement = ref<HTMLElement>()
 const documents = ref<KnowledgeDocument[]>([])
 const documentsLoading = ref(false)
@@ -1024,7 +1060,8 @@ async function send() {
       question.value.trim(),
       selectedBases.value,
       retrievalMode.value,
-      retrievalHops.value
+      retrievalHops.value,
+      retrievalMode.value === 'GRAPH' ? 'LEXICAL' : documentStrategy.value
     )
     chatNotice.value = result.message
     question.value = ''
@@ -1051,6 +1088,7 @@ async function search() {
       knowledgeBaseIds: [...selectedBases.value],
       mode: retrievalMode.value,
       hops: retrievalHops.value,
+      documentStrategy: retrievalMode.value === 'GRAPH' ? 'LEXICAL' : documentStrategy.value,
       limit: 10
     })
     if (assistantDisposed || request !== evidenceRequest) return

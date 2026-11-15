@@ -5,7 +5,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import java.util.*;
 
-/** Retrieves local evidence only. This endpoint never invokes a model or creates a chat message. */
+/** Retrieves evidence without generating an answer. Semantic strategies embed only the question via the configured API. */
 @Service
 public class MesEvidenceService {
     private final MesAssistantService documents;
@@ -14,7 +14,9 @@ public class MesEvidenceService {
     @Autowired
     public MesEvidenceService(MesAssistantService documents,MesGraphEvidenceRetriever graph){this.documents=documents;this.graph=graph;}
     public Map<String,Object> search(String query,List<Long> baseIds,List<String> sources,int size){return search(query,baseIds,sources,size,null,2);}
-    public Map<String,Object> search(String query,List<Long> baseIds,List<String> sources,int size,String mode,int hops){
+    public Map<String,Object> search(String query,List<Long> baseIds,List<String> sources,int size,String mode,int hops){return search(query,baseIds,sources,size,mode,hops,"LEXICAL");}
+    public Map<String,Object> search(String query,List<Long> baseIds,List<String> sources,int size,String mode,int hops,String documentStrategy){
+        documentStrategy=MesDocumentSearchService.strategy(documentStrategy);
         MesKnowledgeAccess.actor();if(query==null||query.isBlank()||query.length()>1000||size<1||size>10||hops<1||hops>2)throw MesAssistantErrors.invalid("检索参数无效");
         if(sources!=null&&(sources.size()>2||sources.stream().anyMatch(Objects::isNull)))throw MesAssistantErrors.invalid("证据来源类型无效");
         var requested=sources==null||sources.isEmpty()?Set.of("DOCUMENT"):new HashSet<>(sources);
@@ -27,7 +29,7 @@ public class MesEvidenceService {
         List<MesRetrievalEvidence> docs=new ArrayList<>(),graphs=new ArrayList<>();Map<String,Object> result=new LinkedHashMap<>();
         result.put("schemaVersion",1);result.put("mode",effective);result.put("query",query);boolean more=false;
         if(requested.contains("DOCUMENT")){
-            var response=documents.search(query,baseIds,10);result.put("eligibleChunkCount",response.get("eligibleChunkCount"));
+            var response=documents.search(query,baseIds,10,documentStrategy);result.put("eligibleChunkCount",response.get("eligibleChunkCount"));result.put("documentStrategy",documentStrategy);result.put("documentRetrieval",response.get("documentRetrieval"));
             if(response.get("items") instanceof List<?> rows)for(Object item:rows){@SuppressWarnings("unchecked") var row=(Map<String,Object>)item;docs.add((MesRetrievalEvidence)row.get("evidence"));}
             // Existing ranker caps at 10; conservatively report possible additional candidates.
             more=docs.size()==10;

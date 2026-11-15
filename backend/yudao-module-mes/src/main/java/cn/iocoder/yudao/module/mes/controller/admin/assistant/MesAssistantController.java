@@ -33,9 +33,13 @@ public class MesAssistantController {
     private boolean manage() { return security.hasAnyPermissions("mes:assistant:knowledge","mes:assistant:manage"); }
     private static long user() { Long id = getLoginUserId(); if (id == null) throw MesAssistantErrors.missing(); return id; }
     public record BaseSave(Long id, @NotBlank @Size(max = 100) String name, @Size(max = 1000) String description,String libraryType,@Size(max=50) List<Long> readerRoleIds) {}
-    public record Search(@NotBlank @Size(max = 1000) String query, @Size(max = 20) List<Long> knowledgeBaseIds, @Min(1) @Max(10) Integer limit) {}
+    public record Search(@NotBlank @Size(max = 1000) String query, @Size(max = 20) List<Long> knowledgeBaseIds, @Min(1) @Max(10) Integer limit,String documentStrategy) {
+        public Search(String query,List<Long> knowledgeBaseIds,Integer limit){this(query,knowledgeBaseIds,limit,"LEXICAL");}
+    }
     public record SessionTitle(@Size(max = 100) String title) {}
-    public record Message(@NotNull Long sessionId, @NotBlank @Size(max = 4000) String question, @Size(max = 20) List<Long> knowledgeBaseIds,String mode,@Min(1) @Max(2) Integer hops) {}
+    public record Message(@NotNull Long sessionId, @NotBlank @Size(max = 4000) String question, @Size(max = 20) List<Long> knowledgeBaseIds,String mode,@Min(1) @Max(2) Integer hops,String documentStrategy) {
+        public Message(Long sessionId,String question,List<Long> knowledgeBaseIds,String mode,Integer hops){this(sessionId,question,knowledgeBaseIds,mode,hops,"LEXICAL");}
+    }
 
     @GetMapping("/status") @PreAuthorize("@ss.hasPermission('mes:assistant:query')")
     public CommonResult<?> status() { return success(models.status()); }
@@ -83,7 +87,7 @@ public class MesAssistantController {
     @DeleteMapping("/document") @PreAuthorize("@ss.hasAnyPermissions('mes:assistant:knowledge','mes:assistant:manage')")
     public CommonResult<?> deleteDocument(@RequestParam long id) { service.deleteDocument(id); return success(true); }
     @PostMapping("/search") @PreAuthorize("@ss.hasPermission('mes:assistant:knowledge')") @ApiAccessLog(requestEnable = false)
-    public CommonResult<?> search(@Valid @RequestBody Search body) { return success(service.search(body.query(), body.knowledgeBaseIds(), body.limit() == null ? 5 : body.limit())); }
+    public CommonResult<?> search(@Valid @RequestBody Search body) { return success(service.search(body.query(), body.knowledgeBaseIds(), body.limit() == null ? 5 : body.limit(),body.documentStrategy())); }
 
     @GetMapping("/sessions") @PreAuthorize("@ss.hasPermission('mes:assistant:chat')")
     public CommonResult<?> sessions() { return success(service.sessions(user())); }
@@ -98,7 +102,7 @@ public class MesAssistantController {
     @PostMapping("/message")
     @PreAuthorize("@ss.hasPermission('mes:assistant:chat') and @ss.hasPermission('mes:assistant:knowledge')")
     @ApiAccessLog(requestEnable = false)
-    public CommonResult<?> message(@Valid @RequestBody Message body) { return success(service.send(body.sessionId(), body.question(), body.knowledgeBaseIds(), user(),body.mode(),body.hops()==null?2:body.hops())); }
+    public CommonResult<?> message(@Valid @RequestBody Message body) { return success(service.send(body.sessionId(), body.question(), body.knowledgeBaseIds(), user(),body.mode(),body.hops()==null?2:body.hops(),body.documentStrategy())); }
 
     @GetMapping("/model-config") @PreAuthorize("@ss.hasPermission('mes:assistant:config')")
     public CommonResult<?> modelConfig() { return success(models.settings()); }

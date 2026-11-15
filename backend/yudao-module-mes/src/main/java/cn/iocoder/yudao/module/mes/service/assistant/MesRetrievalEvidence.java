@@ -6,11 +6,22 @@ import java.util.*;
 public record MesRetrievalEvidence(String evidenceId,String sourceType,String retrievalMethod,String libraryType,
     Long knowledgeBaseId,Long documentId,Integer documentVersion,Long chunkId,String chunkHash,
     String title,String section,String text,Integer pageNumber,Integer startOffset,Integer endOffset,
-    Double score,List<String> nodeIds,List<String> relationIds) {
+    Double score,List<String> nodeIds,List<String> relationIds,Map<String,Object> retrievalDetails) {
+    public MesRetrievalEvidence {
+        retrievalDetails=retrievalDetails==null?Map.of():Map.copyOf(retrievalDetails);
+    }
+    public MesRetrievalEvidence(String evidenceId,String sourceType,String retrievalMethod,String libraryType,
+            Long knowledgeBaseId,Long documentId,Integer documentVersion,Long chunkId,String chunkHash,
+            String title,String section,String text,Integer pageNumber,Integer startOffset,Integer endOffset,
+            Double score,List<String> nodeIds,List<String> relationIds) {
+        this(evidenceId,sourceType,retrievalMethod,libraryType,knowledgeBaseId,documentId,documentVersion,chunkId,chunkHash,
+                title,section,text,pageNumber,startOffset,endOffset,score,nodeIds,relationIds,Map.of());
+    }
     public static Long number(Map<String,Object> row,String key){return row.get(key) instanceof Number n?n.longValue():null;}
     public static Integer integer(Map<String,Object> row,String key){return row.get(key) instanceof Number n?n.intValue():null;}
     public static String text(Map<String,Object> row,String key){return Objects.toString(row.get(key),"");}
+    @SuppressWarnings("unchecked")
     public static MesRetrievalEvidence document(Map<String,Object> row){
-        return new MesRetrievalEvidence("document:"+row.get("documentId")+":"+row.get("version")+":"+row.get("chunkId"),"DOCUMENT","lexical_bm25",text(row,"libraryType"),number(row,"knowledgeBaseId"),number(row,"documentId"),integer(row,"version"),number(row,"chunkId"),text(row,"contentHash"),text(row,"title"),text(row,"heading"),text(row,"content"),integer(row,"pageNumber"),integer(row,"startOffset"),integer(row,"endOffset"),row.get("score") instanceof Number n?n.doubleValue():null,List.of(),List.of());
+        return new MesRetrievalEvidence("document:"+row.get("documentId")+":"+row.get("version")+":"+row.get("chunkId"),"DOCUMENT",Objects.toString(row.get("retrievalMethod"),"lexical_bm25"),text(row,"libraryType"),number(row,"knowledgeBaseId"),number(row,"documentId"),integer(row,"version"),number(row,"chunkId"),text(row,"contentHash"),text(row,"title"),text(row,"heading"),text(row,"content"),integer(row,"pageNumber"),integer(row,"startOffset"),integer(row,"endOffset"),row.get("score") instanceof Number n?n.doubleValue():null,List.of(),List.of(),row.get("retrievalDetails") instanceof Map<?,?> details?(Map<String,Object>)details:Map.of());
     }
 }

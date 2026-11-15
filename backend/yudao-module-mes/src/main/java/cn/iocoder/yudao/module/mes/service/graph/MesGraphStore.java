@@ -133,5 +133,26 @@ public class MesGraphStore implements AutoCloseable {
             },TransactionConfig.builder().withTimeout(Duration.ofSeconds(15)).build());
         }
     }
+    private static final String VECTOR_SOURCE = "n{.tenantId,.ownerId,.knowledgeBaseId,.documentId,.documentVersion,.generation,.spaceId,.model,.dimensions,.chunkId,.chunkIndex,.chunkHash,.heading,.text,.pageNumber,.startOffset,.endOffset}";
+    private static final String VECTOR_CHECKPOINT = "d{.tenantId,.ownerId,.knowledgeBaseId,.documentId,.documentVersion,.generation,.spaceId,.model,.dimensions,.active}";
+    /** Authorization-derived document IDs filter inside the ANN index, before its top-k selection. */
+    public List<Map<String,Object>> searchVectorChunks(long tenant,String spaceId,List<Long> documents,List<Double> vector,int limit) {
+        String index=vectorIndexName(spaceId);
+        if(tenant<=0 || documents==null || documents.isEmpty() || documents.size()>500 || documents.stream().anyMatch(id->id==null||id<=0)
+                || vector==null || vector.isEmpty() || vector.size()>4096 || limit<1 || limit>50)throw new IllegalArgumentException("Invalid bounded vector search");
+        String query="CYPHER 25 MATCH (n:FazeVector_"+spaceId+") SEARCH n IN (VECTOR INDEX "+index+" FOR $vector "
+                +"WHERE n.tenantId=$tenant AND n.documentId IN $documents LIMIT $limit) SCORE AS score "
+                +"WITH n,score OPTIONAL MATCH (d:FazeVectorDocument {tenantId:$tenant,documentId:n.documentId}) "
+                +"RETURN "+VECTOR_SOURCE+" AS chunk,"+VECTOR_CHECKPOINT+" AS checkpoint,score ORDER BY score DESC,n.chunkId LIMIT $limit";
+        return read(new MesKnowledgeGraphService.Scope(tenant,0),query,Map.of("documents",documents,"vector",vector,"limit",limit));
+    }
+    /** Revalidates selected vector sources without embedding the question or repeating an ANN search. */
+    public List<Map<String,Object>> vectorSources(long tenant,String spaceId,List<Long> documents,List<Long> chunks) {
+        vectorIndexName(spaceId);
+        if(tenant<=0 || documents==null || documents.isEmpty() || documents.size()>10 || chunks==null || chunks.isEmpty() || chunks.size()>10)throw new IllegalArgumentException("Invalid vector proof scope");
+        String query="MATCH (n:FazeVector_"+spaceId+") WHERE n.tenantId=$tenant AND n.documentId IN $documents AND n.chunkId IN $chunks "
+                +"OPTIONAL MATCH (d:FazeVectorDocument {tenantId:$tenant,documentId:n.documentId}) RETURN "+VECTOR_SOURCE+" AS chunk,"+VECTOR_CHECKPOINT+" AS checkpoint";
+        return read(new MesKnowledgeGraphService.Scope(tenant,0),query,Map.of("documents",documents,"chunks",chunks));
+    }
     @PreDestroy public synchronized void close(){if(driver!=null){driver.close();driver=null;}}
 }

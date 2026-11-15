@@ -1,7 +1,7 @@
 # 文档向量链路：Embedding与Neo4j入库
 
 已完成独立Embedding配置、文档发布后的异步向量化、持久化批次进度、Neo4j向量索引写入，以及文件版本更新、撤回和删除同步。
-当前问答中的文档检索仍使用BM25；语义检索与问答接入将在后续步骤实现，不能将“已入库”视为已启用向量问答。
+现已接通按权限的关键词、语义和综合检索，以及基于这些证据的文档/图谱混合问答。向量入库状态与本次实际检索策略分别展示。
 
 ## 使用
 
@@ -38,6 +38,42 @@ MySQL会短暂保留文件分块快照与向量批次，成功或新代次登记
 撤回、删除到Neo4j物理清理为异步过程。后续向量检索仍必须以当前MySQL权限、发布状态、版本和
 当前模型空间为准，不能仅凭Neo4j节点存在判断资料可用。
 
+## 文档检索与问答
+
+在“知识助手”保留文档、图谱、混合三种模式。文档与混合模式增加文档策略：
+
+- 关键词（LEXICAL）：中文BM25，不调用Embedding，不依赖Neo4j向量索引。
+- 语义（SEMANTIC）：只使用当前已入库的向量片段；配置或连接异常时明确失败，不冒充关键词结果。
+- 综合（COMBINED）：分别取得关键词与语义候选，按RRF排名融合，常数k=60；不相加两类原始分数。
+  语义通道不可用、没有当前索引或没有有效语义候选时，只返回当前关键词结果并明确标记降级与原因。
+
+网页默认综合；未提交documentStrategy的旧API请求默认关键词，旧会话默认LEXICAL。
+图谱模式不调用问题Embedding；混合模式在文档策略结果上继续合并带来源的图谱路径。
+独立“检索证据”会在语义/综合策略下将本次问题发送给已配置的Embedding平台，不生成聊天答复。
+每次只向量化问题；发布时已生成的文档向量留在本地Neo4j，不在查询时整库发送给平台。
+
+### 权限、版本与来源复核
+
+先从认证上下文取得当前可访问的已发布分块，再用MySQL向量状态限制当前版本、上传者、知识库、
+片段数量、模型空间及INDEXED状态。只有这些文件ID被传入Neo4j SEARCH的索引内过滤条件，
+租户与文件过滤发生在ANN的top-k之前，不依靠全库top-k后隐藏未授权结果。
+
+问题Embedding返回后、ANN执行后都重新检查权限和当前来源。候选同时核对文件检查点active、
+版本、任务代次、模型/维度、分块ID、哈希、原文、页码及字符位置；返回文本以当前授权MySQL原文为准。
+不返回完整向量。旧版本、草稿、删除、撤权、旧代次和错误来源候选不会进入证据。
+
+每次最多50个语义候选、30个关键词候选、10条返回证据；ANN为近似检索，分数只用于排序，
+不代表答案正确率或可信度。关键词、语义原始分数与各自排名保存在retrievalDetails供界面核对，
+综合结果的score为RRF排名分。未完成当前模型索引的资料仍可参与关键词通道，并显示覆盖提示。
+
+发送提问时，前后复核所选向量来源的当前权限、模型空间、版本及代次，且直接读取对应Neo4j来源，
+不会为了复核再次生成问题向量或重复ANN。语义/综合无证据时不调用聊天模型；这两种文档策略和
+图谱/混合模式均校验答案引用编号。该校验不等于自动证明每条回答都被原文支持，仍需核对引用。
+
+历史消息保存documentStrategy和documentRetrieval（请求策略、实际策略、降级、警告、覆盖量），
+保留独立引用快照。新问题只选同模式、同文档策略且当前有效的历史上下文；旧索引或撤权引用不会
+通过历史绕过当前检查。检索失败也会释放会话请求，允许重试；生成期间来源变化时拒绝旧答复。
+
 ## 更新、撤回、删除与当前有效性
 
 更新文件时仍使用expectedVersion校验，解析成功后归档旧原文与分块，新版回到草稿。
@@ -54,7 +90,7 @@ MySQL会短暂保留文件分块快照与向量批次，成功或新代次登记
 vectorIndexedVersion和vectorSyncedAt。vectorUsable只有在当前文件已发布、入库成功、版本、
 上传者、知识库、片段数与当前Embedding模型空间一致时才为true。模型配置变化或停用时，
 列表直接显示CONFIG_CHANGED或WAITING_CONFIG，vectorUsable为false；已有Neo4j节点不会因此
-被冒充为已经物理删除。该标志表示当前版本的索引就绪，不表示已接通语义问答。
+被冒充为已经物理删除。该标志表示当前版本索引就绪；只有选择语义或综合策略时，本次文档检索才会使用向量通道。
 
 重复发布或重复撤回同一版本不会推进任务代次，也不会打断已领取任务或重复调用Embedding。
 主动“重新建立索引”仍会按明确的重建操作处理。删除、更新、发布和向量提交统一先锁文件行，
@@ -76,6 +112,8 @@ Embedding输入沿用最多16段、单段UTF-8最多8192字节、总计64KiB的�
 
 ## 接口与升级
 
+- POST /admin-api/mes/assistant/search、/evidence/search、/message：增加documentStrategy（LEXICAL/SEMANTIC/COMBINED）。
+  检索与答复返回documentRetrieval，证据增加retrievalDetails；会话记录保存实际策略与降级信息。
 - GET/PUT /admin-api/mes/assistant/embedding-config：独立配置；要求mes:assistant:config。
 - POST /admin-api/mes/assistant/embedding-config/test：固定测试文字；要求mes:assistant:config。
 - POST /admin-api/mes/assistant/document/vector/rebuild?id=...&expectedVersion=...：重试或重建已发布文件；
@@ -83,7 +121,7 @@ Embedding输入沿用最多16段、单段UTF-8最多8192字节、总计64KiB的�
 - GET /admin-api/mes/assistant/documents：增加vectorStatus、vectorChunkCount、vectorCompletedChunks、
   vectorAttempts、vectorError、vectorModel、vectorDimensions、vectorIndexName，以及上文的有效性与清理状态字段。
 
-应用20261115_embedding_configuration.sql与20261115_vector_document_ingestion.sql后构建重启后端。
+应用20261115_embedding_configuration.sql、20261115_vector_document_ingestion.sql和20261115_document_retrieval_strategy.sql后构建重启后端。
 使用现有deploy/apply-migrations.ps1，不修改已经应用的迁移文件。
 
 ## 验证
@@ -96,6 +134,7 @@ MesDocumentVectorStoreLiveTest在隔离测试租户中验证真实Neo4j索引、
 python -X utf8 deploy/verify-embedding.py --model
 python -X utf8 deploy/verify-document-vectors.py --model
 python -X utf8 deploy/verify-vector-lifecycle.py --model
+python -X utf8 deploy/verify-semantic-rag.py --model
 ```
 
 第二个脚本只使用新建的验收资料，经正常上传、发布、等待入库后逐片核对Neo4j来源和维度，最后删除并
@@ -107,3 +146,7 @@ python -X utf8 deploy/verify-vector-lifecycle.py --model
 第三个脚本使用两份新建资料验证：同内容的独立文件、重复发布、版本冲突拒绝、更新后立即失效、
 旧向量物理清理、新版来源、历史原文、撤回后重发、删除清理，以及其他文件保持完整。
 脚本经正常API操作，调用已配置Embedding平台，不改动原有文件或模型配置，结束后清理自身资料。
+
+第四个脚本使用两份新资料，核对构造的英文问题在关键词模式无匹配而语义模式有真实候选，
+以及综合排名、文档与图谱混合、两种真实带引用答复、历史策略和撤回即时过滤。
+只发送新建资料与本次测试问题，结束后清理自身文件、会话、向量和图谱关系；不修改模型配置。

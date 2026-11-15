@@ -1,9 +1,28 @@
 import request from '@/config/axios'
 
+export type DocumentStrategy = 'LEXICAL' | 'SEMANTIC' | 'COMBINED'
+export interface DocumentRetrievalInfo {
+  requestedStrategy?: DocumentStrategy
+  effectiveStrategy?: DocumentStrategy
+  degraded?: boolean
+  warnings?: string[]
+  eligibleChunkCount?: number
+  vectorEligibleChunkCount?: number | null
+}
+export interface RetrievalDetails {
+  spaceId?: string
+  generation?: number
+  lexicalRank?: number
+  semanticRank?: number
+  lexicalScore?: number
+  semanticScore?: number
+}
+
 export interface RetrievalEvidence {
   evidenceId: string
   sourceType: 'DOCUMENT' | 'GRAPH'
-  retrievalMethod: 'lexical_bm25' | 'graph_query'
+  retrievalMethod: 'lexical_bm25' | 'vector_cosine' | 'document_rrf' | 'graph_query'
+  retrievalDetails?: RetrievalDetails
   libraryType: 'PERSONAL' | 'RULES' | 'LEGACY_PRIVATE'
   knowledgeBaseId: number | null
   documentId: number | null
@@ -47,6 +66,8 @@ export interface EvidenceSearchResult {
   query: string
   mode: RetrievalMode
   eligibleChunkCount?: number
+  documentStrategy?: DocumentStrategy
+  documentRetrieval?: DocumentRetrievalInfo
   graph?: GraphEvidenceResult
   items: RetrievalEvidence[]
   hasMore: boolean
@@ -56,6 +77,12 @@ export const searchEvidence = (data: {
   knowledgeBaseIds?: number[]
   mode?: RetrievalMode
   hops?: 1 | 2
+  documentStrategy?: DocumentStrategy
   sources?: ('DOCUMENT' | 'GRAPH')[]
   limit?: number
-}) => request.post<EvidenceSearchResult>({ url: '/mes/assistant/evidence/search', data })
+}) =>
+  request.post<EvidenceSearchResult>({
+    url: '/mes/assistant/evidence/search',
+    data,
+    timeout: 90000
+  })

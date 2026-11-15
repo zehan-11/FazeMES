@@ -47,12 +47,13 @@ class MesGraphEvidenceRetrieverTest extends MesAssistantTestDatabase {
     }
     @Test void modesUseOnlyRequestedRetrieversAndRejectConflictingOrInvalidOptions(){
         var docs=mock(MesAssistantService.class);var graph=mock(MesGraphEvidenceRetriever.class);
-        when(docs.search(anyString(),anyList(),anyInt())).thenReturn(Map.of("items",List.of(),"eligibleChunkCount",0));
+        when(docs.search(anyString(),anyList(),anyInt(),anyString())).thenReturn(Map.of("items",List.of(),"eligibleChunkCount",0));
         when(graph.retrieve(anyString(),anyList(),anyInt())).thenReturn(MesGraphEvidenceRetriever.select(fixture(),"风扇",2));
         var service=new MesEvidenceService(docs,graph);
         assertEquals("DOCUMENT",service.search("风扇",List.of(),null,10,"DOCUMENT",2).get("mode"));verifyNoInteractions(graph);
         clearInvocations(docs);var result=service.search("风扇",List.of(),null,10,"GRAPH",2);verifyNoInteractions(docs);assertNotNull(result.get("graph"));
-        service.search("风扇",List.of(),null,10,"HYBRID",1);verify(docs).search("风扇",List.of(),10);verify(graph).retrieve("风扇",List.of(),1);
+        service.search("风扇",List.of(),null,10,"HYBRID",1);verify(docs).search("风扇",List.of(),10,"LEXICAL");verify(graph).retrieve("风扇",List.of(),1);
+        service.search("风扇",List.of(),null,10,"HYBRID",2,"COMBINED");verify(docs).search("风扇",List.of(),10,"COMBINED");
         assertThrows(RuntimeException.class,()->service.search("风扇",List.of(),List.of("DOCUMENT"),5,"GRAPH",2));assertThrows(RuntimeException.class,()->service.search("风扇",List.of(),null,5,"INVALID",2));assertThrows(RuntimeException.class,()->service.search("风扇",List.of(),null,5,"GRAPH",3));
     }
     @Test void publicRetrieverObtainsAuthorizedSnapshotForExplicitScope(){
