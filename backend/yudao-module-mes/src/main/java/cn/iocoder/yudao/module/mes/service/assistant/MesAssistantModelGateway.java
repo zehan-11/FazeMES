@@ -101,6 +101,7 @@ public class MesAssistantModelGateway {
     }
 
     public record EmbeddingSettings(String model, Integer dimensions, boolean enabled) {}
+    public record EmbeddingSpace(String model, int dimensions, String spaceId) {}
     public record EmbeddingBatch(String model, int dimensions, String spaceId, List<List<Double>> vectors, int inputTokens) {
         @Override public String toString() { return "EmbeddingBatch[model=" + model + ", dimensions=" + dimensions + ", count=" + vectors.size() + "]"; }
     }
@@ -115,6 +116,17 @@ public class MesAssistantModelGateway {
         return connection != null && "openai".equals(connection.provider())
                 && connection.ciphertext() != null && !connection.ciphertext().isBlank();
     }
+    private static EmbeddingSpace embeddingSpace(EmbeddingSettings settings, Config connection) {
+        if (!settings.enabled() || !embeddingConnectionReady(connection))
+            throw MesAssistantErrors.model("Embedding未启用或OpenAI接口与密钥未配置完整");
+        try {
+            String identity = connection.baseUrl() + "\n" + settings.model() + "\n" + settings.dimensions();
+            String id = HexFormat.of().formatHex(java.security.MessageDigest.getInstance("SHA-256")
+                    .digest(identity.getBytes(StandardCharsets.UTF_8)));
+            return new EmbeddingSpace(settings.model(), settings.dimensions(), id);
+        } catch (java.security.NoSuchAlgorithmException exception) { throw new IllegalStateException(exception); }
+    }
+    public EmbeddingSpace embeddingSpace() { return embeddingSpace(embeddingConfiguration(), configuration()); }
     public Map<String,Object> embeddingSettings() {
         var settings = embeddingConfiguration(); var connection = configuration();
         boolean ready = embeddingConnectionReady(connection);
@@ -146,11 +158,17 @@ public class MesAssistantModelGateway {
                 "message", "Embedding连接成功：已生成" + result.dimensions() + "维真实向量；仅发送测试文字。");
     }
     public EmbeddingBatch embed(List<String> inputs) { return embed(Purpose.KNOWLEDGE_EMBEDDING, inputs); }
-    private EmbeddingBatch embed(Purpose purpose, List<String> inputs) {
+    public EmbeddingBatch embed(List<String> inputs, String expectedSpaceId) {
+        if (expectedSpaceId == null || expectedSpaceId.isBlank()) throw MesAssistantErrors.invalid("Embedding任务缺少模型版本");
+        return embed(Purpose.KNOWLEDGE_EMBEDDING, inputs, expectedSpaceId);
+    }
+    private EmbeddingBatch embed(Purpose purpose, List<String> inputs) { return embed(purpose, inputs, null); }
+    private EmbeddingBatch embed(Purpose purpose, List<String> inputs, String expectedSpaceId) {
         noTransaction();
         var settings = embeddingConfiguration(); var connection = configuration();
-        if (!settings.enabled() || !embeddingConnectionReady(connection))
-            throw MesAssistantErrors.model("Embedding未启用或OpenAI接口与密钥未配置完整");
+        var space = embeddingSpace(settings, connection);
+        if (expectedSpaceId != null && !space.spaceId().equals(expectedSpaceId))
+            throw MesAssistantErrors.model("Embedding配置已变更，请重新建立索引");
         if (inputs == null || inputs.isEmpty() || inputs.size() > 16)
             throw MesAssistantErrors.invalid("每批Embedding需包含1至16段文本");
         int total = 0;
@@ -172,10 +190,7 @@ public class MesAssistantModelGateway {
             var vectors = decodeEmbeddings(parsed, inputs.size(), settings.dimensions());
             int tokens = parsed.path("usage").path("prompt_tokens").canConvertToInt()
                     ? Math.max(0, parsed.path("usage").path("prompt_tokens").intValue()) : 0;
-            String identity = connection.baseUrl() + "\n" + settings.model() + "\n" + settings.dimensions();
-            String space = HexFormat.of().formatHex(java.security.MessageDigest.getInstance("SHA-256")
-                    .digest(identity.getBytes(StandardCharsets.UTF_8)));
-            return new EmbeddingBatch(settings.model(), settings.dimensions(), space, vectors, tokens);
+            return new EmbeddingBatch(space.model(), space.dimensions(), space.spaceId(), vectors, tokens);
         } catch (cn.iocoder.yudao.framework.common.exception.ServiceException exception) { throw exception; }
         catch (Exception exception) { throw MesAssistantErrors.model("Embedding连接失败或返回的向量无效，请检查接口、模型名称和维度"); }
     }

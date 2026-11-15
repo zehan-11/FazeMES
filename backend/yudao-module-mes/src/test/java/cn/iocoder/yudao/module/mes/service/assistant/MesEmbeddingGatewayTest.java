@@ -49,6 +49,8 @@ class MesEmbeddingGatewayTest extends MesAssistantTestDatabase {
         });server.start();
         try {
             connect("http://127.0.0.1:"+server.getAddress().getPort()+"/v1");
+            assertThrows(ServiceException.class,()->models.embed(List.of("不应发送"),"b".repeat(64)));
+            assertNull(payload.get(),"An obsolete embedding space must be rejected before opening the API request");
             var result=models.embed(List.of("设备运行", "设备停机"));
             assertEquals("Bearer test-only-key", authorization.get());
             var request=json.readTree(payload.get());

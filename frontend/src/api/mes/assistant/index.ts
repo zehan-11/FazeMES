@@ -31,6 +31,24 @@ export interface KnowledgeDocument {
     | 'ERROR'
     | 'INVALID'
     | 'REMOVED'
+  vectorStatus:
+    | 'NOT_INDEXED'
+    | 'READY'
+    | 'PENDING'
+    | 'PROCESSING'
+    | 'INDEXED'
+    | 'ERROR'
+    | 'WAITING_CONFIG'
+    | 'CONFIG_CHANGED'
+    | 'STALE'
+    | 'REMOVED'
+  vectorChunkCount: number
+  vectorCompletedChunks: number
+  vectorAttempts: number
+  vectorError?: string
+  vectorModel?: string
+  vectorDimensions?: number
+  vectorIndexName?: string
   graphEntityCount: number
   graphRelationCount: number
   graphError?: string
@@ -168,6 +186,8 @@ export const AssistantApi = {
   },
   documentVersions: (id: number) =>
     request.get<DocumentVersion[]>({ url: `${url}/document/versions`, params: { id } }),
+  rebuildVectors: (id: number, expectedVersion: number) =>
+    request.post({ url: `${url}/document/vector/rebuild`, params: { id, expectedVersion } }),
   rebuildGraph: (id: number) =>
     request.post({ url: `${url}/document/graph/rebuild`, params: { id } }),
   publish: (id: number, published: boolean, expectedVersion?: number) =>

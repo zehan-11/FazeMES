@@ -30,3 +30,21 @@ ALTER TABLE mes_assistant_message ADD COLUMN retrieval_mode VARCHAR(16) DEFAULT 
 ALTER TABLE mes_assistant_message ADD COLUMN retrieval_hops INT DEFAULT 2;
 
 CREATE TABLE mes_assistant_embedding_config(tenant_id BIGINT PRIMARY KEY,model_name VARCHAR(200) NOT NULL,dimensions INT NOT NULL,enabled BOOLEAN DEFAULT FALSE,updater BIGINT NOT NULL,update_time TIMESTAMP DEFAULT CURRENT_TIMESTAMP);
+
+-- Durable vector delivery and completed-batch checkpoints. No pre-existing documents are enqueued.
+CREATE TABLE IF NOT EXISTS mes_assistant_vector_state (
+ tenant_id BIGINT NOT NULL, document_id BIGINT NOT NULL, owner_id BIGINT NOT NULL, knowledge_base_id BIGINT NOT NULL,
+ document_version INT NOT NULL, generation BIGINT NOT NULL, desired_state VARCHAR(16) NOT NULL,
+ status VARCHAR(24) NOT NULL, space_id VARCHAR(64) NOT NULL DEFAULT '', model_name VARCHAR(200) NOT NULL DEFAULT '',
+ dimensions INT NOT NULL DEFAULT 0, chunk_count INT NOT NULL DEFAULT 0, completed_chunks INT NOT NULL DEFAULT 0,
+ payload_json CLOB NOT NULL, claim_token VARCHAR(36) DEFAULT NULL, lease_until TIMESTAMP DEFAULT NULL,
+ attempts INT NOT NULL DEFAULT 0, next_attempt_at TIMESTAMP DEFAULT NULL, error_message VARCHAR(500) NOT NULL DEFAULT '',
+ index_name VARCHAR(100) NOT NULL DEFAULT '', synced_at TIMESTAMP DEFAULT NULL,
+ update_time TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+ PRIMARY KEY(tenant_id,document_id)
+);
+CREATE TABLE IF NOT EXISTS mes_assistant_vector_chunk (
+ tenant_id BIGINT NOT NULL, document_id BIGINT NOT NULL, generation BIGINT NOT NULL, chunk_id BIGINT NOT NULL,
+ vector_json CLOB NOT NULL,
+ PRIMARY KEY(tenant_id,document_id,generation,chunk_id)
+);

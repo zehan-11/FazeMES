@@ -1,49 +1,82 @@
-# 文档向量链路：第一步（Embedding连接）
+# 文档向量链路：Embedding与Neo4j入库
 
-当前仅完成Embedding配置、真实API调用及连接测试。文档自动向量化、Neo4j向量索引、
-向量更新删除与语义检索尚未接通；现有文档检索仍使用BM25。
+已完成独立Embedding配置、文档发布后的异步向量化、持久化批次进度，以及Neo4j向量索引写入。
+当前问答中的文档检索仍使用BM25；语义检索与问答接入将在后续步骤实现，不能将“已入库”视为已启用向量问答。
 
-入口：AI助手与知识库 → 模型配置 → 文档向量模型（Embedding）。
-先保存OpenAI兼容接口和API Key，再保存Embedding模型、维度和启用开关，然后测试。
-默认模型为text-embedding-3-small，默认1536维。回答模型与Embedding模型独立设置。
-连接测试仅向服务商发送固定测试文字，返回向量维度、数量和用量；不读取知识文件。
-未来启用文档向量化时，文档片段也会发送给该API服务商。
+## 使用
 
-## 接口和配置
+AI助手与知识库 → 模型配置 → 文档向量模型（Embedding）。复用已保存的OpenAI兼容接口和
+加密API Key，默认text-embedding-3-small、1536维，独立于回答模型。连接测试只发送固定测试文字。
 
-- GET /admin-api/mes/assistant/embedding-config：脱敏配置与连接就绪状态。
-- PUT /admin-api/mes/assistant/embedding-config：model、dimensions、enabled。
-- POST /admin-api/mes/assistant/embedding-config/test：固定文字的真实连接测试。
+上传文档先保存草稿，不调用外部模型。发布后登记后台任务，分批将文档片段发送给所配置的API平台，
+成功后写入Neo4j。在RAG知识库文件列表查看“文档向量”的状态、完成片段数、模型和维度。
+失败可点击“重试向量入库”；已入库的文件可明确选择“重新建立索引”。重建操作携带expectedVersion，
+文件版本变化时需刷新。维护权限沿用原个人库所有权与企业规则库授权，普通读取成员不能重建。
 
-三者均要求mes:assistant:config权限。配置按认证租户隔离，保存在
-mes_assistant_embedding_config；接口地址和加密密钥复用mes_assistant_model_config，
-不复制密钥，也不将密钥或完整向量返回页面。重置模型配置时同时移除本租户Embedding设置。
-本步骤不改变原有回答模型配置。
+本次升级不自动处理原有已发布资料。维护者可以在文件列表按需点击“建立向量索引”，或在后续发布时处理。
+未配置Embedding时文件仍可发布，向量状态为WAITING_CONFIG，原有关键词检索继续可用。
+启用或变更配置后，维护者需明确重试/重建；任务不会自动改用另一服务商发送原任务资料。
 
-Embedding复用既有DNS校验、HTTPS连接、代理、超时、响应大小上限和禁止重定向处理。
-不在业务数据库事务内调用外部接口，不自动重试API请求。每批最多16段，每段UTF-8
-最多8192字节、总计最多64KiB，作为输入token上限的保守限制。模型实际token用量从
-API响应读取；服务商费用与限额由服务商决定，项目不设置计费配额。
+## 交付与恢复
 
-仅接受完整批次、唯一且合法的index、预期维度、有限数值及非零向量，并按index恢复
-输入顺序。返回的spaceId由接口地址、模型和维度计算，供后续向量空间隔离使用。
+1. MySQL文件事务中登记mes_assistant_vector_state，包含文件、上传者、库、版本、任务代次、
+   不可变分块快照和模型空间标识；事务回滚时任务一同回滚。
+2. 专用后台工作线程领取已提交任务，每轮最多2份文件、每份最多8个片段。领取任务使用短事务和
+   180秒租约；外部Embedding请求在事务之外执行，不持有文件行锁。
+3. 调用前检查当前文件和模型空间，响应后再次校验任务代次。已确认成功的批次保存在
+   mes_assistant_vector_chunk，后续批次、Neo4j暂时失败或程序重启都可从已完成批次恢复。
+4. 全部片段就绪后，建立并确认向量索引ONLINE，在Neo4j单事务中替换该文件的全部向量片段，
+   然后确认MySQL状态为INDEXED并清理临时批次数据。两个数据库采用至少一次交付，写入按文件和
+   代次幂等。API超时或进程恰在响应后中断时无法保证只计费一次，已持久化成功的批次不会重复请求。
+5. 单批次/入库连续失败最多自动尝试5次，按20/40/80/160秒退避；页面保留真实错误和进度，
+   不将失败显示为成功。租约过期可恢复；最后一次尝试也中断时转为失败，避免永久显示处理中。
+6. 更新后回到草稿、撤回或删除均推进代次并登记清理，不调用Embedding。处理中收到旧响应时
+   不写入新状态。清理仅移除该文件向量，失败后持续重试，不影响其他文件。
 
-## 升级与验证
+MySQL会短暂保留文件分块快照与向量批次，成功或新代次登记后清理。Neo4j保留小型文件检查点
+作为代次屏障，拒绝迟到旧任务再次恢复已移除片段；检查点不保存原文或完整向量。
+撤回、删除到Neo4j物理清理为异步过程。后续向量检索仍必须以当前MySQL权限、发布状态、版本和
+当前模型空间为准，不能仅凭Neo4j节点存在判断资料可用。
 
-先通过现有deploy/apply-migrations.ps1应用20261115_embedding_configuration.sql，
-再构建并重启后端；不手动修改已应用的迁移文件。
+## Neo4j结构与来源
 
-MesEmbeddingGatewayTest覆盖真实本地HTTP协议、批次乱序、租户隔离、配置独立性、
-非法输入、事务边界、异常向量和服务商错误。MesAssistantControllerPolicyTest验证配置权限。
+- FazeVectorDocument：租户、文件、原上传者、知识库、版本、任务代次、模型空间及active标志。
+- FazeVectorChunk：上述来源字段，以及chunkId、chunkIndex、chunkHash、heading、text、
+  pageNumber（如有）、startOffset、endOffset和embedding。
+- 每个接口地址、模型名、维度组合生成稳定spaceId，使用独立FazeVector_<spaceId>标签和
+  fazemes_vector_<spaceId>向量索引；余弦索引保留租户、库、文件、版本、上传者和代次过滤属性。
+- 向量片段不使用FazeEntity/FazeRelation标签，原有星系实体图谱不会因此混入文档片段。
+- 所有数据库凭据与完整向量留在后端，不通过列表或测试接口返回浏览器。
 
-实际调用已配置平台：
+实际本地Neo4j为Community 2026.08.1。索引使用Cypher 25创建，维度固定，建成后核验ONLINE。
+Embedding输入沿用最多16段、单段UTF-8最多8192字节、总计64KiB的网关限制；后台每批最多8段。
+维度、数量、索引顺序、有限值与非零向量均校验；API不在业务事务中调用。
+
+## 接口与升级
+
+- GET/PUT /admin-api/mes/assistant/embedding-config：独立配置；要求mes:assistant:config。
+- POST /admin-api/mes/assistant/embedding-config/test：固定测试文字；要求mes:assistant:config。
+- POST /admin-api/mes/assistant/document/vector/rebuild?id=...&expectedVersion=...：重试或重建已发布文件；
+  入口要求知识库功能权限，服务层再次检查实际文件维护权限。
+- GET /admin-api/mes/assistant/documents：增加vectorStatus、vectorChunkCount、vectorCompletedChunks、
+  vectorAttempts、vectorError、vectorModel、vectorDimensions、vectorIndexName字段。
+
+应用20261115_embedding_configuration.sql与20261115_vector_document_ingestion.sql后构建重启后端。
+使用现有deploy/apply-migrations.ps1，不修改已经应用的迁移文件。
+
+## 验证
+
+MesDocumentVectorPipelineTest覆盖草稿、回滚、分批、故障恢复、租约、文件变更、配置变化与维护权限；
+MesDocumentVectorStoreLiveTest在隔离测试租户中验证真实Neo4j索引、来源、独立文件、旧代次屏障和图谱保持，
+需要FAZEMES_GRAPH_TEST_CONFIG指向本机私有Neo4j配置，测试结束仅清理自身节点和临时索引。
 
 ```powershell
-python -X utf8 deploy/verify-embedding.py --model --enable-default
+python -X utf8 deploy/verify-embedding.py --model
+python -X utf8 deploy/verify-document-vectors.py --model
 ```
 
---enable-default会在Embedding未启用时保存默认模型并启用；省略该参数可测试已保存配置。
-脚本只发送固定测试文字，核对聊天配置保持一致，不输出密钥、完整向量或私有资料。
+第二个脚本只使用新建的验收资料，经正常上传、发布、等待入库后逐片核对Neo4j来源和维度，最后删除并
+验证本次文件的向量清理。不发送原有私人文件，不输出密钥或完整向量。
 
 参考：[OpenAI Embeddings API](https://developers.openai.com/api/reference/resources/embeddings/methods/create)、
-[向量模型说明](https://developers.openai.com/api/docs/guides/embeddings)。
+[Neo4j向量索引](https://neo4j.com/docs/cypher-manual/current/indexes/search-indexes/vector-indexes/)。

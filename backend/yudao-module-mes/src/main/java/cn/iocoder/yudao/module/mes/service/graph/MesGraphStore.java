@@ -78,5 +78,60 @@ public class MesGraphStore implements AutoCloseable {
             },TransactionConfig.builder().withTimeout(Duration.ofSeconds(10)).build());
         }
     }
+    public static String vectorIndexName(String spaceId) {
+        if (spaceId == null || !spaceId.matches("[0-9a-f]{64}")) throw new IllegalArgumentException("Invalid vector space");
+        return "fazemes_vector_" + spaceId;
+    }
+    private synchronized void vectorSchema() {
+        try (var session = driver().session(SessionConfig.forDatabase(database))) {
+            session.run("CREATE CONSTRAINT fazemes_vector_document IF NOT EXISTS FOR (n:FazeVectorDocument) REQUIRE (n.tenantId,n.documentId) IS UNIQUE").consume();
+            session.run("CREATE CONSTRAINT fazemes_vector_chunk IF NOT EXISTS FOR (n:FazeVectorChunk) REQUIRE (n.tenantId,n.documentId,n.chunkId) IS UNIQUE").consume();
+        }
+    }
+    /** Separate labels keep vector chunks out of the entity graph. Index identifiers are server-generated hex only. */
+    public void ensureVectorIndex(String spaceId, int dimensions) {
+        String name = vectorIndexName(spaceId), label = "FazeVector_" + spaceId;
+        if (dimensions < 1 || dimensions > 4096) throw new IllegalArgumentException("Invalid vector dimensions");
+        vectorSchema();
+        try (var session = driver().session(SessionConfig.forDatabase(database))) {
+            session.run("CYPHER 25 CREATE VECTOR INDEX " + name + " IF NOT EXISTS FOR (n:" + label + ") ON n.embedding "
+                    + "WITH [n.tenantId,n.knowledgeBaseId,n.documentId,n.documentVersion,n.ownerId,n.generation] "
+                    + "OPTIONS {indexConfig: {`vector.dimensions`:$dimensions,`vector.similarity_function`:'cosine'}}",
+                    Map.of("dimensions", dimensions)).consume();
+            session.run("CALL db.awaitIndex($name,5)", Map.of("name", name)).consume();
+            var index = session.run("SHOW INDEXES YIELD name,type,state,labelsOrTypes,properties,options WHERE name=$name RETURN *", Map.of("name", name)).single();
+            var config = index.get("options").asMap().get("indexConfig");
+            if (!"VECTOR".equals(index.get("type").asString()) || !"ONLINE".equals(index.get("state").asString())
+                    || !index.get("labelsOrTypes").asList().equals(List.of(label))
+                    || !(config instanceof Map<?,?> values) || !Objects.equals(((Number)values.get("vector.dimensions")).intValue(), dimensions))
+                throw new IllegalStateException("Vector index schema mismatch");
+        }
+    }
+    /** MySQL callers serialize final delivery; the retained Neo4j generation additionally fences late deliveries. */
+    public boolean replaceVectorDocument(MesKnowledgeGraphService.Scope scope,long documentId,int version,long generation,
+            long knowledgeBaseId,String title,String spaceId,String model,int dimensions,List<Map<String,Object>> chunks,boolean published) {
+        if (generation < 1 || version < 1 || (!published && !chunks.isEmpty())) throw new IllegalArgumentException("Invalid vector document");
+        if (published) vectorIndexName(spaceId);
+        vectorSchema();
+        var p = new HashMap<String,Object>();
+        p.put("tenant",scope.tenant());p.put("owner",scope.owner());p.put("document",documentId);p.put("version",version);
+        p.put("generation",generation);p.put("base",knowledgeBaseId);p.put("title",title);p.put("space",spaceId);
+        p.put("model",model);p.put("dimensions",dimensions);p.put("chunks",chunks);p.put("published",published);
+        try (var session = driver().session(SessionConfig.forDatabase(database))) {
+            return session.executeWrite(tx -> {
+                var accepted = tx.run("MERGE (d:FazeVectorDocument {tenantId:$tenant,documentId:$document}) "
+                        + "SET d.fence=coalesce(d.fence,0)+1 WITH d WHERE coalesce(d.generation,0)<=$generation "
+                        + "SET d.generation=$generation,d.ownerId=$owner,d.knowledgeBaseId=$base,d.documentVersion=$version,"
+                        + "d.spaceId=$space,d.model=$model,d.dimensions=$dimensions,d.active=$published RETURN d.generation",p);
+                if (!accepted.hasNext()) return false;
+                accepted.consume();
+                tx.run("MATCH (n:FazeVectorChunk {tenantId:$tenant,documentId:$document}) DELETE n",p).consume();
+                if (published) tx.run("UNWIND $chunks AS c CREATE (n:FazeVectorChunk:FazeVector_" + spaceId + ") "
+                        + "SET n=c,n.tenantId=$tenant,n.ownerId=$owner,n.knowledgeBaseId=$base,n.documentId=$document,"
+                        + "n.documentVersion=$version,n.generation=$generation,n.spaceId=$space,n.model=$model,n.dimensions=$dimensions,n.title=$title",p).consume();
+                return true;
+            },TransactionConfig.builder().withTimeout(Duration.ofSeconds(15)).build());
+        }
+    }
     @PreDestroy public synchronized void close(){if(driver!=null){driver.close();driver=null;}}
 }

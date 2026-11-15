@@ -324,6 +324,48 @@
                     <small v-if="row.graphError">{{ row.graphError }}</small>
                   </template>
                 </el-table-column>
+                <el-table-column label="文档向量" min-width="200">
+                  <template #default="{ row }">
+                    <el-tag
+                      :type="
+                        row.vectorStatus === 'INDEXED'
+                          ? 'success'
+                          : ['ERROR', 'CONFIG_CHANGED', 'STALE'].includes(row.vectorStatus)
+                            ? 'danger'
+                            : 'info'
+                      "
+                    >
+                      {{ vectorStatusText(row.vectorStatus) }}
+                    </el-tag>
+                    <div v-if="row.vectorChunkCount"
+                      >{{ row.vectorCompletedChunks }} / {{ row.vectorChunkCount }} 个片段</div
+                    >
+                    <small v-if="row.vectorModel"
+                      >{{ row.vectorModel }} · {{ row.vectorDimensions }} 维</small
+                    >
+                    <div v-if="row.vectorError"
+                      ><small>{{ row.vectorError }}</small></div
+                    >
+                    <el-button
+                      v-if="currentBase.canManage && row.status === 'PUBLISHED'"
+                      link
+                      type="primary"
+                      :disabled="
+                        ['PENDING', 'PROCESSING'].includes(row.vectorStatus) ||
+                        vectorSubmitting.has(row.id)
+                      "
+                      @click="rebuildDocumentVectors(row)"
+                    >
+                      {{
+                        row.vectorStatus === 'NOT_INDEXED'
+                          ? '建立向量索引'
+                          : row.vectorStatus === 'INDEXED'
+                            ? '重新建立索引'
+                            : '重试向量入库'
+                      }}
+                    </el-button>
+                  </template>
+                </el-table-column>
                 <el-table-column label="操作" min-width="400"
                   ><template #default="{ row }"
                     ><el-button link type="primary" @click="preview(row.id)">原文与分块</el-button
@@ -466,7 +508,7 @@
           <el-divider content-position="left">文档向量模型（Embedding）</el-divider>
           <p class="assistant-field-help">
             复用上方已保存的OpenAI接口和API
-            Key，单独设置向量模型。连接测试仅发送测试文字；文档自动向量化将在后续步骤接通。
+            Key，单独设置向量模型。连接测试仅发送测试文字；发布文档后会分批生成向量并写入Neo4j；文档片段会发送给该平台。
           </p>
           <el-form
             label-width="120px"
@@ -1021,6 +1063,33 @@ async function selectBase(id: number) {
 let graphPoll: ReturnType<typeof setTimeout> | undefined
 let documentRequest = 0
 let assistantDisposed = false
+const vectorSubmitting = reactive(new Set<number>())
+const vectorStatusText = (status: string) =>
+  ({
+    NOT_INDEXED: '尚未建立索引',
+    READY: '待发布',
+    PENDING: '等待入库',
+    PROCESSING: '正在处理',
+    INDEXED: '已入库',
+    ERROR: '入库失败',
+    WAITING_CONFIG: '等待模型配置',
+    CONFIG_CHANGED: '模型配置已变更',
+    STALE: '文件状态已变更',
+    REMOVED: '已移除'
+  })[status] || '尚未建立索引'
+async function rebuildDocumentVectors(document: KnowledgeDocument) {
+  if (vectorSubmitting.has(document.id)) return
+  vectorSubmitting.add(document.id)
+  try {
+    await AssistantApi.rebuildVectors(document.id, document.version)
+    ElMessage.success('已提交文档向量入库任务')
+    await loadDocuments()
+  } catch (exception) {
+    failure(exception, '向量任务提交失败')
+  } finally {
+    vectorSubmitting.delete(document.id)
+  }
+}
 const graphStatusText = (status: string) =>
   ({
     NOT_INDEXED: '尚未建图',
@@ -1049,6 +1118,8 @@ async function loadDocuments() {
       tab.value === 'knowledge' &&
       result.some(
         (d) =>
+          ['PENDING', 'PROCESSING'].includes(d.vectorStatus) ||
+          (d.vectorStatus === 'ERROR' && (d.vectorAttempts < 5 || d.status === 'DRAFT')) ||
           d.graphStatus === 'PENDING' ||
           (d.graphStatus === 'ERROR' && (d.graphAttempts < 10 || d.status === 'DRAFT'))
       )
