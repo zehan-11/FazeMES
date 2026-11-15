@@ -335,8 +335,14 @@
                             : 'info'
                       "
                     >
-                      {{ vectorStatusText(row.vectorStatus) }}
+                      {{ vectorStatusText(row.vectorStatus, row.vectorAction) }}
                     </el-tag>
+                    <div v-if="row.vectorUsable"
+                      >当前版本 v{{ row.vectorIndexedVersion }} 已入库</div
+                    >
+                    <div v-else-if="row.vectorAction === 'REMOVE'"
+                      >旧向量已失效，正在等待清理完成</div
+                    >
                     <div v-if="row.vectorChunkCount"
                       >{{ row.vectorCompletedChunks }} / {{ row.vectorChunkCount }} 个片段</div
                     >
@@ -1064,19 +1070,28 @@ let graphPoll: ReturnType<typeof setTimeout> | undefined
 let documentRequest = 0
 let assistantDisposed = false
 const vectorSubmitting = reactive(new Set<number>())
-const vectorStatusText = (status: string) =>
-  ({
-    NOT_INDEXED: '尚未建立索引',
-    READY: '待发布',
-    PENDING: '等待入库',
-    PROCESSING: '正在处理',
-    INDEXED: '已入库',
-    ERROR: '入库失败',
-    WAITING_CONFIG: '等待模型配置',
-    CONFIG_CHANGED: '模型配置已变更',
-    STALE: '文件状态已变更',
-    REMOVED: '已移除'
-  })[status] || '尚未建立索引'
+const vectorStatusText = (status: string, action?: string) => {
+  if (action === 'REMOVE')
+    return (
+      { PENDING: '等待移除旧向量', PROCESSING: '正在移除旧向量', ERROR: '旧向量清理失败' }[
+        status
+      ] || '旧向量已失效'
+    )
+  return (
+    {
+      NOT_INDEXED: '尚未建立索引',
+      READY: '待发布',
+      PENDING: '等待入库',
+      PROCESSING: '正在处理',
+      INDEXED: '已入库',
+      ERROR: '入库失败',
+      WAITING_CONFIG: '等待模型配置',
+      CONFIG_CHANGED: '模型配置已变更',
+      STALE: '文件状态已变更',
+      REMOVED: '已移除'
+    }[status] || '尚未建立索引'
+  )
+}
 async function rebuildDocumentVectors(document: KnowledgeDocument) {
   if (vectorSubmitting.has(document.id)) return
   vectorSubmitting.add(document.id)
@@ -1269,11 +1284,16 @@ async function publishDocument(document: KnowledgeDocument) {
   try {
     await ElMessageBox.confirm(
       document.status === 'PUBLISHED'
-        ? '撤回后不再参与新提问检索，并异步移除该文档的图谱关系；历史引用快照保留。'
-        : '确认已审核原文？发布后可供当前租户知识检索，明确关系将按知识库访问权限展示。',
+        ? '撤回后立即退出新提问检索，旧向量失效；后台移除该文档的向量和图谱关系，历史引用快照保留。'
+        : '确认已审核原文？发布后按知识库权限参与检索，并通过已配置的Embedding平台生成向量。',
       document.status === 'PUBLISHED' ? '撤回文档' : '发布文档'
     )
     await AssistantApi.publish(document.id, document.status !== 'PUBLISHED', document.version)
+    ElMessage.success(
+      document.status === 'PUBLISHED'
+        ? '文档已撤回，旧向量已失效，后台继续清理'
+        : '文档已发布，向量将后台处理'
+    )
     await loadBases()
     await loadDocuments()
   } catch (exception) {
@@ -1283,11 +1303,12 @@ async function publishDocument(document: KnowledgeDocument) {
 async function removeDocument(document: KnowledgeDocument) {
   try {
     await ElMessageBox.confirm(
-      `删除“${document.title}”及检索分块，并异步移除其图谱关系？历史会话引用快照保留。`,
+      `删除“${document.title}”及检索分块，并在后台移除其向量和图谱关系？历史会话引用快照保留。`,
       '删除文档',
       { type: 'warning' }
     )
     await AssistantApi.deleteDocument(document.id)
+    ElMessage.success('文档已删除并退出检索，后台继续清理其向量和图谱关系')
     await loadBases()
     await loadDocuments()
   } catch (exception) {

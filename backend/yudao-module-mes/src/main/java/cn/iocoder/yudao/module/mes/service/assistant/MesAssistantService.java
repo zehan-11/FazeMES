@@ -72,12 +72,49 @@ public class MesAssistantService {
 
     public List<Map<String, Object>> documents(long baseId, boolean manage) {
         long tenant = tenant(); var policy=access.requireBase(baseId,false); manage=manage&&access.canWrite(policy);
-        return rows("SELECT d.id,d.knowledge_base_id,d.title,d.file_name,d.file_type,d.file_size,d.file_sha256,d.chunk_count,d.version,d.status,d.create_time,d.update_time,"
+        var result=rows("SELECT d.id,d.knowledge_base_id,d.title,d.file_name,d.file_type,d.file_size,d.file_sha256,d.chunk_count,d.version,d.status,d.create_time,d.update_time,"
                 + " COALESCE(g.status,'NOT_INDEXED') AS graph_status,COALESCE(g.entity_count,0) AS graph_entity_count,COALESCE(g.relation_count,0) AS graph_relation_count,g.error_message AS graph_error,COALESCE(g.attempts,0) AS graph_attempts,"
                 + " COALESCE(v.status,'NOT_INDEXED') AS vector_status,COALESCE(v.chunk_count,0) AS vector_chunk_count,COALESCE(v.completed_chunks,0) AS vector_completed_chunks,"
-                + " COALESCE(v.attempts,0) AS vector_attempts,v.error_message AS vector_error,v.model_name AS vector_model,v.dimensions AS vector_dimensions,v.space_id AS vector_space_id,v.index_name AS vector_index_name"
+                + " COALESCE(v.attempts,0) AS vector_attempts,v.error_message AS vector_error,v.model_name AS vector_model,v.dimensions AS vector_dimensions,v.space_id AS vector_space_id,v.index_name AS vector_index_name,"
+                + " v.desired_state AS vector_desired_state,v.document_version AS vector_task_version,v.owner_id AS vector_owner,d.creator AS document_owner,"
+                + " v.knowledge_base_id AS vector_base_id,v.synced_at AS vector_synced_at"
                 + " FROM mes_assistant_document d LEFT JOIN mes_assistant_graph_state g ON g.tenant_id=d.tenant_id AND g.document_id=d.id LEFT JOIN mes_assistant_vector_state v ON v.tenant_id=d.tenant_id AND v.document_id=d.id WHERE d.knowledge_base_id=? AND d.tenant_id=? AND d.deleted=0"
                 + (manage ? "" : " AND d.status='PUBLISHED'") + " ORDER BY d.id DESC", baseId, tenant);
+        String currentSpace=null;
+        if(result.stream().anyMatch(row->"INDEXED".equals(row.get("vectorStatus")))) {
+            try {currentSpace=models.embeddingSpace().spaceId();}
+            catch(cn.iocoder.yudao.framework.common.exception.ServiceException ignored){/* Stored vectors remain local; disabled configuration is never treated as usable. */}
+        }
+        for(var row:result)decorateVectorState(row,currentSpace);
+        return result;
+    }
+    /** Current-version status gate. Physical Neo4j cleanup is asynchronous and is never the source of validity. */
+    private static void decorateVectorState(Map<String,Object> row,String currentSpace) {
+        String desired=Objects.toString(row.get("vectorDesiredState"),"");
+        String stored=Objects.toString(row.get("vectorStatus"),"NOT_INDEXED");
+        boolean busy=Set.of("PENDING","PROCESSING","ERROR").contains(stored);
+        row.put("vectorAction",busy?(desired.equals("PUBLISHED")?"INDEX":"REMOVE"):"NONE");
+        boolean sameVersion=Objects.equals(MesRetrievalEvidence.integer(row,"vectorTaskVersion"),MesRetrievalEvidence.integer(row,"version"));
+        boolean sameOwner=Objects.equals(MesRetrievalEvidence.number(row,"vectorOwner"),MesRetrievalEvidence.number(row,"documentOwner"));
+        boolean sameBase=Objects.equals(MesRetrievalEvidence.number(row,"vectorBaseId"),MesRetrievalEvidence.number(row,"knowledgeBaseId"));
+        boolean sameSpace=currentSpace!=null && currentSpace.equals(row.get("vectorSpaceId"));
+        boolean complete=MesRetrievalEvidence.integer(row,"vectorChunkCount")!=null
+                && ((Number)row.get("vectorChunkCount")).intValue()>0
+                && Objects.equals(MesRetrievalEvidence.integer(row,"vectorCompletedChunks"),MesRetrievalEvidence.integer(row,"vectorChunkCount"))
+                && Objects.equals(MesRetrievalEvidence.integer(row,"vectorChunkCount"),MesRetrievalEvidence.integer(row,"chunkCount"));
+        boolean usable=stored.equals("INDEXED") && desired.equals("PUBLISHED") && "PUBLISHED".equals(row.get("status")) && sameVersion && sameOwner && sameBase && sameSpace && complete;
+        row.put("vectorUsable",usable);
+        row.put("vectorIndexedVersion",usable?row.get("vectorTaskVersion"):null);
+        if(stored.equals("INDEXED") && !usable) {
+            if(!sameVersion || !sameOwner || !sameBase || !desired.equals("PUBLISHED") || !complete || !"PUBLISHED".equals(row.get("status"))) {
+                row.put("vectorStatus","STALE");row.put("vectorError","索引来源与当前文件不一致，请重新建立索引");
+            } else if(currentSpace==null) {
+                row.put("vectorStatus","WAITING_CONFIG");row.put("vectorError","Embedding已停用；当前向量暂不可用");
+            } else {
+                row.put("vectorStatus","CONFIG_CHANGED");row.put("vectorError","Embedding配置已变更，请重新建立索引");
+            }
+        }
+        row.remove("vectorOwner");row.remove("documentOwner");row.remove("vectorBaseId");row.remove("vectorDesiredState");row.remove("vectorSpaceId");
     }
 
     @Transactional
@@ -177,18 +214,22 @@ public class MesAssistantService {
     @Transactional
     public void publish(long id, boolean published,Integer expectedVersion) {
         long tenant = tenant();access.requireDocument(id,true);
-        var locked=jdbc.queryForList("SELECT d.version FROM mes_assistant_document d JOIN mes_assistant_knowledge_base b ON b.id=d.knowledge_base_id AND b.tenant_id=d.tenant_id AND b.deleted=0 WHERE d.tenant_id=? AND d.id=? AND d.deleted=0 FOR UPDATE",tenant,id);
+        var locked=jdbc.queryForList("SELECT d.version,d.status FROM mes_assistant_document d JOIN mes_assistant_knowledge_base b ON b.id=d.knowledge_base_id AND b.tenant_id=d.tenant_id AND b.deleted=0 WHERE d.tenant_id=? AND d.id=? AND d.deleted=0 FOR UPDATE",tenant,id);
         if(locked.isEmpty())throw MesAssistantErrors.missing();
         if(expectedVersion!=null&&expectedVersion.intValue()!=((Number)locked.get(0).get("version")).intValue())throw MesAssistantErrors.invalid("文档版本已变更，请重新审核后再发布或撤回");
+        String desired=published?"PUBLISHED":"DRAFT";
+        if(desired.equals(locked.get(0).get("status")))return;
         jdbc.update("UPDATE mes_assistant_document SET status=?,update_time=CURRENT_TIMESTAMP WHERE id=? AND tenant_id=? AND deleted=0",
-                published ? "PUBLISHED" : "DRAFT", id, tenant);
+                desired, id, tenant);
         if(documentGraph!=null)documentGraph.stage(id,false);
         if(documentVectors!=null)documentVectors.stage(id,false);
     }
 
     @Transactional
     public void deleteDocument(long id) {
-        long tenant = tenant();access.requireDocument(id,true);document(id,true);
+        long tenant = tenant();access.requireDocument(id,true);
+        var locked=jdbc.queryForList("SELECT id FROM mes_assistant_document WHERE tenant_id=? AND id=? AND deleted=0 FOR UPDATE",tenant,id);
+        if(locked.isEmpty())throw MesAssistantErrors.missing();
         jdbc.update("UPDATE mes_assistant_chunk SET deleted=1 WHERE document_id=? AND tenant_id=? AND deleted=0", id, tenant);
         jdbc.update("UPDATE mes_assistant_document SET deleted=1 WHERE id=? AND tenant_id=? AND deleted=0", id, tenant);
         if(documentGraph!=null)documentGraph.stage(id,true);

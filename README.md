@@ -17,7 +17,7 @@ FazeMES 是基于 Spring Boot、Vue 3 和 TypeScript 的生产执行管理系统
 - **知识图谱**：通过 Spring Boot 查询按用户和租户隔离的 Neo4j 实体与关系，以 Galaxy View 星系图展示，支持搜索、邻居展开与来源查看；启动与配置见[知识图谱说明](deploy/KNOWLEDGE-GRAPH.md)。
 - **模型网络连接**：支持系统 HTTP 代理及 OpenAI 虚拟 IP 的真实 DNS 恢复，见[连接配置与验证](deploy/MODEL-NETWORK.md)。
 - **知识助手检索**：文档、图谱和混合模式，可从问题定位实体并查看一至两跳关系及来源；支持基于证据的模型问答和可点击引用，见[检索说明](deploy/GRAPH-RETRIEVAL.md)与[图谱问答](deploy/GRAPH-ANSWER.md)。
-- **文档向量入库**：发布后分批调用Embedding并写入Neo4j向量索引，支持进度、重试和故障恢复；语义检索与问答尚待接入，见[使用说明](deploy/EMBEDDING.md)。
+- **文档向量入库**：发布后分批调用Embedding写入Neo4j，支持版本更新、撤回删除同步、当前版本有效性、进度及恢复；语义检索与问答尚待接入，见[使用说明](deploy/EMBEDDING.md)。
 - **知识库权限与证据**：个人库仅本人，企业规则库按角色授权；文档和图谱统一校验证据来源，见[访问控制说明](deploy/KNOWLEDGE-ACCESS.md)。
 - **文档建图**：知识库文档上传后解析明确关系，发布后异步写入 Neo4j，按名称与类型对齐原图谱，保留每份文档、版本、片段和原文来源；支持文件更新与历史版本、失败重试及撤回/删除清理，见[文档建图说明](deploy/DOCUMENT-GRAPH.md)。
 - **Jev 异常分流试点**：异常分类、实际部门建议、人工确认与采纳记录；使用独立的 TypeSafe 密钥，详见 [Jev 接入说明](deploy/JEV-TRIAGE.md)。

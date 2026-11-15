@@ -1,6 +1,6 @@
 # 文档向量链路：Embedding与Neo4j入库
 
-已完成独立Embedding配置、文档发布后的异步向量化、持久化批次进度，以及Neo4j向量索引写入。
+已完成独立Embedding配置、文档发布后的异步向量化、持久化批次进度、Neo4j向量索引写入，以及文件版本更新、撤回和删除同步。
 当前问答中的文档检索仍使用BM25；语义检索与问答接入将在后续步骤实现，不能将“已入库”视为已启用向量问答。
 
 ## 使用
@@ -38,6 +38,28 @@ MySQL会短暂保留文件分块快照与向量批次，成功或新代次登记
 撤回、删除到Neo4j物理清理为异步过程。后续向量检索仍必须以当前MySQL权限、发布状态、版本和
 当前模型空间为准，不能仅凭Neo4j节点存在判断资料可用。
 
+## 更新、撤回、删除与当前有效性
+
+更新文件时仍使用expectedVersion校验，解析成功后归档旧原文与分块，新版回到草稿。
+同一文件的旧向量立即标记为不可用，并进入后台清理；重新发布后为新版建立索引。
+新版可以在旧清理尚未执行前重新发布，最终写入仍只包含最新版本，迟到的旧任务不能覆盖它。
+解析失败或过时版本请求不会改变当前发布版本及其向量状态。
+
+撤回立即退出当前文档检索，向量失效；Neo4j物理清理异步完成，状态明确区分“建立索引”和
+“移除旧向量”。删除后文件退出列表、原文入口和当前检索；页面说明后台继续清理，
+不把删除接口返回成功描述为Neo4j已经清理完成。删除任务失败后持续自动重试，即使Embedding
+已停用或清理失败超过5次，清理也不依赖外部模型，不因模型停用而中断。
+
+文件列表新增vectorAction（INDEX/REMOVE/NONE）、vectorUsable、vectorTaskVersion、
+vectorIndexedVersion和vectorSyncedAt。vectorUsable只有在当前文件已发布、入库成功、版本、
+上传者、知识库、片段数与当前Embedding模型空间一致时才为true。模型配置变化或停用时，
+列表直接显示CONFIG_CHANGED或WAITING_CONFIG，vectorUsable为false；已有Neo4j节点不会因此
+被冒充为已经物理删除。该标志表示当前版本的索引就绪，不表示已接通语义问答。
+
+重复发布或重复撤回同一版本不会推进任务代次，也不会打断已领取任务或重复调用Embedding。
+主动“重新建立索引”仍会按明确的重建操作处理。删除、更新、发布和向量提交统一先锁文件行，
+避免删除先锁分块、更新先锁文件所形成的锁顺序冲突。
+
 ## Neo4j结构与来源
 
 - FazeVectorDocument：租户、文件、原上传者、知识库、版本、任务代次、模型空间及active标志。
@@ -59,7 +81,7 @@ Embedding输入沿用最多16段、单段UTF-8最多8192字节、总计64KiB的�
 - POST /admin-api/mes/assistant/document/vector/rebuild?id=...&expectedVersion=...：重试或重建已发布文件；
   入口要求知识库功能权限，服务层再次检查实际文件维护权限。
 - GET /admin-api/mes/assistant/documents：增加vectorStatus、vectorChunkCount、vectorCompletedChunks、
-  vectorAttempts、vectorError、vectorModel、vectorDimensions、vectorIndexName字段。
+  vectorAttempts、vectorError、vectorModel、vectorDimensions、vectorIndexName，以及上文的有效性与清理状态字段。
 
 应用20261115_embedding_configuration.sql与20261115_vector_document_ingestion.sql后构建重启后端。
 使用现有deploy/apply-migrations.ps1，不修改已经应用的迁移文件。
@@ -73,6 +95,7 @@ MesDocumentVectorStoreLiveTest在隔离测试租户中验证真实Neo4j索引、
 ```powershell
 python -X utf8 deploy/verify-embedding.py --model
 python -X utf8 deploy/verify-document-vectors.py --model
+python -X utf8 deploy/verify-vector-lifecycle.py --model
 ```
 
 第二个脚本只使用新建的验收资料，经正常上传、发布、等待入库后逐片核对Neo4j来源和维度，最后删除并
@@ -80,3 +103,7 @@ python -X utf8 deploy/verify-document-vectors.py --model
 
 参考：[OpenAI Embeddings API](https://developers.openai.com/api/reference/resources/embeddings/methods/create)、
 [Neo4j向量索引](https://neo4j.com/docs/cypher-manual/current/indexes/search-indexes/vector-indexes/)。
+
+第三个脚本使用两份新建资料验证：同内容的独立文件、重复发布、版本冲突拒绝、更新后立即失效、
+旧向量物理清理、新版来源、历史原文、撤回后重发、删除清理，以及其他文件保持完整。
+脚本经正常API操作，调用已配置Embedding平台，不改动原有文件或模型配置，结束后清理自身资料。

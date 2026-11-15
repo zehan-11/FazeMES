@@ -38,6 +38,7 @@ class MesDocumentVectorPipelineTest extends MesAssistantTestDatabase {
         when(store.replaceVectorDocument(any(),anyLong(),anyInt(),anyLong(),anyLong(),anyString(),anyString(),anyString(),anyInt(),anyList(),anyBoolean())).thenReturn(true);
         var manager=new DataSourceTransactionManager(Objects.requireNonNull(jdbc.getDataSource()));tx=new TransactionTemplate(manager);
         vectors=new MesDocumentVectorService(jdbc,json,gateway,store,new MesKnowledgeAccess(jdbc,null),manager);
+        service=new MesAssistantService(jdbc,json,new MesAssistantDocumentParser(),new MesAssistantRetriever(),gateway);
         ReflectionTestUtils.setField(service,"documentVectors",vectors);
         base=tx.execute(t->service.saveBase(null,"向量测试","",10));
     }
@@ -122,6 +123,75 @@ class MesDocumentVectorPipelineTest extends MesAssistantTestDatabase {
         long document=upload("中断次数上限测试。");publish(document);
         jdbc.update("UPDATE mes_assistant_vector_state SET status='PROCESSING',attempts=5,claim_token='old',lease_until=TIMESTAMPADD(SECOND,-1,CURRENT_TIMESTAMP) WHERE document_id=?",document);
         vectors.process(1,document);assertEquals("ERROR",status(document));assertEquals(0,calls.get());
+    }
+    Map<String,Object> visible(long document){return service.documents(base,true).stream().filter(r->((Number)r.get("id")).longValue()==document).findFirst().orElseThrow();}
+    @Test void repeatedPublicationDoesNotInvalidateAnActiveClaimOrRepeatEmbedding() {
+        long document=upload("幂等发布测试。");publish(document);
+        duringCall.set(()->publish(document));vectors.process(1,document);
+        assertEquals("INDEXED",status(document));assertEquals(1,calls.get());assertEquals(true,visible(document).get("vectorUsable"));
+        publish(document);vectors.process(1,document);assertEquals(1,calls.get());
+        assertEquals(2,jdbc.queryForObject("SELECT generation FROM mes_assistant_vector_state WHERE document_id=?",Integer.class,document));
+        tx.executeWithoutResult(t->service.publish(document,false));tx.executeWithoutResult(t->service.publish(document,false));
+        assertEquals(3,jdbc.queryForObject("SELECT generation FROM mes_assistant_vector_state WHERE document_id=?",Integer.class,document));
+        assertEquals(false,visible(document).get("vectorUsable"));assertEquals("REMOVE",visible(document).get("vectorAction"));
+        vectors.process(1,document);assertEquals("READY",status(document));assertEquals("NONE",visible(document).get("vectorAction"));
+    }
+    @Test void updatingAnIndexedFileInvalidatesItsOldSourcesBeforePhysicalCleanupAndRepublishesOnlyTheNewVersion() {
+        long document=upload("OLDVERSIONMARKER original guidance.");publish(document);vectors.process(1,document);
+        assertEquals(true,visible(document).get("vectorUsable"));
+        tx.executeWithoutResult(t->service.updateDocument(document,1,null,"new.txt","NEWVERSIONMARKER replacement guidance.".getBytes(StandardCharsets.UTF_8),10));
+        var draft=visible(document);assertEquals("DRAFT",draft.get("status"));assertEquals("REMOVE",draft.get("vectorAction"));assertEquals(false,draft.get("vectorUsable"));assertNull(draft.get("vectorIndexedVersion"));
+        assertTrue(((List<?>)service.search("OLDVERSIONMARKER",List.of(base),5).get("items")).isEmpty());
+        assertThrows(ServiceException.class,()->tx.executeWithoutResult(t->service.updateDocument(document,1,null,"stale.txt",new byte[]{65},10)));
+        // Republish before the previous cleanup worker runs: the newest generation replaces every older vector.
+        publish(document);vectors.process(1,document);
+        assertEquals("INDEXED",status(document));assertEquals(true,visible(document).get("vectorUsable"));assertEquals(2,((Number)visible(document).get("vectorIndexedVersion")).intValue());
+        assertEquals(2,calls.get());assertEquals(2,service.documentVersions(document).size());
+        assertTrue(((List<?>)service.search("OLDVERSIONMARKER",List.of(base),5).get("items")).isEmpty());
+        verify(store).replaceVectorDocument(any(),eq(document),eq(2),eq(4L),eq(base),anyString(),anyString(),anyString(),eq(3),argThat(rows->rows.stream().allMatch(r->r.get("text").toString().contains("NEWVERSIONMARKER"))),eq(true));
+    }
+    @Test void aRejectedReplacementKeepsThePublishedVersionAndItsVectorIndexUsable() {
+        long document=upload("Valid published contents.");publish(document);vectors.process(1,document);
+        assertThrows(ServiceException.class,()->tx.executeWithoutResult(t->service.updateDocument(document,1,null,"bad.txt",new byte[]{(byte)0xff},10)));
+        assertEquals("PUBLISHED",visible(document).get("status"));assertEquals(true,visible(document).get("vectorUsable"));assertEquals(1,((Number)visible(document).get("version")).intValue());
+        assertEquals(1,calls.get());assertEquals(1,service.documentVersions(document).size());
+    }
+    @Test void cleanupContinuesBeyondFiveFailuresWithoutEmbeddingAndRecoversAfterConfigurationIsDisabled() {
+        long document=upload("撤回清理测试。");publish(document);vectors.process(1,document);
+        tx.executeWithoutResult(t->service.publish(document,false));
+        doThrow(MesAssistantErrors.model("disabled")).when(gateway).embeddingSpace();
+        doThrow(new IllegalStateException("Neo4j temporarily unavailable")).when(store).replaceVectorDocument(any(),anyLong(),anyInt(),anyLong(),anyLong(),anyString(),anyString(),anyString(),anyInt(),anyList(),eq(false));
+        for(int i=0;i<7;i++){due(document);vectors.process(1,document);}
+        assertEquals("ERROR",status(document));assertEquals(1,calls.get());assertEquals("REMOVE",visible(document).get("vectorAction"));assertEquals(false,visible(document).get("vectorUsable"));
+        doReturn(true).when(store).replaceVectorDocument(any(),anyLong(),anyInt(),anyLong(),anyLong(),anyString(),anyString(),anyString(),anyInt(),anyList(),eq(false));
+        due(document);vectors.process(1,document);assertEquals("READY",status(document));assertEquals(1,calls.get());
+    }
+    @Test void modelConfigurationChangesImmediatelyInvalidateTheListViewWithoutPretendingTheStoredIndexWasRemoved() {
+        long document=upload("配置变化状态测试。");publish(document);vectors.process(1,document);
+        assertEquals(true,visible(document).get("vectorUsable"));
+        space.set(new MesAssistantModelGateway.EmbeddingSpace("replacement-model",3,"b".repeat(64)));
+        assertEquals("CONFIG_CHANGED",visible(document).get("vectorStatus"));assertEquals(false,visible(document).get("vectorUsable"));
+        assertEquals("INDEXED",status(document));assertEquals(1,calls.get());
+        tx.executeWithoutResult(t->vectors.rebuild(document,1));vectors.process(1,document);assertEquals(true,visible(document).get("vectorUsable"));assertEquals(2,calls.get());
+        doThrow(MesAssistantErrors.model("disabled")).when(gateway).embeddingSpace();
+        assertEquals("WAITING_CONFIG",visible(document).get("vectorStatus"));assertEquals(false,visible(document).get("vectorUsable"));
+    }
+    @Test void inconsistentIndexSourceMetadataIsNeverReportedAsAUsableCurrentVersion() {
+        long document=upload("来源校验测试。");publish(document);vectors.process(1,document);
+        for(String column:List.of("document_version","owner_id","knowledge_base_id","completed_chunks")) {
+            int old=jdbc.queryForObject("SELECT "+column+" FROM mes_assistant_vector_state WHERE document_id=?",Integer.class,document);
+            jdbc.update("UPDATE mes_assistant_vector_state SET "+column+"=? WHERE document_id=?",old+1,document);
+            assertEquals("STALE",visible(document).get("vectorStatus"));assertEquals(false,visible(document).get("vectorUsable"));
+            jdbc.update("UPDATE mes_assistant_vector_state SET "+column+"=? WHERE document_id=?",old,document);
+        }
+        assertEquals(true,visible(document).get("vectorUsable"));
+        assertFalse(visible(document).containsKey("documentOwner"));assertFalse(visible(document).containsKey("vectorOwner"));assertFalse(visible(document).containsKey("vectorSpaceId"));
+    }
+    @Test void anExistingPublishedFileStillRequiresAnExplicitIndexBuildAndIsNotBackfilledByDuplicatePublish() {
+        long document=upload("历史已发布文件。");publish(document);
+        jdbc.update("DELETE FROM mes_assistant_vector_state WHERE document_id=?",document);
+        publish(document);assertEquals("NOT_INDEXED",visible(document).get("vectorStatus"));assertEquals(0,calls.get());
+        tx.executeWithoutResult(t->vectors.rebuild(document,1));vectors.process(1,document);assertEquals(true,visible(document).get("vectorUsable"));assertEquals(1,calls.get());
     }
     @Test void apiFailuresStopAfterFiveAttemptsAndKeepAnHonestFailureStatus() {
         long document=upload("API失败测试。");publish(document);

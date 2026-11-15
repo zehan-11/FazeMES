@@ -42,6 +42,11 @@ export interface KnowledgeDocument {
     | 'CONFIG_CHANGED'
     | 'STALE'
     | 'REMOVED'
+  vectorAction: 'INDEX' | 'REMOVE' | 'NONE'
+  vectorUsable: boolean
+  vectorTaskVersion?: number
+  vectorIndexedVersion?: number
+  vectorSyncedAt?: string
   vectorChunkCount: number
   vectorCompletedChunks: number
   vectorAttempts: number
