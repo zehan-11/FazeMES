@@ -63,7 +63,7 @@ public class MesJevProxySettings {
         var values=new LinkedHashMap<String,String>();var matcher=Pattern.compile("(?m)^\\s*(ProxyEnable|ProxyServer|ProxyOverride)\\s+REG_\\w+\\s+([^\\r\\n]+)").matcher(output);
         while(matcher.find())values.put(matcher.group(1),matcher.group(2).strip());return values;
     }
-    private static Map<String,String> readWindowsProxy(){
+    static Map<String,String> readWindowsProxy(){
         Process process=null;
         try{
             process=new ProcessBuilder("reg.exe","query","HKCU\\Software\\Microsoft\\Windows\\CurrentVersion\\Internet Settings").redirectErrorStream(true).start();

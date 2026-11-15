@@ -25,6 +25,7 @@ public class MesAssistantModelGateway {
     private final String jevBaseUrl;
     private final int totalDeadlineMs;
     @Autowired private MesJevProxySettings jevProxySettings;
+    @Autowired private MesModelNetworkSettings modelNetwork;
     private static final ScheduledExecutorService DEADLINES=Executors.newSingleThreadScheduledExecutor(task->{Thread thread=new Thread(task,"mes-model-deadline");thread.setDaemon(true);return thread;});
     public record Settings(String provider, String baseUrl, String model, String apiKey, boolean clearApiKey,
                            double temperature, int maxTokens, boolean enabled, Integer contextTokens) {
@@ -36,7 +37,7 @@ public class MesAssistantModelGateway {
     }
     private record Config(String provider, String baseUrl, String model, String ciphertext,
                           double temperature, int maxTokens, boolean enabled, int contextTokens) {}
-    private record Target(URI uri, InetAddress address, int port) {}
+    record Target(URI uri, InetAddress address, int port) {}
 
     public enum Purpose { KNOWLEDGE_CHAT, BUSINESS_INSIGHT, MODEL_CONNECTION_TEST, JEV_TRIAGE, JEV_CONNECTION_TEST }
     @Autowired
@@ -74,7 +75,7 @@ public class MesAssistantModelGateway {
         if (contextTokens < 2048 || contextTokens > 131072 || settings.maxTokens() > contextTokens - 512)
             throw MesAssistantErrors.invalid("上下文需在2048至131072，且至少比最大输出长度多512");
         String baseUrl = settings.baseUrl() == null ? "" : settings.baseUrl().strip().replaceAll("/+$", "");
-        Target target = validateTarget(baseUrl);
+        Target target = configuredTarget(baseUrl);
         Config existing = configuration();
         String secret = settings.apiKey() == null ? "" : settings.apiKey().strip();
         if (secret.length() > 4096 || !secret.matches("[\\x21-\\x7E]*")) throw MesAssistantErrors.invalid("API Key格式无效");
@@ -111,7 +112,7 @@ public class MesAssistantModelGateway {
         long tenant = TenantContextHolder.getRequiredTenantId();
         Config config = configuration();
         if (!configured(config)) throw MesAssistantErrors.model("模型未配置或未启用");
-        Target target = validateTarget(config.baseUrl());
+        Target target = configuredTarget(config.baseUrl());
         Map<String, Object> payload = new LinkedHashMap<>();
         int maxTokens = outputLimit == null ? config.maxTokens() : outputLimit;
         List<Map<String,String>> bounded=boundedMessages(messages,config.contextTokens()-maxTokens-256);
@@ -135,13 +136,13 @@ public class MesAssistantModelGateway {
     public byte[] evaluateJev(Purpose purpose,byte[] body){
         noTransaction();if(purpose==null||!Set.of(Purpose.JEV_TRIAGE,Purpose.JEV_CONNECTION_TEST).contains(purpose)||body==null||body.length>128*1024)throw MesAssistantErrors.invalid("Jev调用参数无效");long tenant=TenantContextHolder.getRequiredTenantId();
         var configs=jdbc.queryForList("SELECT model_name,secret_ciphertext,enabled FROM mes_insight_jev_config WHERE tenant_id=?",tenant);if(configs.isEmpty()||!Boolean.TRUE.equals(configs.get(0).get("enabled")))throw MesAssistantErrors.model("Jev尚未配置或启用");var config=configs.get(0);String model=Objects.toString(config.get("model_name"),"");
-        try{var parsed=json.readTree(body);if(!parsed.isObject()||!model.equals(parsed.path("model").asText()))throw MesAssistantErrors.invalid("Jev模型配置已变更，请重试");String key=secrets.decrypt(Objects.toString(config.get("secret_ciphertext"),null),tenant);if(key.isBlank())throw MesAssistantErrors.model("Jev密钥未配置");Target target=validateTarget(jevBaseUrl);return invoke(purpose,"JEV","typesafe",model,0,0,target,target.uri().getRawPath()+"/systemone",body,key);}
+        try{var parsed=json.readTree(body);if(!parsed.isObject()||!model.equals(parsed.path("model").asText()))throw MesAssistantErrors.invalid("Jev模型配置已变更，请重试");String key=secrets.decrypt(Objects.toString(config.get("secret_ciphertext"),null),tenant);if(key.isBlank())throw MesAssistantErrors.model("Jev密钥未配置");Target target=configuredTarget(jevBaseUrl);return invoke(purpose,"JEV","typesafe",model,0,0,target,target.uri().getRawPath()+"/systemone",body,key);}
         catch(cn.iocoder.yudao.framework.common.exception.ServiceException ex){throw ex;}catch(Exception ex){throw MesAssistantErrors.model("Jev连接失败或响应无效，请检查配置；可继续手动建立异常");}
     }
     private static void noTransaction(){if(TransactionSynchronizationManager.isActualTransactionActive())throw MesAssistantErrors.model("模型调用前必须完成业务事务，请刷新后重试或联系管理员");}
     private byte[] invoke(Purpose purpose,String channel,String provider,String model,int inputUpper,int outputLimit,Target target,String path,byte[] body,String key){
         try {
-            InetSocketAddress proxy="JEV".equals(channel)&&jevProxySettings!=null?jevProxySettings.resolve(target.uri()):null;
+            InetSocketAddress proxy="JEV".equals(channel)?(jevProxySettings==null?null:jevProxySettings.resolve(target.uri())):(modelNetwork==null?null:modelNetwork.proxyFor(target.uri()));
             Response response=post(target,path,body,key,totalDeadlineMs,proxy);
             if("JEV".equals(channel)&&response.status==451)throw MesAssistantErrors.model("TypeSafe官方Jev拒绝当前网络地区访问（HTTP 451）。更换密钥或模型名无法解除地区限制，请使用服务商支持的接入地区或其他可直连的异常分流模型。");
             if(response.status!=200)throw MesAssistantErrors.model("模型服务返回HTTP "+response.status+"，请检查连接配置");
@@ -192,7 +193,10 @@ public class MesAssistantModelGateway {
                 && (config.provider().equals("ollama") || config.ciphertext() != null && !config.ciphertext().isBlank());
     }
 
-    static Target validateTarget(String baseUrl) {
+    private Target configuredTarget(String url){return validateTarget(url,modelNetwork==null?uri->InetAddress.getAllByName(uri.getHost()):modelNetwork::resolve);}
+    @FunctionalInterface interface AddressLookup { InetAddress[] resolve(URI uri) throws Exception; }
+    static Target validateTarget(String baseUrl) {return validateTarget(baseUrl,uri->InetAddress.getAllByName(uri.getHost()));}
+    static Target validateTarget(String baseUrl,AddressLookup lookup) {
         try {
             URI uri = URI.create(baseUrl);
             String host = uri.getHost();
@@ -200,29 +204,28 @@ public class MesAssistantModelGateway {
                     || !Set.of("http", "https").contains(uri.getScheme()) || !uri.getRawPath().matches("[A-Za-z0-9/_.~\\-]*")) throw new IllegalArgumentException();
             boolean local = host.equals("127.0.0.1");
             if (!local && !uri.getScheme().equals("https")) throw new IllegalArgumentException();
-            InetAddress[] resolved = InetAddress.getAllByName(host);
+            InetAddress[] resolved = lookup.resolve(uri);
             if (resolved.length == 0) throw new IllegalArgumentException();
             for (InetAddress address : resolved) {
-                byte[] bytes = address.getAddress();
-                boolean reservedV4 = bytes.length == 4 && ((bytes[0] & 255) == 0 || (bytes[0] & 255) == 100 && (bytes[1] & 255) >= 64 && (bytes[1] & 255) <= 127
-                        || (bytes[0] & 255) >= 224 || (bytes[0] & 255) == 198 && ((bytes[1] & 255) == 18 || (bytes[1] & 255) == 19));
-                boolean privateV6 = bytes.length == 16 && (bytes[0] & 254) == 252;
-                if (!local && (address.isAnyLocalAddress() || address.isLoopbackAddress() || address.isLinkLocalAddress()
-                        || address.isSiteLocalAddress() || address.isMulticastAddress() || reservedV4 || privateV6)) throw new IllegalArgumentException();
+                if (!local && !MesModelNetworkSettings.isPublic(address)) throw new IllegalArgumentException();
             }
             int port = uri.getPort() == -1 ? uri.getScheme().equals("https") ? 443 : 80 : uri.getPort();
             if (port < 1 || port > 65535) throw new IllegalArgumentException();
             return new Target(uri, resolved[0], port);
-        } catch (Exception exception) { throw MesAssistantErrors.invalid("模型地址无效：仅允许HTTPS公共服务或127.0.0.1本地服务，禁止私网、metadata和URL凭据/查询参数"); }
+        } catch (cn.iocoder.yudao.framework.common.exception.ServiceException exception){throw exception;}
+        catch (Exception exception) { throw MesAssistantErrors.invalid("模型地址无效：仅允许HTTPS公共服务或127.0.0.1本地服务，禁止私网、metadata和URL凭据/查询参数"); }
     }
 
-    private record Response(int status,byte[] body) { }
+    record Response(int status,byte[] body) { }
     private static final class TransportFailure extends RuntimeException {
         final boolean maybeSent;final Integer status;
         TransportFailure(boolean maybeSent,Integer status){super("Bounded model transport failed");this.maybeSent=maybeSent;this.status=status;}
     }
     /** Bounded transport pins the public destination even through a local HTTP CONNECT tunnel. */
     private static Response post(Target target, String path, byte[] body, String apiKey,int totalDeadlineMs,InetSocketAddress proxy) {
+        return exchange(target,"POST",path,body,apiKey,"application/json",totalDeadlineMs,proxy);
+    }
+    static Response exchange(Target target,String method,String path,byte[] body,String apiKey,String accept,int totalDeadlineMs,InetSocketAddress proxy) {
         Socket socket = new Socket();boolean maybeSent=false;Integer knownStatus=null;
         AtomicReference<Socket> current=new AtomicReference<>(socket);
         ScheduledFuture<?> deadline=DEADLINES.schedule(()->{try{current.get().close();}catch(IOException ignored){ }},totalDeadlineMs,TimeUnit.MILLISECONDS);
@@ -231,12 +234,12 @@ public class MesAssistantModelGateway {
             socket.connect(proxy==null?new InetSocketAddress(target.address(), target.port()):proxy, Math.min(10_000,totalDeadlineMs));
             socket.setSoTimeout(Math.min(60_000,totalDeadlineMs));
             if(proxy!=null){
-                if(!target.uri().getScheme().equals("https"))throw MesAssistantErrors.model("Jev代理仅允许HTTPS目标");
+                if(!target.uri().getScheme().equals("https"))throw MesAssistantErrors.model("模型代理仅允许HTTPS目标");
                 String address=target.address().getHostAddress();String authority=(address.contains(":")?"["+address+"]":address)+":"+target.port();
                 // No model key or request content is sent before the end-to-end TLS handshake.
                 socket.getOutputStream().write(("CONNECT "+authority+" HTTP/1.1\r\nHost: "+authority+"\r\nProxy-Connection: keep-alive\r\n\r\n").getBytes(StandardCharsets.US_ASCII));socket.getOutputStream().flush();
                 var tunnel=socket.getInputStream();String status=line(tunnel);int size=status.length();
-                if(!status.matches("HTTP/1\\.[01] 200(?: .*|)"))throw MesAssistantErrors.model("Jev系统HTTP代理未建立连接，请检查Clash是否运行、代理端口和当前节点");
+                if(!status.matches("HTTP/1\\.[01] 200(?: .*|)"))throw MesAssistantErrors.model("模型系统HTTP代理未建立连接，请检查Clash是否运行、代理端口和当前节点");
                 for(String header=line(tunnel);!header.isEmpty();header=line(tunnel)){size+=header.length();if(size>32768)throw new IOException();}
             }
             if (target.uri().getScheme().equals("https")) {
@@ -247,8 +250,8 @@ public class MesAssistantModelGateway {
                 tls.setSSLParameters(parameters); tls.setSoTimeout(Math.min(60_000,totalDeadlineMs));current.set(tls);tls.startHandshake(); socket = tls;
             }
             String authorization = apiKey.isEmpty() ? "" : "Authorization: Bearer " + apiKey + "\r\n";
-            String headers = "POST " + (path.isEmpty() ? "/" : path) + " HTTP/1.1\r\nHost: " + target.uri().getHost() + ":" + target.port()
-                    + "\r\nContent-Type: application/json\r\nAccept: application/json\r\nConnection: close\r\n" + authorization
+            String headers = method + " " + (path.isEmpty() ? "/" : path) + " HTTP/1.1\r\nHost: " + target.uri().getHost() + ":" + target.port()
+                    + "\r\nContent-Type: application/json\r\nAccept: " + accept + "\r\nConnection: close\r\n" + authorization
                     + "Content-Length: " + body.length + "\r\n\r\n";
             OutputStream output = socket.getOutputStream();maybeSent=true; output.write(headers.getBytes(StandardCharsets.US_ASCII)); output.write(body); output.flush();
             InputStream input = new BufferedInputStream(socket.getInputStream());
@@ -281,7 +284,7 @@ public class MesAssistantModelGateway {
             }
             return new Response(code,response.toByteArray());
         }catch(cn.iocoder.yudao.framework.common.exception.ServiceException exception){throw exception;}
-        catch(Exception exception){if(proxy!=null&&!maybeSent)throw MesAssistantErrors.model("Jev系统HTTP代理连接失败，请检查Clash是否运行、系统代理端口和当前节点；无需开启虚拟网卡");throw new TransportFailure(maybeSent,knownStatus);}
+        catch(Exception exception){if(proxy!=null&&!maybeSent)throw MesAssistantErrors.model("模型系统HTTP代理连接失败，请检查Clash是否运行、系统代理端口和当前节点；无需开启虚拟网卡");throw new TransportFailure(maybeSent,knownStatus);}
         finally {deadline.cancel(false);try{current.get().close();}catch(IOException ignored){ }try{socket.close();}catch(IOException ignored){ }}
     }
 
