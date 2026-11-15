@@ -1,0 +1,76 @@
+# 文档发布到 Neo4j
+
+## 当前范围
+
+入口：AI助手与知识库 → RAG知识库 → 上传文档。
+本轮不接入模型、不发送文档到模型平台。支持提取文档中明确编写的三元关系，
+不对普通自然语言推断实体和关系。TXT、Markdown、CSV、DOCX 和文本 PDF 复用
+原有解析器。扫描 PDF 仍需先 OCR。
+
+支持的箭头格式（每行一条）：
+
+```text
+[设备]风扇 —包含部件→ [部件]电机
+[部件]电机 --包含部件--> [部件]轴承
+```
+
+类型可省略，省略时使用「实体」。也支持三列表格或单行 CSV，表头须为
+`源实体,关系,目标实体` 或 `source,relation,target`。Markdown 使用对应三列表头。
+CSV 支持双引号和转义引号，不支持跨行字段。实体名称最多100字、类型20字、
+关系类型60字，单文档最多1000条关系。未识别到关系时显示「未识别关系」。
+格式模板：frontend/public/templates/knowledge-relations.md。
+
+## 数据流程与状态
+
+1. 上传文件：解析原文、分块并保存到 MySQL，在同一事务中抽取并保存建图任务。
+   草稿仅保存解析结果，状态为 READY（待发布）、EMPTY（未识别关系）或 INVALID。
+   此时不发布到图谱。
+2. 发布：任务变为 PENDING。后台每5秒扫描已提交任务（每批最多5份），通过独立
+   MySQL 事务锁住任务行，将该文档的关系在 Neo4j 单事务中替换，然后记为 SYNCED。
+3. 失败：文件仍保留，任务记为 ERROR，不显示同步成功；自动退避重试，最多10次，
+   也可在文档列表点「重新建图」。启动恢复后继续处理持久化任务。
+4. 撤回/删除：进入移除队列，只移除该文档贡献的关系。其他文档的关系保持不变；
+   仅删除没有任何关系的文档来源实体，既有初始化图谱节点不会被清理。
+5. 回滚：文件事务回滚时建图任务一同回滚，后台无法读到未提交任务。
+
+MySQL 与 Neo4j 不采用分布式事务：交付具有至少一次语义。Neo4j 替换操作按稳定
+ID 幂等；若 Neo4j 已提交而 MySQL 状态提交失败，下次重试仍得到相同结果。
+撤回/删除到图谱清理是异步过程，可在文档列表观察状态；当前不承诺即时一致。
+
+## 隔离与来源
+
+范围从认证上下文和文档持久化上传者中取得，不接受前端指定 ownerId。
+图谱归属文档上传者；具备知识维护权限的管理员发布他人文档，不会把图谱转为
+管理员所有。同一租户的文档列表继续沿用原有共享策略，个人图谱仍按用户隔离。
+每个来源关系独立保存，不因两个文档表达相同关系而丢失其中一个来源。
+
+保存字段：knowledgeBaseId、documentId、documentVersion、chunkId、chunkHash、
+pageNumber（PDF）、startOffset/endOffset（规范化原文中的 UTF-16 位置）、
+sourceTitle、sourceSection、sourceExcerpt、extractionMethod=explicit_v1。
+关系原文必须与对应位置的子串一致，且整个关系行必须位于一个可核对的片段中。
+实体 ID 根据类型和规范化名称计算；关系 ID 包含文档、版本和原文位置。
+已提交同步任务保存不可变来源快照。当前没有新增文档替换/版本管理页面，
+版本号沿用文档原有字段；之后接入替换上传或模型抽取时可复用同一交付链路。
+
+## 运维与验证
+
+- 迁移：database/migrations/20261115_document_graph_ingestion.sql。
+- 建图状态：mes_assistant_graph_state；查看 status/attempts/error_message 即可定位失败。
+- 手动重建：POST /admin-api/mes/assistant/document/graph/rebuild?id=...，要求
+  mes:assistant:manage 权限，并校验当前租户内文档可见性。
+- 原有上传、发布、撤回、删除接口不变；文档列表增加建图状态、数量与错误信息。
+- 模型语义抽取和 GraphRAG 问答仍未包含在本轮实现中。
+
+测试：MesDocumentRelationExtractorTest、MesDocumentGraphPipelineTest、
+MesDocumentGraphLiveTest（设置 FAZEMES_GRAPH_TEST_CONFIG 后连接本机 Neo4j）。
+真实图谱测试使用独立随机租户范围，测试后清理该范围内的文档节点。
+
+已启动项目后，可执行端到端验收（只创建并清理本次 UUID 命名的资料）：
+
+```powershell
+python -X utf8 deploy/verify-document-graph.py
+# 含数据库停机与恢复重试，会短暂停止本项目 Neo4j：
+python -X utf8 deploy/verify-document-graph.py --exercise-retry
+```
+
+脚本使用本机管理员凭据；当前验收要求图谱未超过 overview 接口的容量。

@@ -246,7 +246,14 @@ onBeforeUnmount(() => {
           <details
             ><summary>查看来源 · {{ edge.sourceEvidence.section }}</summary
             ><p>{{ edge.sourceEvidence.title }}</p
-            ><blockquote>{{ edge.sourceEvidence.excerpt }}</blockquote></details
+            ><p v-if="edge.sourceEvidence.documentId"
+              >文档 #{{ edge.sourceEvidence.documentId }} · 版本
+              {{ edge.sourceEvidence.documentVersion }} · 片段 #{{ edge.sourceEvidence.chunkId
+              }}<span v-if="edge.sourceEvidence.pageNumber">
+                · 第 {{ edge.sourceEvidence.pageNumber }} 页</span
+              ></p
+            >
+            <blockquote>{{ edge.sourceEvidence.excerpt }}</blockquote></details
           >
         </article>
         <p v-if="selected && !relations.length" class="empty-state"

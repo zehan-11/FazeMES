@@ -36,5 +36,38 @@ public class MesGraphStore implements AutoCloseable {
                 TransactionConfig.builder().withTimeout(Duration.ofSeconds(5)).build());
         }
     }
+    private boolean documentSchemaReady;
+    private synchronized void documentSchema(){
+        if(documentSchemaReady)return;
+        try(var session=driver().session(SessionConfig.forDatabase(database))){
+            session.run("CREATE CONSTRAINT fazemes_entity_scope IF NOT EXISTS FOR (n:FazeEntity) REQUIRE (n.tenantId,n.ownerId,n.id) IS UNIQUE").consume();
+            session.run("CREATE CONSTRAINT fazemes_relation_scope IF NOT EXISTS FOR ()-[r:FazeRelation]-() REQUIRE (r.tenantId,r.ownerId,r.id) IS UNIQUE").consume();
+        }
+        documentSchemaReady=true;
+    }
+    /** Atomic, idempotent replacement of one document's contributions, preserving other sources. */
+    public void replaceDocument(MesKnowledgeGraphService.Scope scope,long documentId,int version,List<Map<String,Object>> facts){
+        documentSchema();
+        Map<String,Object> p=new HashMap<>();p.put("tenant",scope.tenant());p.put("owner",scope.owner());p.put("document",documentId);p.put("version",version);p.put("facts",facts);
+        try(var session=driver().session(SessionConfig.builder().withDatabase(database).withDefaultAccessMode(AccessMode.WRITE).build())){
+            session.executeWrite(tx->{
+                tx.run("MATCH (a:FazeEntity)-[r:FazeRelation]->(b:FazeEntity) WHERE r.tenantId=$tenant AND r.ownerId=$owner AND r.documentId=$document AND a.tenantId=$tenant AND a.ownerId=$owner AND b.tenantId=$tenant AND b.ownerId=$owner DELETE r",p).consume();
+                tx.run("""
+                    UNWIND $facts AS f
+                    MERGE (a:FazeEntity {tenantId:$tenant,ownerId:$owner,id:f.sourceId})
+                    ON CREATE SET a.name=f.sourceName,a.kind=f.sourceKind,a.description='',a.origin='DOCUMENT'
+                    MERGE (b:FazeEntity {tenantId:$tenant,ownerId:$owner,id:f.targetId})
+                    ON CREATE SET b.name=f.targetName,b.kind=f.targetKind,b.description='',b.origin='DOCUMENT'
+                    MERGE (a)-[r:FazeRelation {tenantId:$tenant,ownerId:$owner,id:f.relationId}]->(b)
+                    SET r.type=f.relation,r.sourceTitle=f.sourceTitle,r.sourceSection=f.sourceSection,r.sourceExcerpt=f.sourceExcerpt,
+                        r.knowledgeBaseId=f.knowledgeBaseId,r.documentId=$document,r.documentVersion=$version,
+                        r.chunkId=f.chunkId,r.chunkHash=f.chunkHash,r.pageNumber=f.pageNumber,
+                        r.startOffset=f.startOffset,r.endOffset=f.endOffset,r.extractionMethod=f.extractionMethod
+                    """,p).consume();
+                tx.run("MATCH (n:FazeEntity) WHERE n.tenantId=$tenant AND n.ownerId=$owner AND n.origin='DOCUMENT' AND NOT (n)--() DELETE n",p).consume();
+                return null;
+            },TransactionConfig.builder().withTimeout(Duration.ofSeconds(10)).build());
+        }
+    }
     @PreDestroy public synchronized void close(){if(driver!=null){driver.close();driver=null;}}
 }

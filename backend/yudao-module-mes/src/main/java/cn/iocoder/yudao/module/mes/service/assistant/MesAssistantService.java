@@ -21,6 +21,7 @@ public class MesAssistantService {
     private final MesAssistantRetriever retriever;
     private final MesAssistantModelGateway models;
     private final MesAssistantMessageStore messages;
+    @Autowired(required=false) private cn.iocoder.yudao.module.mes.service.graph.MesDocumentGraphService documentGraph;
     public MesAssistantService(JdbcTemplate jdbc, ObjectMapper json, MesAssistantDocumentParser parser,
                                MesAssistantRetriever retriever, MesAssistantModelGateway models) {
         this(jdbc,json,parser,retriever,models,new MesAssistantMessageStore(jdbc,json,new DataSourceTransactionManager(Objects.requireNonNull(jdbc.getDataSource()))));
@@ -63,9 +64,10 @@ public class MesAssistantService {
 
     public List<Map<String, Object>> documents(long baseId, boolean manage) {
         long tenant = tenant(); requireBase(baseId);
-        return rows("SELECT id,knowledge_base_id,title,file_name,file_type,file_size,file_sha256,chunk_count,version,status,create_time,update_time"
-                + " FROM mes_assistant_document WHERE knowledge_base_id=? AND tenant_id=? AND deleted=0"
-                + (manage ? "" : " AND status='PUBLISHED'") + " ORDER BY id DESC", baseId, tenant);
+        return rows("SELECT d.id,d.knowledge_base_id,d.title,d.file_name,d.file_type,d.file_size,d.file_sha256,d.chunk_count,d.version,d.status,d.create_time,d.update_time,"
+                + " COALESCE(g.status,'NOT_INDEXED') AS graph_status,COALESCE(g.entity_count,0) AS graph_entity_count,COALESCE(g.relation_count,0) AS graph_relation_count,g.error_message AS graph_error,COALESCE(g.attempts,0) AS graph_attempts"
+                + " FROM mes_assistant_document d LEFT JOIN mes_assistant_graph_state g ON g.tenant_id=d.tenant_id AND g.document_id=d.id WHERE d.knowledge_base_id=? AND d.tenant_id=? AND d.deleted=0"
+                + (manage ? "" : " AND d.status='PUBLISHED'") + " ORDER BY d.id DESC", baseId, tenant);
     }
 
     @Transactional
@@ -85,6 +87,7 @@ public class MesAssistantService {
                     VALUES(?,?,?,?,?,?,?,?,?)
                     """, id, chunk.index(), chunk.heading(), chunk.pageNumber(), chunk.startOffset(), chunk.endOffset(), chunk.text(), chunk.hash(), tenant);
         }
+        if(documentGraph!=null)documentGraph.stage(id,false);
         return Map.of("id", id, "title", title, "chunkCount", parsed.chunks().size(), "status", "DRAFT", "version", 1);
     }
 
@@ -113,6 +116,7 @@ public class MesAssistantService {
         long tenant = tenant(); document(id, true);
         jdbc.update("UPDATE mes_assistant_document SET status=?,update_time=CURRENT_TIMESTAMP WHERE id=? AND tenant_id=? AND deleted=0",
                 published ? "PUBLISHED" : "DRAFT", id, tenant);
+        if(documentGraph!=null)documentGraph.stage(id,false);
     }
 
     @Transactional
@@ -120,6 +124,14 @@ public class MesAssistantService {
         long tenant = tenant(); document(id, true);
         jdbc.update("UPDATE mes_assistant_chunk SET deleted=1 WHERE document_id=? AND tenant_id=? AND deleted=0", id, tenant);
         jdbc.update("UPDATE mes_assistant_document SET deleted=1 WHERE id=? AND tenant_id=? AND deleted=0", id, tenant);
+        if(documentGraph!=null)documentGraph.stage(id,true);
+    }
+
+    @Transactional
+    public void rebuildGraph(long id){
+        document(id,true);
+        if(documentGraph==null)throw MesAssistantErrors.invalid("文档建图服务未启用");
+        documentGraph.stage(id,false);
     }
 
     public Map<String, Object> search(String query, List<Long> baseIds, int limit) {

@@ -17,6 +17,19 @@ export interface KnowledgeDocument {
   chunkCount: number
   version: number
   status: 'DRAFT' | 'PUBLISHED'
+  graphStatus:
+    | 'NOT_INDEXED'
+    | 'READY'
+    | 'EMPTY'
+    | 'PENDING'
+    | 'SYNCED'
+    | 'ERROR'
+    | 'INVALID'
+    | 'REMOVED'
+  graphEntityCount: number
+  graphRelationCount: number
+  graphError?: string
+  graphAttempts: number
   createTime: number | string
 }
 export interface Citation {
@@ -98,6 +111,8 @@ export const AssistantApi = {
       headersType: 'multipart/form-data'
     })
   },
+  rebuildGraph: (id: number) =>
+    request.post({ url: `${url}/document/graph/rebuild`, params: { id } }),
   publish: (id: number, published: boolean) =>
     request.put({ url: `${url}/document/publish`, params: { id, published } }),
   deleteDocument: (id: number) => request.delete({ url: `${url}/document`, params: { id } }),

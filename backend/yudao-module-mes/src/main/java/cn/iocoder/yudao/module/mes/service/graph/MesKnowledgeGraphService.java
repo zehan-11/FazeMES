@@ -10,7 +10,10 @@ import java.util.*;
 public class MesKnowledgeGraphService {
     public record Scope(long tenant,long owner) {}
     public record Entity(String id,String name,String kind,String description) {}
-    public record Source(String title,String section,String excerpt) {}
+    public record Source(String title,String section,String excerpt,Long knowledgeBaseId,Long documentId,Integer documentVersion,Long chunkId,String chunkHash,Integer pageNumber,Integer startOffset,Integer endOffset,String extractionMethod) {
+        public Source(String title,String section,String excerpt){this(title,section,excerpt,null,null,null,null,null,null,null,null,null);}
+    }
+
     public record Relation(String id,String source,String target,String type,Source sourceEvidence) {}
     public record Graph(List<Entity> nodes,List<Relation> relations,boolean hasMore) {}
     public record Search(List<Entity> items,boolean hasMore) {}
@@ -18,7 +21,8 @@ public class MesKnowledgeGraphService {
     public MesKnowledgeGraphService(MesGraphStore store){this.store=store;}
     static final String NODE_SCOPE="n.tenantId=$tenant AND n.ownerId=$owner";
     static final String EDGE_SCOPE="a.tenantId=$tenant AND a.ownerId=$owner AND b.tenantId=$tenant AND b.ownerId=$owner AND r.tenantId=$tenant AND r.ownerId=$owner";
-    Scope scope(){
+    Scope scope(){return currentScope();}
+    public static Scope currentScope(){
         var login=SecurityFrameworkUtils.getLoginUser();
         Long tenant=TenantContextHolder.getTenantId();
         Long trusted=login==null?null:(login.getVisitTenantId()!=null?login.getVisitTenantId():login.getTenantId());
@@ -41,6 +45,14 @@ public class MesKnowledgeGraphService {
         List<Entity> nodes=rows.stream().limit(size).map(row->entity(map(row.get("entity")))).toList();
         return graph(scope,nodes,more);
     }
+    static Relation relation(Map<String,Object> row){
+        var r=map(row.get("relation"));return new Relation(text(r,"id"),text(row,"source"),text(row,"target"),text(r,"type"),
+            new Source(text(r,"sourceTitle"),text(r,"sourceSection"),text(r,"sourceExcerpt"),optionalLong(r,"knowledgeBaseId"),optionalLong(r,"documentId"),optionalInt(r,"documentVersion"),optionalLong(r,"chunkId"),nullableText(r,"chunkHash"),optionalInt(r,"pageNumber"),optionalInt(r,"startOffset"),optionalInt(r,"endOffset"),nullableText(r,"extractionMethod")));
+    }
+    static Long optionalLong(Map<String,Object> row,String key){return row.get(key) instanceof Number n?n.longValue():null;}
+    static Integer optionalInt(Map<String,Object> row,String key){return row.get(key) instanceof Number n?n.intValue():null;}
+    static String nullableText(Map<String,Object> row,String key){return row.get(key)==null?null:row.get(key).toString();}
+
     public Search search(String query,int size){
         Scope scope=scope();limit(size,50);
         if(query==null||query.isBlank()||query.length()>100)throw invalid();
@@ -62,7 +74,7 @@ public class MesKnowledgeGraphService {
     private Graph graph(Scope scope,List<Entity> nodes,boolean more){
         if(nodes.isEmpty())return new Graph(nodes,List.of(),more);
         var rows=read(scope,"MATCH (a:FazeEntity)-[r:FazeRelation]->(b:FazeEntity) WHERE "+EDGE_SCOPE+" AND a.id IN $ids AND b.id IN $ids RETURN properties(r) AS relation,a.id AS source,b.id AS target ORDER BY r.id LIMIT 501",Map.of("ids",nodes.stream().map(Entity::id).toList()));
-        var edges=rows.stream().limit(500).map(row->{var r=map(row.get("relation"));return new Relation(text(r,"id"),text(row,"source"),text(row,"target"),text(r,"type"),new Source(text(r,"sourceTitle"),text(r,"sourceSection"),text(r,"sourceExcerpt")));}).toList();
+        var edges=rows.stream().limit(500).map(MesKnowledgeGraphService::relation).toList();
         return new Graph(nodes,edges,more||rows.size()>500);
     }
     @SuppressWarnings("unchecked") static Map<String,Object> map(Object value){return (Map<String,Object>)value;}

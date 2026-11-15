@@ -228,11 +228,26 @@
                 ></div
               >
               <el-alert
-                title="上传后为草稿，审核原文并发布后才参与检索。支持UTF-8 TXT / MD / CSV、DOCX和文本型PDF，单文件最多5MB；扫描PDF需先OCR。"
+                title="支持 TXT / MD / CSV、DOCX 和文本型 PDF（最多 5MB）。草稿先解析关系，发布后同步到上传者的个人图谱；撤回后移除对应关系。扫描 PDF 需先 OCR。"
                 type="info"
                 show-icon
                 :closable="false"
               />
+              <el-collapse class="mt-12px">
+                <el-collapse-item title="文件建图的关系格式" name="graph-format">
+                  <p
+                    >当前识别文档中明确写出的关系，不调用模型推断。每条关系独占一行，类型可省略：</p
+                  >
+                  <pre>
+[设备]风扇 —包含部件→ [部件]电机
+[部件]电机 —包含部件→ [部件]轴承</pre
+                  >
+                  <p
+                    >也支持三列表格／CSV：源实体、关系、目标实体。没有识别到关系时会显示“未识别关系”，不会生成猜测结果。</p
+                  >
+                  <a href="/templates/knowledge-relations.md" download>下载关系文档模板</a>
+                </el-collapse-item>
+              </el-collapse>
               <el-table
                 :data="documents"
                 v-loading="documentsLoading"
@@ -255,7 +270,26 @@
                     }}</el-tag></template
                   ></el-table-column
                 >
-                <el-table-column label="操作" min-width="240"
+                <el-table-column label="知识图谱" min-width="180">
+                  <template #default="{ row }">
+                    <el-tag
+                      :type="
+                        row.graphStatus === 'SYNCED'
+                          ? 'success'
+                          : ['ERROR', 'INVALID'].includes(row.graphStatus)
+                            ? 'danger'
+                            : 'info'
+                      "
+                      >{{ graphStatusText(row.graphStatus) }}</el-tag
+                    >
+                    <div
+                      >{{ row.graphEntityCount || 0 }} 个实体 ·
+                      {{ row.graphRelationCount || 0 }} 条关系</div
+                    >
+                    <small v-if="row.graphError">{{ row.graphError }}</small>
+                  </template>
+                </el-table-column>
+                <el-table-column label="操作" min-width="300"
                   ><template #default="{ row }"
                     ><el-button link type="primary" @click="preview(row.id)">原文与分块</el-button
                     ><el-button link @click="downloadDocument(row)">下载</el-button
@@ -265,6 +299,12 @@
                       type="primary"
                       @click="publishDocument(row)"
                       >{{ row.status === 'PUBLISHED' ? '撤回' : '发布' }}</el-button
+                    ><el-button
+                      v-if="canManage"
+                      link
+                      :disabled="row.graphStatus === 'PENDING'"
+                      @click="rebuildDocumentGraph(row)"
+                      >重新建图</el-button
                     ><el-button v-if="canManage" link type="danger" @click="removeDocument(row)"
                       >删除</el-button
                     ></template
@@ -474,7 +514,16 @@
 </template>
 
 <script setup lang="ts">
-import { computed, defineAsyncComponent, nextTick, onMounted, reactive, ref } from 'vue'
+import {
+  computed,
+  defineAsyncComponent,
+  nextTick,
+  onMounted,
+  onBeforeUnmount,
+  reactive,
+  ref,
+  watch
+} from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import type { UploadFile, UploadInstance } from 'element-plus'
 import {
@@ -679,20 +728,66 @@ async function selectBase(id: number) {
   knowledgeBaseId.value = id
   await loadDocuments()
 }
+let graphPoll: ReturnType<typeof setTimeout> | undefined
+let documentRequest = 0
+let assistantDisposed = false
+const graphStatusText = (status: string) =>
+  ({
+    NOT_INDEXED: '尚未建图',
+    READY: '待发布',
+    EMPTY: '未识别关系',
+    PENDING: '等待同步',
+    SYNCED: '已同步',
+    ERROR: '同步失败',
+    INVALID: '关系格式待检查',
+    REMOVED: '已移除'
+  })[status] || '尚未建图'
 async function loadDocuments() {
-  if (!knowledgeBaseId.value) {
+  clearTimeout(graphPoll)
+  const request = ++documentRequest,
+    base = knowledgeBaseId.value
+  if (!base) {
     documents.value = []
     return
   }
   documentsLoading.value = true
   try {
-    documents.value = await AssistantApi.documents(knowledgeBaseId.value)
+    const result = await AssistantApi.documents(base)
+    if (assistantDisposed || request !== documentRequest || base !== knowledgeBaseId.value) return
+    documents.value = result
+    if (
+      tab.value === 'knowledge' &&
+      result.some(
+        (d) => d.graphStatus === 'PENDING' || (d.graphStatus === 'ERROR' && d.graphAttempts < 10)
+      )
+    ) {
+      graphPoll = setTimeout(() => void loadDocuments(), 3000)
+    }
   } catch (exception) {
-    failure(exception, '文档加载失败')
+    if (request === documentRequest) failure(exception, '文档加载失败')
   } finally {
-    documentsLoading.value = false
+    if (request === documentRequest) documentsLoading.value = false
   }
 }
+async function rebuildDocumentGraph(document: KnowledgeDocument) {
+  try {
+    await AssistantApi.rebuildGraph(document.id)
+    ElMessage.success(document.status === 'PUBLISHED' ? '已提交图谱同步任务' : '已重新解析草稿关系')
+    await loadDocuments()
+  } catch (exception) {
+    failure(exception, '提交建图任务失败')
+  }
+}
+watch(tab, (value) => {
+  clearTimeout(graphPoll)
+  if (value === 'knowledge') void loadDocuments()
+})
+onBeforeUnmount(() => {
+  assistantDisposed = true
+  ++documentRequest
+  clearTimeout(graphPoll)
+})
+
 function editBase(base?: KnowledgeBase) {
   baseForm.id = base?.id
   baseForm.name = base?.name || ''
@@ -761,8 +856,8 @@ async function publishDocument(document: KnowledgeDocument) {
   try {
     await ElMessageBox.confirm(
       document.status === 'PUBLISHED'
-        ? '撤回后不再参与新提问检索，历史引用快照保留。'
-        : '确认已审核文档原文，并发布供当前租户知识检索？',
+        ? '撤回后不再参与新提问检索，并异步移除该文档的图谱关系；历史引用快照保留。'
+        : '确认已审核原文？发布后可供当前租户知识检索，明确关系将同步到上传者的个人图谱。',
       document.status === 'PUBLISHED' ? '撤回文档' : '发布文档'
     )
     await AssistantApi.publish(document.id, document.status !== 'PUBLISHED')
@@ -775,7 +870,7 @@ async function publishDocument(document: KnowledgeDocument) {
 async function removeDocument(document: KnowledgeDocument) {
   try {
     await ElMessageBox.confirm(
-      `删除“${document.title}”及检索分块？历史会话引用快照保留。`,
+      `删除“${document.title}”及检索分块，并异步移除其图谱关系？历史会话引用快照保留。`,
       '删除文档',
       { type: 'warning' }
     )

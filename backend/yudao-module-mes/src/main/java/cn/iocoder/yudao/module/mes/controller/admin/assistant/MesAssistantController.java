@@ -56,6 +56,8 @@ public class MesAssistantController {
     }
     @GetMapping("/document") @PreAuthorize("@ss.hasAnyPermissions('mes:assistant:knowledge','mes:assistant:manage')")
     public CommonResult<?> document(@RequestParam long id) { return success(service.document(id, manage())); }
+    @PostMapping("/document/graph/rebuild") @PreAuthorize("@ss.hasPermission('mes:assistant:manage')") @ApiAccessLog(requestEnable=false,responseEnable=false)
+    public CommonResult<?> rebuildGraph(@RequestParam long id){service.rebuildGraph(id);return success(true);}
     @GetMapping("/document/download") @PreAuthorize("@ss.hasAnyPermissions('mes:assistant:knowledge','mes:assistant:manage')")
     public ResponseEntity<byte[]> download(@RequestParam long id) {
         var file = service.download(id, manage());

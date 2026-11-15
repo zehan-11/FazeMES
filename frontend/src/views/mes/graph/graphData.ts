@@ -10,6 +10,15 @@ export interface GraphSource {
   title: string
   section: string
   excerpt: string
+  knowledgeBaseId?: number | string
+  documentId?: number | string
+  documentVersion?: number
+  chunkId?: number | string
+  chunkHash?: string
+  pageNumber?: number
+  startOffset?: number
+  endOffset?: number
+  extractionMethod?: string
 }
 export interface GraphRelation {
   id: string

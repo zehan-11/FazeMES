@@ -41,8 +41,9 @@ pwsh -File deploy/start-with-graph.ps1 -Build
 - 所有接口要求 `mes:assistant:knowledge` 或 `mes:assistant:manage` 权限。
 - Cypher 值均参数化，连接异常不向客户端返回凭据或底层连接详情。
 
-目前实现图数据库查询与展示，不含文件自动抽取、文件版本同步或 GraphRAG 问答。
-GraphSource 仍保留来源契约，后续可扩展文档 ID、页码、片段与版本信息。
+文件上传、发布、撤回与删除现已连接 Neo4j，支持明确关系格式，详见 [文档建图](DOCUMENT-GRAPH.md)。
+GraphSource 包含文档 ID、版本、片段、页码、哈希与原文位置。模型语义抽取、
+文件替换版本管理页面及 GraphRAG 问答尚待后续接入。
 
 ## 源码与渲染
 
