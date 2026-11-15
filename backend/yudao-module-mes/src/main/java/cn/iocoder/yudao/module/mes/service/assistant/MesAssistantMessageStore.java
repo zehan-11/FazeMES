@@ -35,10 +35,11 @@ public class MesAssistantMessageStore {
             String request=UUID.randomUUID().toString();
             jdbc.update("UPDATE mes_assistant_session SET version=?,pending_request_id=?,pending_started_at=CURRENT_TIMESTAMP WHERE id=? AND tenant_id=? AND user_id=? AND deleted=0",version+1,request,sessionId,tenant,userId);
             long userMessage=insert("INSERT INTO mes_assistant_message(session_id,user_id,role,content_text,status,citations_json,tenant_id) VALUES(?,?,'user',?,'PROCESSING','[]',?)",sessionId,userId,question,tenant);
-            var history=jdbc.query("SELECT role,content_text AS content FROM mes_assistant_message WHERE session_id=? AND tenant_id=? AND user_id=? AND deleted=0 AND status='ANSWERED' ORDER BY id DESC LIMIT 12",(rs,index)->{
+            var history=jdbc.query("SELECT role,content_text AS content,citations_json FROM mes_assistant_message WHERE session_id=? AND tenant_id=? AND user_id=? AND deleted=0 AND status='ANSWERED' ORDER BY id DESC LIMIT 12",(rs,index)->{
                 String role=rs.getString("role"),content=rs.getString("content");
                 if(role==null||content==null)throw MesAssistantErrors.invalid("会话历史内容不完整，请核对后重试");
-                return Map.<String,Object>of("role",role,"content",content);
+                try{return Map.<String,Object>of("role",role,"content",content,"evidenceCitations",rs.getString("citations_json")==null?List.of():json.readValue(rs.getString("citations_json"),List.class));}
+                catch(Exception e){throw MesAssistantErrors.invalid("会话历史引用格式无效，请核对后重试");}
             },sessionId,tenant,userId);
             Collections.reverse(history);
             return new Claim(tenant,userId,sessionId,version+1,request,userMessage,List.copyOf(history));

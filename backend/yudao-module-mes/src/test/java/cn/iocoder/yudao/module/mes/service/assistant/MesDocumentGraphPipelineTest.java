@@ -57,7 +57,7 @@ class MesDocumentGraphPipelineTest extends MesAssistantTestDatabase {
     }
     @Test void scopeComesFromDocumentCreatorAndCrossTenantRequestsFail(){
         long id=upload("a —关联→ b");SecurityFrameworkUtils.setLoginUser(new LoginUser().setId(11L).setTenantId(1L).setUserType(2),new MockHttpServletRequest());
-        publish(id,true);ingestion.process(1,id);verify(graph).replaceDocument(eq(new MesKnowledgeGraphService.Scope(1,10)),eq(id),eq(1),anyList());
+        assertThrows(RuntimeException.class,()->publish(id,true));verifyNoInteractions(graph);
         TenantContextHolder.setTenantId(2L);assertThrows(RuntimeException.class,()->tx.executeWithoutResult(s->service.rebuildGraph(id)));
     }
     @Test void aNewerWithdrawalSupersedesAnUndeliveredPublication(){

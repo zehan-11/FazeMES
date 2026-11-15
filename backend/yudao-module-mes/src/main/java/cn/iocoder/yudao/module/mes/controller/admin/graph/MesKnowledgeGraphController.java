@@ -21,4 +21,8 @@ public class MesKnowledgeGraphController {
     @GetMapping("/node") public CommonResult<?> node(@RequestParam String id){return success(service.detail(id));}
     @ApiAccessLog(requestEnable=false,responseEnable=false)
     @GetMapping("/neighbors") public CommonResult<?> neighbors(@RequestParam String id,@RequestParam(defaultValue="20") int limit){return success(service.neighbors(id,limit));}
+    @ApiAccessLog(requestEnable=false,responseEnable=false)
+    @GetMapping("/nodes-page") public CommonResult<?> nodes(@RequestParam(defaultValue="") String after,@RequestParam(defaultValue="200") int limit){return success(service.nodePage(after,limit));}
+    @ApiAccessLog(requestEnable=false,responseEnable=false)
+    @GetMapping("/relations-page") public CommonResult<?> relations(@RequestParam(defaultValue="") String after,@RequestParam(defaultValue="500") int limit){return success(service.relationPage(after,limit));}
 }

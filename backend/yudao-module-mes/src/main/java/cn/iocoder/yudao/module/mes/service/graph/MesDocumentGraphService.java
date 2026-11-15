@@ -20,6 +20,7 @@ public class MesDocumentGraphService {
     private final JdbcTemplate jdbc; private final ObjectMapper json;
     private final MesDocumentRelationExtractor extractor; private final MesGraphStore graph;
     private final TransactionTemplate transactions;
+    @org.springframework.beans.factory.annotation.Autowired(required=false) private cn.iocoder.yudao.module.mes.service.assistant.MesKnowledgeAccess knowledgeAccess;
     public MesDocumentGraphService(JdbcTemplate jdbc,ObjectMapper json,MesDocumentRelationExtractor extractor,MesGraphStore graph,PlatformTransactionManager manager){
         this.jdbc=jdbc;this.json=json;this.extractor=extractor;this.graph=graph;
         transactions=new TransactionTemplate(manager);transactions.setPropagationBehavior(TransactionDefinition.PROPAGATION_REQUIRES_NEW);
@@ -28,15 +29,16 @@ public class MesDocumentGraphService {
         var actor=MesKnowledgeGraphService.currentScope();long tenant=actor.tenant();
         var docs=jdbc.queryForList("SELECT id,knowledge_base_id,title,content_text,version,status,creator,deleted FROM mes_assistant_document WHERE tenant_id=? AND id=? FOR UPDATE",tenant,documentId);
         if(docs.isEmpty())throw MesAssistantErrors.missing();var doc=docs.get(0);
+        if(knowledgeAccess!=null)knowledgeAccess.requireBase(number(doc,"knowledge_base_id"),true);
         long owner=number(doc,"creator");if(owner<=0)throw MesAssistantErrors.invalid("文档缺少上传者，无法建立私有图谱");
         // Public hooks cannot use a caller-provided owner or tenant.
         String desired=deleted?"DELETED":doc.get("status").toString();
         if(!deleted && (Boolean.TRUE.equals(doc.get("deleted")) || "1".equals(doc.get("deleted").toString())))throw MesAssistantErrors.missing();
         int version=(int)number(doc,"version");List<MesDocumentRelationExtractor.Fact> facts=List.of();String failure="";
         if(!deleted){
-            var chunks=jdbc.query("SELECT id,heading,page_number,start_offset,end_offset,content_text,content_sha256 FROM mes_assistant_chunk WHERE tenant_id=? AND document_id=? AND deleted=0 ORDER BY chunk_index",
+            var chunks=jdbc.query("SELECT id,heading,page_number,start_offset,end_offset,content_text,content_sha256 FROM mes_assistant_chunk WHERE tenant_id=? AND document_id=? AND deleted=0 ORDER BY chunk_index FOR UPDATE",
                 (rs,i)->new MesDocumentRelationExtractor.Chunk(rs.getLong("id"),rs.getString("heading"),(Integer)rs.getObject("page_number"),rs.getInt("start_offset"),rs.getInt("end_offset"),rs.getString("content_text"),rs.getString("content_sha256")),tenant,documentId);
-            try{facts=extractor.extract(number(doc,"knowledge_base_id"),documentId,version,doc.get("title").toString(),jdbc.queryForObject("SELECT content_text FROM mes_assistant_document WHERE tenant_id=? AND id=?",String.class,tenant,documentId),chunks);}
+            try{facts=extractor.extract(number(doc,"knowledge_base_id"),documentId,version,doc.get("title").toString(),jdbc.queryForObject("SELECT content_text FROM mes_assistant_document WHERE tenant_id=? AND id=? FOR UPDATE",String.class,tenant,documentId),chunks);}
             catch(IllegalArgumentException e){failure=e.getMessage();}
         }
         int entityCount=(int)facts.stream().flatMap(f->java.util.stream.Stream.of(f.sourceId(),f.targetId())).distinct().count();

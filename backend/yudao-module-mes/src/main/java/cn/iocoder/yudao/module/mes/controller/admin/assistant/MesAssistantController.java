@@ -30,9 +30,9 @@ public class MesAssistantController {
     public MesAssistantController(MesAssistantService service, MesAssistantModelGateway models, SecurityFrameworkService security) {
         this.service = service; this.models = models; this.security = security;
     }
-    private boolean manage() { return security.hasPermission("mes:assistant:manage"); }
+    private boolean manage() { return security.hasAnyPermissions("mes:assistant:knowledge","mes:assistant:manage"); }
     private static long user() { Long id = getLoginUserId(); if (id == null) throw MesAssistantErrors.missing(); return id; }
-    public record BaseSave(Long id, @NotBlank @Size(max = 100) String name, @Size(max = 1000) String description) {}
+    public record BaseSave(Long id, @NotBlank @Size(max = 100) String name, @Size(max = 1000) String description,String libraryType,@Size(max=50) List<Long> readerRoleIds) {}
     public record Search(@NotBlank @Size(max = 1000) String query, @Size(max = 20) List<Long> knowledgeBaseIds, @Min(1) @Max(10) Integer limit) {}
     public record SessionTitle(@Size(max = 100) String title) {}
     public record Message(@NotNull Long sessionId, @NotBlank @Size(max = 4000) String question, @Size(max = 20) List<Long> knowledgeBaseIds) {}
@@ -41,30 +41,32 @@ public class MesAssistantController {
     public CommonResult<?> status() { return success(models.status()); }
     @GetMapping("/bases") @PreAuthorize("@ss.hasAnyPermissions('mes:assistant:knowledge','mes:assistant:manage')")
     public CommonResult<?> bases() { return success(service.bases(manage())); }
-    @PostMapping("/base") @PreAuthorize("@ss.hasPermission('mes:assistant:manage')")
-    public CommonResult<?> saveBase(@Valid @RequestBody BaseSave body) { return success(service.saveBase(body.id(), body.name(), body.description(), user())); }
-    @DeleteMapping("/base") @PreAuthorize("@ss.hasPermission('mes:assistant:manage')")
+    @GetMapping("/base/roles") @PreAuthorize("@ss.hasPermission('mes:assistant:config')")
+    public CommonResult<?> baseRoles(){return success(service.baseRoles());}
+    @PostMapping("/base") @PreAuthorize("@ss.hasAnyPermissions('mes:assistant:knowledge','mes:assistant:manage')")
+    public CommonResult<?> saveBase(@Valid @RequestBody BaseSave body) { return success(service.saveBase(body.id(), body.name(), body.description(), user(),body.libraryType(),body.readerRoleIds())); }
+    @DeleteMapping("/base") @PreAuthorize("@ss.hasAnyPermissions('mes:assistant:knowledge','mes:assistant:manage')")
     public CommonResult<?> deleteBase(@RequestParam long id) { service.deleteBase(id); return success(true); }
     @GetMapping("/documents") @PreAuthorize("@ss.hasAnyPermissions('mes:assistant:knowledge','mes:assistant:manage')")
     public CommonResult<?> documents(@RequestParam long knowledgeBaseId) { return success(service.documents(knowledgeBaseId, manage())); }
     @PostMapping(value = "/document/upload", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
-    @PreAuthorize("@ss.hasPermission('mes:assistant:manage')") @ApiAccessLog(requestEnable = false)
+    @PreAuthorize("@ss.hasAnyPermissions('mes:assistant:knowledge','mes:assistant:manage')") @ApiAccessLog(requestEnable = false)
     public CommonResult<?> upload(@RequestParam long knowledgeBaseId, @RequestParam(required = false) String title,
                                    @RequestPart("file") MultipartFile file) throws java.io.IOException {
         if (file.isEmpty() || file.getSize() > MesAssistantDocumentParser.MAX_FILE_BYTES) throw MesAssistantErrors.invalid("文件为空或超过5MB");
         return success(service.upload(knowledgeBaseId, title, file.getOriginalFilename(), file.getBytes(), user()));
     }
     @PostMapping(value="/document/update",consumes=MediaType.MULTIPART_FORM_DATA_VALUE)
-    @PreAuthorize("@ss.hasPermission('mes:assistant:manage')") @ApiAccessLog(requestEnable=false,responseEnable=false)
+    @PreAuthorize("@ss.hasAnyPermissions('mes:assistant:knowledge','mes:assistant:manage')") @ApiAccessLog(requestEnable=false,responseEnable=false)
     public CommonResult<?> updateDocument(@RequestParam long id,@RequestParam int expectedVersion,@RequestParam(required=false) String title,@RequestPart("file") MultipartFile file) throws java.io.IOException {
         if(file.isEmpty()||file.getSize()>MesAssistantDocumentParser.MAX_FILE_BYTES)throw MesAssistantErrors.invalid("文件为空或超过5MB");
         return success(service.updateDocument(id,expectedVersion,title,file.getOriginalFilename(),file.getBytes(),user()));
     }
-    @GetMapping("/document/versions") @PreAuthorize("@ss.hasPermission('mes:assistant:manage')") @ApiAccessLog(requestEnable=false,responseEnable=false)
+    @GetMapping("/document/versions") @PreAuthorize("@ss.hasAnyPermissions('mes:assistant:knowledge','mes:assistant:manage')") @ApiAccessLog(requestEnable=false,responseEnable=false)
     public CommonResult<?> documentVersions(@RequestParam long id){return success(service.documentVersions(id));}
     @GetMapping("/document") @PreAuthorize("@ss.hasAnyPermissions('mes:assistant:knowledge','mes:assistant:manage')")
     public CommonResult<?> document(@RequestParam long id,@RequestParam(required=false) Integer version) { return success(service.document(id, manage(),version)); }
-    @PostMapping("/document/graph/rebuild") @PreAuthorize("@ss.hasPermission('mes:assistant:manage')") @ApiAccessLog(requestEnable=false,responseEnable=false)
+    @PostMapping("/document/graph/rebuild") @PreAuthorize("@ss.hasAnyPermissions('mes:assistant:knowledge','mes:assistant:manage')") @ApiAccessLog(requestEnable=false,responseEnable=false)
     public CommonResult<?> rebuildGraph(@RequestParam long id){service.rebuildGraph(id);return success(true);}
     @GetMapping("/document/download") @PreAuthorize("@ss.hasAnyPermissions('mes:assistant:knowledge','mes:assistant:manage')")
     public ResponseEntity<byte[]> download(@RequestParam long id,@RequestParam(required=false) Integer version) {
@@ -73,9 +75,9 @@ public class MesAssistantController {
                 .header(HttpHeaders.CONTENT_DISPOSITION, ContentDisposition.attachment().filename(file.name(), StandardCharsets.UTF_8).build().toString())
                 .header("X-Content-Type-Options", "nosniff").body(file.bytes());
     }
-    @PutMapping("/document/publish") @PreAuthorize("@ss.hasPermission('mes:assistant:manage')")
+    @PutMapping("/document/publish") @PreAuthorize("@ss.hasAnyPermissions('mes:assistant:knowledge','mes:assistant:manage')")
     public CommonResult<?> publish(@RequestParam long id, @RequestParam boolean published,@RequestParam(required=false) Integer expectedVersion) { service.publish(id, published,expectedVersion); return success(true); }
-    @DeleteMapping("/document") @PreAuthorize("@ss.hasPermission('mes:assistant:manage')")
+    @DeleteMapping("/document") @PreAuthorize("@ss.hasAnyPermissions('mes:assistant:knowledge','mes:assistant:manage')")
     public CommonResult<?> deleteDocument(@RequestParam long id) { service.deleteDocument(id); return success(true); }
     @PostMapping("/search") @PreAuthorize("@ss.hasPermission('mes:assistant:knowledge')") @ApiAccessLog(requestEnable = false)
     public CommonResult<?> search(@Valid @RequestBody Search body) { return success(service.search(body.query(), body.knowledgeBaseIds(), body.limit() == null ? 5 : body.limit())); }

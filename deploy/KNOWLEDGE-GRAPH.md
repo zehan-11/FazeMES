@@ -31,19 +31,22 @@ pwsh -File deploy/start-with-graph.ps1 -Build
 - 节点 `FazeEntity`：tenantId、ownerId、id、name、kind、description。
 - 关系 `FazeRelation`：tenantId、ownerId、id、type、sourceTitle、sourceSection、sourceExcerpt。
 - 节点与关系均以 `(tenantId,ownerId,id)` 作为复合唯一约束。
-- 节点、关系及两端节点必须全部满足当前用户/租户范围；范围取自后端认证上下文，
+- 节点、关系及两端节点必须属于同一租户与原始存储所有者；显示前按来源库授权投影。
+  个人库与原私有图谱仅本人可读，企业规则按当前角色授权；范围来自后端认证上下文，
   不接收客户端指定的 tenantId/ownerId。管理员也不会默认读取他人私有图谱。
 - `/admin-api/mes/knowledge-graph/overview`：初始 8 节点，上限 200。
 - `/search?query=...`：名称/类型查询，上限 50，默认 30。
-- `/node?id=...`：私有范围内的实体详情；范围外与不存在统一返回错误。
+- `/node?id=...`：当前授权视图内的实体详情；范围外与不存在统一返回错误。
 - `/neighbors?id=...`：一跳邻居，默认 20，上限 100；范围内的有向关系最多 500。
 - `hasMore` 表示响应截断；浏览器合并按稳定 ID 去重，总量上限 200 节点/500 关系。
 - 所有接口要求 `mes:assistant:knowledge` 或 `mes:assistant:manage` 权限。
 - Cypher 值均参数化，连接异常不向客户端返回凭据或底层连接详情。
 
 文件上传、发布、撤回与删除现已连接 Neo4j，支持明确关系格式，详见 [文档建图](DOCUMENT-GRAPH.md)。
-GraphSource 包含文档 ID、版本、片段、页码、哈希与原文位置。模型语义抽取、
-文件替换版本管理页面及 GraphRAG 问答尚待后续接入。
+GraphSource 包含文档 ID、版本、片段、页码、哈希与原文位置；关系 evidence 与文档
+引用使用统一证据契约。旧版本、草稿、已删除和已撤权来源在返回前过滤，详见
+[知识库权限与检索证据](KNOWLEDGE-ACCESS.md)。文件替换与历史版本已接通；模型语义
+抽取及 GraphRAG 问答尚待后续接入。
 
 ## 源码与渲染
 

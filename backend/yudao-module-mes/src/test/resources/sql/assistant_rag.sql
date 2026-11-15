@@ -19,3 +19,9 @@ CREATE TABLE IF NOT EXISTS mes_assistant_document_revision (
  PRIMARY KEY(tenant_id,document_id,version)
 );
 ALTER TABLE mes_assistant_graph_state ADD COLUMN validation_error VARCHAR(500) NOT NULL DEFAULT '';
+
+ALTER TABLE mes_assistant_knowledge_base ADD COLUMN library_type VARCHAR(16) NOT NULL DEFAULT 'PERSONAL';
+ALTER TABLE mes_assistant_knowledge_base ADD COLUMN owner_id BIGINT NOT NULL DEFAULT 0;
+CREATE TABLE mes_assistant_base_role(tenant_id BIGINT NOT NULL,knowledge_base_id BIGINT NOT NULL,role_id BIGINT NOT NULL,PRIMARY KEY(tenant_id,knowledge_base_id,role_id));
+CREATE TABLE system_role(id BIGINT PRIMARY KEY,tenant_id BIGINT,name VARCHAR(100),code VARCHAR(100),status INT DEFAULT 0,deleted INT DEFAULT 0);
+CREATE TABLE system_user_role(id BIGINT AUTO_INCREMENT PRIMARY KEY,user_id BIGINT,role_id BIGINT,deleted INT DEFAULT 0);

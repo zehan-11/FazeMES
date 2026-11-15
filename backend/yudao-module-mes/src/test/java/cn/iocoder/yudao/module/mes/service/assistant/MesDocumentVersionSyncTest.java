@@ -48,7 +48,9 @@ class MesDocumentVersionSyncTest extends MesAssistantTestDatabase {
     }
     @Test void historicalAccessIsTenantBoundAndManagerOnlyAndOwnerDoesNotChange(){
         long id=upload();SecurityFrameworkUtils.setLoginUser(new LoginUser().setId(11L).setTenantId(1L).setUserType(2),new MockHttpServletRequest());
-        tx.executeWithoutResult(t->service.updateDocument(id,1,null,"v2.md",data("a —关联→ b"),11));assertEquals(10,jdbc.queryForObject("SELECT creator FROM mes_assistant_document WHERE id=?",Integer.class,id));assertEquals(11,jdbc.queryForObject("SELECT changed_by FROM mes_assistant_document_revision WHERE document_id=?",Integer.class,id));
+        assertThrows(RuntimeException.class,()->tx.executeWithoutResult(t->service.updateDocument(id,1,null,"v2.md",data("a —关联→ b"),11)));
+        SecurityFrameworkUtils.setLoginUser(new LoginUser().setId(10L).setTenantId(1L).setUserType(2),new MockHttpServletRequest());
+        tx.executeWithoutResult(t->service.updateDocument(id,1,null,"v2.md",data("a —关联→ b"),10));assertEquals(10,jdbc.queryForObject("SELECT creator FROM mes_assistant_document WHERE id=?",Integer.class,id));assertEquals(10,jdbc.queryForObject("SELECT changed_by FROM mes_assistant_document_revision WHERE document_id=?",Integer.class,id));
         publish(id);assertThrows(RuntimeException.class,()->service.document(id,false,1));assertThrows(RuntimeException.class,()->service.download(id,false,1));
         TenantContextHolder.setTenantId(2L);assertThrows(RuntimeException.class,()->service.documentVersions(id));assertThrows(RuntimeException.class,()->service.download(id,true,1));assertThrows(RuntimeException.class,()->update(id,2,"a —关联→ b"));
     }

@@ -39,9 +39,11 @@ class MesAssistantServiceTest extends MesAssistantTestDatabase {
         long localBase = service.saveBase(null, "本租户", "", 10);
         long localDoc = upload(localBase, "本地规则", "设备点检异常必须记录"); service.publish(localDoc, true);
         TenantContextHolder.setTenantId(2L);
+        cn.iocoder.yudao.framework.security.core.util.SecurityFrameworkUtils.setLoginUser(new cn.iocoder.yudao.framework.security.core.LoginUser().setId(20L).setTenantId(2L).setUserType(2),new org.springframework.mock.web.MockHttpServletRequest());
         long foreignBase = service.saveBase(null, "其他租户", "", 20);
         long foreignDoc = upload(foreignBase, "其他租户秘密", "设备点检异常不得外泄"); service.publish(foreignDoc, true);
         TenantContextHolder.setTenantId(1L);
+        cn.iocoder.yudao.framework.security.core.util.SecurityFrameworkUtils.setLoginUser(new cn.iocoder.yudao.framework.security.core.LoginUser().setId(10L).setTenantId(1L).setUserType(2),new org.springframework.mock.web.MockHttpServletRequest());
         assertEquals(1, items(service.search("点检异常", List.of(), 5)).size());
         assertThrows(ServiceException.class, () -> service.document(foreignDoc, true));
         assertThrows(ServiceException.class, () -> service.download(foreignDoc, true));
@@ -102,7 +104,7 @@ class MesAssistantServiceTest extends MesAssistantTestDatabase {
         assertThrows(NullPointerException.class, models::status);
     }
 
-    private long upload(long base, String title, String text) { return ((Number) service.upload(base, title, "规范.md", text.getBytes(StandardCharsets.UTF_8), 10).get("id")).longValue(); }
+    private long upload(long base, String title, String text) { return ((Number) service.upload(base, title, "规范.md", text.getBytes(StandardCharsets.UTF_8), cn.iocoder.yudao.framework.security.core.util.SecurityFrameworkUtils.getLoginUserId()).get("id")).longValue(); }
     @SuppressWarnings("unchecked") private static List<Map<String,Object>> items(Map<String,Object> response) { return (List<Map<String,Object>>) response.get("items"); }
     @SuppressWarnings("unchecked") private static List<Map<String,Object>> itemsFromCitations(Map<String,Object> response) { return (List<Map<String,Object>>) response.get("citations"); }
     @SuppressWarnings("unchecked") private static List<Map<String,Object>> messages(Map<String,Object> response) { return (List<Map<String,Object>>) response.get("messages"); }

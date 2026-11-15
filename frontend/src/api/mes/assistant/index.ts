@@ -1,10 +1,15 @@
 import request from '@/config/axios'
+import type { RetrievalEvidence } from './evidence'
 
 export interface KnowledgeBase {
   id: number
   name: string
   description: string
   documentCount: number
+  libraryType: 'PERSONAL' | 'RULES'
+  ownerId: number
+  canManage: boolean
+  readerRoleIds: number[]
 }
 export interface KnowledgeDocument {
   id: number
@@ -45,6 +50,7 @@ export interface DocumentVersion {
   isCurrent: boolean
 }
 export interface Citation {
+  evidence?: RetrievalEvidence
   chunkId: number
   documentId: number
   knowledgeBaseId: number
@@ -102,8 +108,15 @@ const url = '/mes/assistant'
 export const AssistantApi = {
   status: () => request.get<ModelStatus>({ url: `${url}/status` }),
   bases: () => request.get<KnowledgeBase[]>({ url: `${url}/bases` }),
-  saveBase: (data: { id?: number; name: string; description: string }) =>
-    request.post<number>({ url: `${url}/base`, data }),
+  saveBase: (data: {
+    id?: number
+    name: string
+    description: string
+    libraryType: 'PERSONAL' | 'RULES'
+    readerRoleIds: number[]
+  }) => request.post<number>({ url: `${url}/base`, data }),
+  baseRoles: () =>
+    request.get<{ id: number; name: string; code: string }[]>({ url: `${url}/base/roles` }),
   deleteBase: (id: number) => request.delete({ url: `${url}/base`, params: { id } }),
   documents: (knowledgeBaseId: number) =>
     request.get<KnowledgeDocument[]>({ url: `${url}/documents`, params: { knowledgeBaseId } }),

@@ -203,16 +203,25 @@
       <el-tab-pane v-if="canKnowledge || canManage" label="RAG知识库" name="knowledge">
         <div class="assistant-knowledge-layout">
           <aside class="assistant-sidebar"
-            ><el-button v-if="canManage" type="primary" plain @click="editBase()"
+            ><el-button v-if="canKnowledge || canManage" type="primary" plain @click="editBase()"
               >新建知识库</el-button
-            ><button
-              v-for="base in bases"
-              :key="base.id"
-              class="assistant-session"
-              :class="{ active: knowledgeBaseId === base.id }"
-              @click="selectBase(base.id)"
-              ><span>{{ base.name }}</span
-              ><small>{{ base.documentCount }} 份文档</small></button
+            ><template v-for="kind in ['PERSONAL', 'RULES']" :key="kind">
+              <p v-if="bases.some((base) => base.libraryType === kind)" class="mt-16px mb-8px">{{
+                kind === 'PERSONAL' ? '我的个人知识库' : '企业规则库'
+              }}</p>
+              <button
+                v-for="base in bases.filter((item) => item.libraryType === kind)"
+                :key="base.id"
+                type="button"
+                class="assistant-session"
+                :class="{ active: knowledgeBaseId === base.id }"
+                @click="selectBase(base.id)"
+              >
+                <span>{{ base.name }}</span
+                ><small
+                  >{{ base.documentCount }} 份文档 · {{ base.canManage ? '可维护' : '只读' }}</small
+                >
+              </button> </template
             ><el-empty v-if="!bases.length" description="暂无知识库" :image-size="60"
           /></aside>
           <section class="assistant-documents">
@@ -221,14 +230,14 @@
                 ><div
                   ><h3>{{ currentBase.name }}</h3
                   ><p>{{ currentBase.description || '暂无知识库描述' }}</p></div
-                ><div v-if="canManage"
+                ><div v-if="currentBase.canManage"
                   ><el-button @click="editBase(currentBase)">编辑</el-button
                   ><el-button type="danger" plain @click="removeBase">删除知识库</el-button
                   ><el-button type="primary" @click="openUpload()">上传文档</el-button></div
                 ></div
               >
               <el-alert
-                title="支持 TXT / MD / CSV、DOCX 和文本型 PDF（最多 5MB）。草稿先解析关系，发布后同步到上传者的个人图谱；撤回后移除对应关系。扫描 PDF 需先 OCR。"
+                title="支持 TXT / MD / CSV、DOCX 和文本型 PDF（最多 5MB）。草稿先解析关系，发布后按知识库权限展示图谱；撤回后移除对应关系。扫描 PDF 需先 OCR。"
                 type="info"
                 show-icon
                 :closable="false"
@@ -294,22 +303,31 @@
                   ><template #default="{ row }"
                     ><el-button link type="primary" @click="preview(row.id)">原文与分块</el-button
                     ><el-button link @click="downloadDocument(row)">下载</el-button
-                    ><el-button v-if="canManage" link type="primary" @click="openUpload(row)"
-                      >更新文件</el-button
-                    ><el-button v-if="canManage" link @click="showVersions(row)">历史版本</el-button
                     ><el-button
-                      v-if="canManage"
+                      v-if="currentBase.canManage"
+                      link
+                      type="primary"
+                      @click="openUpload(row)"
+                      >更新文件</el-button
+                    ><el-button v-if="currentBase.canManage" link @click="showVersions(row)"
+                      >历史版本</el-button
+                    ><el-button
+                      v-if="currentBase.canManage"
                       link
                       type="primary"
                       @click="publishDocument(row)"
                       >{{ row.status === 'PUBLISHED' ? '撤回' : '发布' }}</el-button
                     ><el-button
-                      v-if="canManage"
+                      v-if="currentBase.canManage"
                       link
                       :disabled="row.graphStatus === 'PENDING'"
                       @click="rebuildDocumentGraph(row)"
                       >重新建图</el-button
-                    ><el-button v-if="canManage" link type="danger" @click="removeDocument(row)"
+                    ><el-button
+                      v-if="currentBase.canManage"
+                      link
+                      type="danger"
+                      @click="removeDocument(row)"
                       >删除</el-button
                     ></template
                   ></el-table-column
@@ -424,9 +442,41 @@
     </el-tabs>
   </ContentWrap>
 
-  <el-dialog v-model="baseVisible" :title="baseForm.id ? '编辑知识库' : '新建知识库'" width="520px"
-    ><el-form label-width="80px" @submit.prevent
-      ><el-form-item label="名称" required
+  <el-dialog
+    v-model="baseVisible"
+    :title="baseForm.id ? '编辑知识库' : '新建知识库'"
+    width="min(560px, 94vw)"
+    :close-on-click-modal="false"
+    :close-on-press-escape="!baseSaving"
+    :show-close="!baseSaving"
+    ><el-alert v-if="baseError" :title="baseError" type="error" :closable="false" class="mb-12px" />
+    <el-form label-width="80px" @submit.prevent
+      ><el-form-item label="类型" required>
+        <el-select v-model="baseForm.libraryType" :disabled="!!baseForm.id" aria-label="知识库类型">
+          <el-option label="个人知识库（仅自己）" value="PERSONAL" />
+          <el-option v-if="canConfig" label="企业规则库（按角色授权）" value="RULES" />
+        </el-select>
+      </el-form-item>
+      <el-form-item v-if="baseForm.libraryType === 'RULES'" label="可读角色">
+        <el-select
+          v-model="baseForm.readerRoleIds"
+          multiple
+          filterable
+          :loading="rolesLoading"
+          placeholder="选择允许读取的角色"
+          aria-label="企业规则库可读角色"
+        >
+          <el-option v-for="role in baseRoles" :key="role.id" :label="role.name" :value="role.id" />
+        </el-select>
+        <p>留空时仅创建者和管理员可读；角色成员只能检索已发布资料。普通成员不能修改规则。</p>
+      </el-form-item>
+      <el-alert
+        v-else
+        title="个人知识库仅本人可访问，管理员也不会默认读取他人的个人资料。"
+        type="info"
+        :closable="false"
+        class="mb-12px" />
+      <el-form-item label="名称" required
         ><el-input v-model="baseForm.name" maxlength="100" /></el-form-item
       ><el-form-item label="描述"
         ><el-input
@@ -643,10 +693,27 @@ const documents = ref<KnowledgeDocument[]>([])
 const documentsLoading = ref(false)
 const baseVisible = ref(false)
 const baseSaving = ref(false)
-const baseForm = reactive<{ id?: number; name: string; description: string }>({
+const baseError = ref('')
+const baseRoles = ref<{ id: number; name: string; code: string }[]>([])
+const rolesLoading = ref(false)
+const baseForm = reactive<{
+  id?: number
+  name: string
+  description: string
+  libraryType: 'PERSONAL' | 'RULES'
+  readerRoleIds: number[]
+}>({
   name: '',
-  description: ''
+  description: '',
+  libraryType: 'PERSONAL',
+  readerRoleIds: []
 })
+watch(
+  () => baseForm.libraryType,
+  (value) => {
+    if (value === 'PERSONAL') baseForm.readerRoleIds = []
+  }
+)
 const uploadVisible = ref(false)
 const uploadTarget = ref<KnowledgeDocument>()
 const uploadError = ref('')
@@ -853,9 +920,19 @@ onBeforeUnmount(() => {
 })
 
 function editBase(base?: KnowledgeBase) {
+  baseError.value = ''
   baseForm.id = base?.id
   baseForm.name = base?.name || ''
   baseForm.description = base?.description || ''
+  baseForm.libraryType = base?.libraryType || 'PERSONAL'
+  baseForm.readerRoleIds = [...(base?.readerRoleIds || [])]
+  if (canConfig.value) {
+    rolesLoading.value = true
+    void AssistantApi.baseRoles()
+      .then((roles) => (baseRoles.value = roles))
+      .catch((e) => failure(e, '角色列表加载失败'))
+      .finally(() => (rolesLoading.value = false))
+  }
   baseVisible.value = true
 }
 async function saveBase() {
@@ -867,7 +944,7 @@ async function saveBase() {
     await loadBases()
     await loadDocuments()
   } catch (exception) {
-    failure(exception, '知识库保存失败')
+    baseError.value = exception instanceof Error ? exception.message : '知识库保存失败'
   } finally {
     baseSaving.value = false
   }
@@ -960,7 +1037,7 @@ async function publishDocument(document: KnowledgeDocument) {
     await ElMessageBox.confirm(
       document.status === 'PUBLISHED'
         ? '撤回后不再参与新提问检索，并异步移除该文档的图谱关系；历史引用快照保留。'
-        : '确认已审核原文？发布后可供当前租户知识检索，明确关系将同步到上传者的个人图谱。',
+        : '确认已审核原文？发布后可供当前租户知识检索，明确关系将按知识库访问权限展示。',
       document.status === 'PUBLISHED' ? '撤回文档' : '发布文档'
     )
     await AssistantApi.publish(document.id, document.status !== 'PUBLISHED', document.version)

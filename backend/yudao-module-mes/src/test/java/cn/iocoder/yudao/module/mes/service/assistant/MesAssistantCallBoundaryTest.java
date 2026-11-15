@@ -39,9 +39,10 @@ class MesAssistantCallBoundaryTest {
         factory.addAdvice(new TransactionInterceptor(manager,new AnnotationTransactionAttributeSource()));
         service=(MesAssistantService)factory.getProxy();
         assertTrue(org.springframework.aop.support.AopUtils.isAopProxy(service));
-        TenantContextHolder.setTenantId(1L);
+        authenticate();
     }
-    @AfterEach void cleanup(){TenantContextHolder.clear();jdbc.execute("DROP ALL OBJECTS");}
+    private void authenticate(){TenantContextHolder.setTenantId(1L);cn.iocoder.yudao.framework.security.core.util.SecurityFrameworkUtils.setLoginUser(new cn.iocoder.yudao.framework.security.core.LoginUser().setId(10L).setTenantId(1L).setUserType(2),new org.springframework.mock.web.MockHttpServletRequest());}
+    @AfterEach void cleanup(){TenantContextHolder.clear();org.springframework.security.core.context.SecurityContextHolder.clearContext();jdbc.execute("DROP ALL OBJECTS");}
     @Test void modelCallHasNoCallerTransactionAfterTheRealSpringProxyIsApplied(){
         when(gateway.complete(eq(Purpose.KNOWLEDGE_CHAT),anyList())).thenAnswer(invocation->{
             assertFalse(TransactionSynchronizationManager.isActualTransactionActive(),"Knowledge HTTP must execute after the session transaction has committed");
@@ -60,7 +61,7 @@ class MesAssistantCallBoundaryTest {
         when(gateway.complete(eq(Purpose.KNOWLEDGE_CHAT),anyList())).thenAnswer(invocation->{entered.countDown();assertTrue(release.await(10,TimeUnit.SECONDS));return "答复";});
         var worker=Executors.newSingleThreadExecutor();
         try{
-            var first=worker.submit(()->{TenantContextHolder.setTenantId(1L);try{return service.send(id,"首个问题",List.of(),10L);}finally{TenantContextHolder.clear();}});
+            var first=worker.submit(()->{authenticate();try{return service.send(id,"首个问题",List.of(),10L);}finally{TenantContextHolder.clear();org.springframework.security.core.context.SecurityContextHolder.clearContext();}});
             assertTrue(entered.await(10,TimeUnit.SECONDS));
             assertThrows(ServiceException.class,()->service.send(id,"重复问题",List.of(),10L));
             verify(gateway,times(1)).complete(eq(Purpose.KNOWLEDGE_CHAT),anyList());

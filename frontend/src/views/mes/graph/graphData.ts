@@ -1,4 +1,5 @@
 import type { GraphData } from '@/vendor/galaxy-view/types'
+import type { RetrievalEvidence } from '@/api/mes/assistant/evidence'
 
 export interface GraphEntity {
   id: string
@@ -21,6 +22,7 @@ export interface GraphSource {
   extractionMethod?: string
 }
 export interface GraphRelation {
+  evidence?: RetrievalEvidence
   id: string
   source: string
   target: string

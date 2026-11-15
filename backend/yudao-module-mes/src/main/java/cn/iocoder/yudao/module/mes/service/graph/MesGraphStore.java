@@ -68,6 +68,7 @@ public class MesGraphStore implements AutoCloseable {
                         r.chunkId=f.chunkId,r.chunkHash=f.chunkHash,r.pageNumber=f.pageNumber,
                         r.startOffset=f.startOffset,r.endOffset=f.endOffset,r.extractionMethod=f.extractionMethod,
                         r.sourceOriginalName=f.sourceOriginalName,r.sourceOriginalKind=f.sourceOriginalKind,
+                        r.sourceResolvedKind=f.sourceKind,r.targetResolvedKind=f.targetKind,
                         r.targetOriginalName=f.targetOriginalName,r.targetOriginalKind=f.targetOriginalKind,
                         r.sourceTypingMethod=f.sourceTypingMethod,r.targetTypingMethod=f.targetTypingMethod,
                         r.sourceAlignmentMethod=f.sourceAlignmentMethod,r.targetAlignmentMethod=f.targetAlignmentMethod
