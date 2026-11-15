@@ -50,7 +50,7 @@ public class MesKnowledgeAccess {
         if(result.size()>20000)throw MesAssistantErrors.invalid("检索范围超过2万段，请选择更小的知识库范围");return result;
     }
     public boolean canReadHistorical(Map<String,Object> citation){
-        try{var a=actor();Object id=citation.get("knowledgeBaseId");if(!(id instanceof Number))return false;
+        try{var a=actor();if(citation.get("knowledgeBaseId")==null&&citation.get("graphOwnerId") instanceof Number owner&&citation.get("graphTenantId") instanceof Number tenant)return owner.longValue()==a.user()&&tenant.longValue()==a.tenant();Object id=citation.get("knowledgeBaseId");if(!(id instanceof Number))return false;
             var found=rows("SELECT id,library_type,owner_id,deleted FROM mes_assistant_knowledge_base WHERE tenant_id=? AND id=?",a.tenant(),id);if(found.isEmpty())return false;
             var base=found.get(0);if(base.get("libraryType").equals("PERSONAL"))return ((Number)base.get("ownerId")).longValue()==a.user();
             requireBase(((Number)id).longValue(),false);return true;

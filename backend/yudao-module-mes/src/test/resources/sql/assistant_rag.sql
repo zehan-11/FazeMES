@@ -25,3 +25,6 @@ ALTER TABLE mes_assistant_knowledge_base ADD COLUMN owner_id BIGINT NOT NULL DEF
 CREATE TABLE mes_assistant_base_role(tenant_id BIGINT NOT NULL,knowledge_base_id BIGINT NOT NULL,role_id BIGINT NOT NULL,PRIMARY KEY(tenant_id,knowledge_base_id,role_id));
 CREATE TABLE system_role(id BIGINT PRIMARY KEY,tenant_id BIGINT,name VARCHAR(100),code VARCHAR(100),status INT DEFAULT 0,deleted INT DEFAULT 0);
 CREATE TABLE system_user_role(id BIGINT AUTO_INCREMENT PRIMARY KEY,user_id BIGINT,role_id BIGINT,deleted INT DEFAULT 0);
+
+ALTER TABLE mes_assistant_message ADD COLUMN retrieval_mode VARCHAR(16) DEFAULT 'DOCUMENT';
+ALTER TABLE mes_assistant_message ADD COLUMN retrieval_hops INT DEFAULT 2;

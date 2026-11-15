@@ -1,0 +1,1 @@
+ALTER TABLE mes_assistant_message ADD COLUMN retrieval_mode VARCHAR(16) NOT NULL DEFAULT 'DOCUMENT', ADD COLUMN retrieval_hops TINYINT NOT NULL DEFAULT 2;

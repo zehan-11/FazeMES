@@ -20,9 +20,10 @@ public class MesAssistantMessageStore {
         this.jdbc=jdbc;this.json=json;transaction=new TransactionTemplate(manager);
         transaction.setPropagationBehavior(TransactionDefinition.PROPAGATION_REQUIRES_NEW);
     }
-    public record Claim(long tenantId,long userId,long sessionId,int version,String requestId,long userMessageId,List<Map<String,Object>> history) { }
+    public record Claim(long tenantId,long userId,long sessionId,int version,String requestId,long userMessageId,List<Map<String,Object>> history,String mode,int hops) { }
 
-    public Claim claim(long sessionId,long userId,String question){
+    public Claim claim(long sessionId,long userId,String question){return claim(sessionId,userId,question,"DOCUMENT",2);}
+    public Claim claim(long sessionId,long userId,String question,String mode,int hops){
         long tenant=TenantContextHolder.getRequiredTenantId();
         return transaction.execute(status->{
             var session=required(sessionId,userId,tenant);
@@ -34,15 +35,15 @@ public class MesAssistantMessageStore {
             if(count!=null&&count>=198)throw MesAssistantErrors.invalid("会话已达到200条，请新建会话");
             String request=UUID.randomUUID().toString();
             jdbc.update("UPDATE mes_assistant_session SET version=?,pending_request_id=?,pending_started_at=CURRENT_TIMESTAMP WHERE id=? AND tenant_id=? AND user_id=? AND deleted=0",version+1,request,sessionId,tenant,userId);
-            long userMessage=insert("INSERT INTO mes_assistant_message(session_id,user_id,role,content_text,status,citations_json,tenant_id) VALUES(?,?,'user',?,'PROCESSING','[]',?)",sessionId,userId,question,tenant);
-            var history=jdbc.query("SELECT role,content_text AS content,citations_json FROM mes_assistant_message WHERE session_id=? AND tenant_id=? AND user_id=? AND deleted=0 AND status='ANSWERED' ORDER BY id DESC LIMIT 12",(rs,index)->{
+            long userMessage=insert("INSERT INTO mes_assistant_message(session_id,user_id,role,content_text,status,citations_json,tenant_id,retrieval_mode,retrieval_hops) VALUES(?,?,'user',?,'PROCESSING','[]',?,?,?)",sessionId,userId,question,tenant,mode,hops);
+            var history=jdbc.query("SELECT role,content_text AS content,citations_json,retrieval_mode FROM mes_assistant_message WHERE session_id=? AND tenant_id=? AND user_id=? AND deleted=0 AND status='ANSWERED' ORDER BY id DESC LIMIT 12",(rs,index)->{
                 String role=rs.getString("role"),content=rs.getString("content");
                 if(role==null||content==null)throw MesAssistantErrors.invalid("会话历史内容不完整，请核对后重试");
-                try{return Map.<String,Object>of("role",role,"content",content,"evidenceCitations",rs.getString("citations_json")==null?List.of():json.readValue(rs.getString("citations_json"),List.class));}
+                try{return Map.<String,Object>of("role",role,"content",content,"retrievalMode",rs.getString("retrieval_mode"),"evidenceCitations",rs.getString("citations_json")==null?List.of():json.readValue(rs.getString("citations_json"),List.class));}
                 catch(Exception e){throw MesAssistantErrors.invalid("会话历史引用格式无效，请核对后重试");}
             },sessionId,tenant,userId);
             Collections.reverse(history);
-            return new Claim(tenant,userId,sessionId,version+1,request,userMessage,List.copyOf(history));
+            return new Claim(tenant,userId,sessionId,version+1,request,userMessage,List.copyOf(history),mode,hops);
         });
     }
 
@@ -55,7 +56,7 @@ public class MesAssistantMessageStore {
             if(claim.version()==Integer.MAX_VALUE)throw MesAssistantErrors.invalid("会话版本已达到上限，请新建会话");
             int messageUpdated=jdbc.update("UPDATE mes_assistant_message SET status=?,citations_json=?,model_name=? WHERE id=? AND session_id=? AND tenant_id=? AND user_id=? AND role='user' AND status='PROCESSING' AND deleted=0",resultStatus,encoded,model,claim.userMessageId(),claim.sessionId(),claim.tenantId(),claim.userId());
             if(messageUpdated!=1)throw MesAssistantErrors.invalid("会话请求已变更，本次答复未保存，请重新打开会话");
-            Long assistantMessage=answer==null?null:insert("INSERT INTO mes_assistant_message(session_id,user_id,role,content_text,status,citations_json,model_name,tenant_id) VALUES(?,?,'assistant',?,'ANSWERED',?,?,?)",claim.sessionId(),claim.userId(),answer,encoded,model,claim.tenantId());
+            Long assistantMessage=answer==null?null:insert("INSERT INTO mes_assistant_message(session_id,user_id,role,content_text,status,citations_json,model_name,tenant_id,retrieval_mode,retrieval_hops) VALUES(?,?,'assistant',?,'ANSWERED',?,?,?,?,?)",claim.sessionId(),claim.userId(),answer,encoded,model,claim.tenantId(),claim.mode(),claim.hops());
             String title=Objects.toString(session.get("title"),"新会话");
             if(title.equals("新会话"))title=question.substring(0,Math.min(40,question.length()));
             int updated=jdbc.update("UPDATE mes_assistant_session SET title=?,version=version+1,pending_request_id=NULL,pending_started_at=NULL,update_time=CURRENT_TIMESTAMP WHERE id=? AND tenant_id=? AND user_id=? AND deleted=0 AND version=? AND pending_request_id=?",title,claim.sessionId(),claim.tenantId(),claim.userId(),claim.version(),claim.requestId());

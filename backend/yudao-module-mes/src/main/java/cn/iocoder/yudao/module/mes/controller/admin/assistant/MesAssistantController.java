@@ -35,7 +35,7 @@ public class MesAssistantController {
     public record BaseSave(Long id, @NotBlank @Size(max = 100) String name, @Size(max = 1000) String description,String libraryType,@Size(max=50) List<Long> readerRoleIds) {}
     public record Search(@NotBlank @Size(max = 1000) String query, @Size(max = 20) List<Long> knowledgeBaseIds, @Min(1) @Max(10) Integer limit) {}
     public record SessionTitle(@Size(max = 100) String title) {}
-    public record Message(@NotNull Long sessionId, @NotBlank @Size(max = 4000) String question, @Size(max = 20) List<Long> knowledgeBaseIds) {}
+    public record Message(@NotNull Long sessionId, @NotBlank @Size(max = 4000) String question, @Size(max = 20) List<Long> knowledgeBaseIds,String mode,@Min(1) @Max(2) Integer hops) {}
 
     @GetMapping("/status") @PreAuthorize("@ss.hasPermission('mes:assistant:query')")
     public CommonResult<?> status() { return success(models.status()); }
@@ -95,7 +95,7 @@ public class MesAssistantController {
     @PostMapping("/message")
     @PreAuthorize("@ss.hasPermission('mes:assistant:chat') and @ss.hasPermission('mes:assistant:knowledge')")
     @ApiAccessLog(requestEnable = false)
-    public CommonResult<?> message(@Valid @RequestBody Message body) { return success(service.send(body.sessionId(), body.question(), body.knowledgeBaseIds(), user())); }
+    public CommonResult<?> message(@Valid @RequestBody Message body) { return success(service.send(body.sessionId(), body.question(), body.knowledgeBaseIds(), user(),body.mode(),body.hops()==null?2:body.hops())); }
 
     @GetMapping("/model-config") @PreAuthorize("@ss.hasPermission('mes:assistant:config')")
     public CommonResult<?> modelConfig() { return success(models.settings()); }

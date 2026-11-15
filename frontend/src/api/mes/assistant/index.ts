@@ -1,5 +1,5 @@
 import request from '@/config/axios'
-import type { RetrievalEvidence } from './evidence'
+import type { RetrievalEvidence, RetrievalMode } from './evidence'
 
 export interface KnowledgeBase {
   id: number
@@ -51,6 +51,8 @@ export interface DocumentVersion {
 }
 export interface Citation {
   evidence?: RetrievalEvidence
+  sourceType?: 'DOCUMENT' | 'GRAPH'
+  relation?: { source: string; type: string; target: string }
   chunkId: number
   documentId: number
   knowledgeBaseId: number
@@ -70,9 +72,17 @@ export interface AssistantMessage {
   id: number
   role: 'user' | 'assistant'
   content: string
-  status: 'PROCESSING' | 'ANSWERED' | 'MODEL_NOT_CONFIGURED' | 'MODEL_ERROR'
+  status:
+    | 'PROCESSING'
+    | 'ANSWERED'
+    | 'MODEL_NOT_CONFIGURED'
+    | 'MODEL_ERROR'
+    | 'NO_EVIDENCE'
+    | 'EVIDENCE_RESTRICTED'
   citations: Citation[]
   modelName: string
+  retrievalMode?: RetrievalMode
+  retrievalHops?: number
   createTime: number | string
 }
 export interface AssistantSession {
@@ -169,11 +179,17 @@ export const AssistantApi = {
   renameSession: (id: number, title: string) =>
     request.put({ url: `${url}/session`, params: { id }, data: { title } }),
   deleteSession: (id: number) => request.delete({ url: `${url}/session`, params: { id } }),
-  send: (sessionId: number, question: string, knowledgeBaseIds: number[]) =>
+  send: (
+    sessionId: number,
+    question: string,
+    knowledgeBaseIds: number[],
+    mode: RetrievalMode = 'DOCUMENT',
+    hops: 1 | 2 = 2
+  ) =>
     request.post<{ status: string; message: string; answer: string | null; citations: Citation[] }>(
       {
         url: `${url}/message`,
-        data: { sessionId, question, knowledgeBaseIds },
+        data: { sessionId, question, knowledgeBaseIds, mode, hops },
         timeout: 90000
       }
     ),

@@ -130,17 +130,33 @@
               >
                 <div class="assistant-message-label"
                   >{{ item.role === 'user' ? '我的提问' : `AI助手 · ${item.modelName}`
-                  }}<small>{{ time(item.createTime) }}</small></div
+                  }}<small
+                    >{{ modeLabels[item.retrievalMode || 'DOCUMENT']
+                    }}{{
+                      item.retrievalMode !== 'DOCUMENT' && item.retrievalMode
+                        ? ` · ${item.retrievalHops || 2}跳`
+                        : ''
+                    }}
+                    · {{ time(item.createTime) }}</small
+                  ></div
                 >
-                <div class="assistant-message-content">{{ item.content }}</div>
+                <AnswerText
+                  v-if="item.role === 'assistant'"
+                  :content="item.content"
+                  :citations="item.citations || []"
+                  @citation="viewCitation"
+                />
+                <div v-else class="assistant-message-content">{{ item.content }}</div>
                 <el-alert
                   v-if="item.role === 'user' && item.status !== 'ANSWERED'"
                   :title="
                     item.status === 'PROCESSING'
                       ? '此请求正在处理，提问已保存。长时间未完成时可重新打开会话核查。'
-                      : item.status === 'MODEL_NOT_CONFIGURED'
-                        ? '模型未配置，本次没有模型答复。以下为真实检索结果。'
-                        : '模型服务未能返回答复；本次检索依据仍可查看。'
+                      : item.status === 'NO_EVIDENCE'
+                        ? '当前范围内没有足够证据，本次未调用模型。请使用具体实体名、调整知识库范围或发布相关文件。'
+                        : item.status === 'MODEL_NOT_CONFIGURED'
+                          ? '模型未配置，本次没有模型答复。以下为真实检索结果。'
+                          : '模型服务未能返回答复；本次检索依据仍可查看。'
                   "
                   type="info"
                   :closable="false"
@@ -154,14 +170,16 @@
                 >
                   <button
                     v-for="(citation, index) in item.citations"
-                    :key="citation.chunkId"
+                    :key="citation.evidence?.evidenceId || citation.chunkId"
                     @click="viewCitation(citation)"
                     ><b>[{{ index + 1 }}] {{ citation.title }}</b
                     ><span
-                      >{{ citation.heading
-                      }}{{ citation.pageNumber ? ` · 第${citation.pageNumber}页` : '' }} · v{{
-                        citation.version
-                      }}</span
+                      >{{
+                        citation.relation
+                          ? `${citation.relation.source} → ${citation.relation.type} → ${citation.relation.target}`
+                          : citation.heading
+                      }}{{ citation.pageNumber ? ` · 第${citation.pageNumber}页` : ''
+                      }}{{ citation.version ? ` · v${citation.version}` : '' }}</span
                     ></button
                   >
                 </div>
@@ -170,7 +188,7 @@
             </div>
             <div class="assistant-composer">
               <p v-if="retrievalMode !== 'DOCUMENT'" class="assistant-field-help"
-                >先检索并核对实体、关系和来源；图谱与混合模式的生成问答将在下一步接入。</p
+                >可先检索核对实体、关系和来源，再发送提问生成带引用的答复。</p
               >
               <el-input
                 v-model="question"
@@ -197,7 +215,7 @@
                   v-if="canChat && canKnowledge"
                   type="primary"
                   :loading="sending"
-                  :disabled="!question.trim() || searching || retrievalMode !== 'DOCUMENT'"
+                  :disabled="!question.trim() || searching"
                   @click="send"
                   >发送提问</el-button
                 ></div
@@ -546,22 +564,29 @@
       ></template
     ></el-dialog
   >
-  <el-dialog v-model="citationVisible" title="可追溯引用" width="760px"
-    ><template v-if="activeCitation"
-      ><h3>{{ activeCitation.title }}</h3
-      ><p
-        >{{ activeCitation.fileName }} · v{{ activeCitation.version }} · {{ activeCitation.heading
-        }}{{ activeCitation.pageNumber ? ` · 第${activeCitation.pageNumber}页` : '' }} · 第{{
-          activeCitation.chunkIndex + 1
-        }}段</p
-      ><pre class="assistant-source-text">{{ activeCitation.content }}</pre
-      ><p class="assistant-hash">片段SHA-256：{{ activeCitation.contentHash }}</p
-      ><p>引用保留提问时的原文快照。文档撤回或删除后，历史引用快照仍用于核对当时依据。</p
-      ><el-button @click="preview(activeCitation.documentId)"
-        >查看当前原文与全部分块</el-button
-      ></template
-    ></el-dialog
-  >
+  <el-dialog v-model="citationVisible" title="可追溯引用" width="min(820px, 92vw)">
+    <template v-if="activeCitation">
+      <h3>{{ activeCitation.title }}</h3>
+      <p v-if="activeCitation.relation"
+        >{{ activeCitation.relation.source }} → {{ activeCitation.relation.type }} →
+        {{ activeCitation.relation.target }}</p
+      >
+      <p
+        >{{ activeCitation.heading
+        }}{{ activeCitation.version ? ` · v${activeCitation.version}` : ''
+        }}{{ activeCitation.pageNumber ? ` · 第${activeCitation.pageNumber}页` : '' }}</p
+      >
+      <pre class="assistant-source-text">{{ activeCitation.content }}</pre>
+      <p v-if="activeCitation.contentHash" class="assistant-hash"
+        >片段 SHA-256：{{ activeCitation.contentHash }}</p
+      >
+      <el-button
+        v-if="activeCitation.documentId"
+        @click="preview(activeCitation.documentId, activeCitation.version)"
+        >查看当前授权原文</el-button
+      >
+    </template>
+  </el-dialog>
   <el-dialog
     v-model="versionsVisible"
     :title="`${versionsDocument?.title || '文档'} · 版本记录`"
@@ -650,6 +675,7 @@ import {
   type ModelStatus
 } from '@/api/mes/assistant'
 import EvidenceResults from './EvidenceResults.vue'
+import AnswerText from './AnswerText.vue'
 import {
   searchEvidence,
   type EvidenceSearchResult,
@@ -700,6 +726,7 @@ const sending = ref(false)
 const searching = ref(false)
 const historyLoading = ref(false)
 const searchResult = ref<EvidenceSearchResult>()
+const modeLabels = { DOCUMENT: '文档问答', GRAPH: '图谱问答', HYBRID: '混合问答' }
 const retrievalMode = ref<RetrievalMode>('DOCUMENT')
 const retrievalHops = ref<1 | 2>(2)
 let evidenceRequest = 0
@@ -840,14 +867,7 @@ async function removeSession() {
   }
 }
 async function send() {
-  if (
-    !canChat ||
-    !canKnowledge ||
-    sending.value ||
-    searching.value ||
-    retrievalMode.value !== 'DOCUMENT' ||
-    !question.value.trim()
-  )
+  if (!canChat || !canKnowledge || sending.value || searching.value || !question.value.trim())
     return
   sending.value = true
   error.value = ''
@@ -857,7 +877,9 @@ async function send() {
     const result = await AssistantApi.send(
       sessionId.value,
       question.value.trim(),
-      selectedBases.value
+      selectedBases.value,
+      retrievalMode.value,
+      retrievalHops.value
     )
     chatNotice.value = result.message
     question.value = ''

@@ -46,7 +46,7 @@ pwsh -File deploy/start-with-graph.ps1 -Build
 GraphSource 包含文档 ID、版本、片段、页码、哈希与原文位置；关系 evidence 与文档
 引用使用统一证据契约。旧版本、草稿、已删除和已撤权来源在返回前过滤，详见
 [知识库权限与检索证据](KNOWLEDGE-ACCESS.md)。文件替换与历史版本已接通；模型语义
-抽取及 GraphRAG 问答尚待后续接入。
+抽取尚待后续接入；局部图谱证据问答已接通，见[图谱问答](GRAPH-ANSWER.md)。
 
 ## 源码与渲染
 

@@ -60,7 +60,7 @@ class MesAssistantControllerPolicyTest extends MesAssistantTestDatabase {
             assertThrows(AccessDeniedException.class,()->controller.documentVersions(1));
             assertThrows(AccessDeniedException.class,()->controller.updateDocument(1,1,null,new org.springframework.mock.web.MockMultipartFile("file","a.md","text/markdown",new byte[]{65})));
             permissions.clear(); permissions.add("mes:assistant:chat");
-            assertThrows(AccessDeniedException.class, () -> controller.message(new MesAssistantController.Message(1L, "test", List.of())));
+            assertThrows(AccessDeniedException.class, () -> controller.message(new MesAssistantController.Message(1L, "test", List.of(), "DOCUMENT", 2)));
         } finally { SecurityContextHolder.clearContext(); }
     }
 
