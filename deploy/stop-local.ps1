@@ -12,7 +12,7 @@ foreach ($name in @('frontend','backend','face-auth','redis','mysql')) {
     $taskProcess = Get-CimInstance Win32_Process -Filter "ProcessId=$taskPid" -ErrorAction SilentlyContinue
     if ($taskProcess -and $taskProcess.CommandLine.Contains($projectRoot)) {
         if ($name -eq 'mysql') {
-            $mysqlAdmin = 'C:\Program Files\MySQL\MySQL Server 8.0\bin\mysqladmin.exe'
+            $mysqlAdmin = 'D:\MySQL\MySQL Server 8.0\bin\mysqladmin.exe'
             & $mysqlAdmin "--defaults-extra-file=$(Join-Path $runtimeRoot 'mysql-admin.local.ini')" shutdown
             if ($LASTEXITCODE -ne 0) { throw 'Local MySQL shutdown failed; check its log.' }
         } else { Stop-Process -Id $taskPid }

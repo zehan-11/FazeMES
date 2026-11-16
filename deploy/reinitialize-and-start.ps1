@@ -61,9 +61,9 @@ function Test-LauncherPrerequisites {
     if ($LASTEXITCODE -ne 0 -or $javaVersion -notmatch 'version "17\.') { throw '需要 JDK 17；请检查 JAVA_HOME 或 PATH。' }
     $nodeVersion = & $node --version
     if ($LASTEXITCODE -ne 0 -or [Version]($nodeVersion.TrimStart('v')) -lt [Version]'22.13.0') { throw '需要 Node.js 22.13.0 或更新版本。' }
-    foreach ($path in @('C:\Program Files\MySQL\MySQL Server 8.0\bin\mysql.exe',
-                       'C:\Program Files\MySQL\MySQL Server 8.0\bin\mysqld.exe',
-                       'C:\Program Files\MySQL\MySQL Server 8.0\bin\mysqldump.exe',
+    foreach ($path in @('D:\MySQL\MySQL Server 8.0\bin\mysql.exe',
+                       'D:\MySQL\MySQL Server 8.0\bin\mysqld.exe',
+                       'D:\MySQL\MySQL Server 8.0\bin\mysqldump.exe',
                        (Join-Path $projectRoot 'frontend\node_modules\vite\bin\vite.js'),
                        (Join-Path $projectRoot 'database\init\mes_seed.sql'),
                        (Join-Path $PSScriptRoot 'reset-test-data.ps1'),

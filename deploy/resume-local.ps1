@@ -9,8 +9,8 @@ $runtimeRoot = Join-Path $projectRoot '.runtime'
 . (Join-Path $PSScriptRoot 'local-tools.ps1')
 $logRoot = Join-Path $runtimeRoot 'logs'
 $mysqlData = Join-Path $runtimeRoot 'mysql\data'
-$mysqlExe = 'C:\Program Files\MySQL\MySQL Server 8.0\bin\mysqld.exe'
-$mysqlClient = 'C:\Program Files\MySQL\MySQL Server 8.0\bin\mysql.exe'
+$mysqlExe = 'D:\MySQL\MySQL Server 8.0\bin\mysqld.exe'
+$mysqlClient = 'D:\MySQL\MySQL Server 8.0\bin\mysql.exe'
 $javaExe = Resolve-LocalTool -Name java.exe -HomeVariable JAVA_HOME -HomeRelativePath 'bin\java.exe'
 $nodeExe = Resolve-LocalTool -Name node.exe
 $redisExe = Join-Path $runtimeRoot 'redis-bin\redis-server.exe'

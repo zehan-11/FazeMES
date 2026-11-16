@@ -50,7 +50,7 @@ test('neighbor merging is idempotent, preserves parallel relations, and never mu
   assert.equal(current.nodes.length,1)
 })
 test('merged graph enforces node and relation caps without dangling edges', () => {
-  const nodes = Array.from({length:205},(_,i)=>node(String(i)))
-  const result = mergeKnowledgeGraph({nodes:[],relations:[]},{nodes,relations:[edge('r','0','204')]})
-  assert.equal(result.nodes.length,200); assert.equal(result.relations.length,0); assert.equal(result.hasMore,true)
+  const nodes = Array.from({length:2005},(_,i)=>node(String(i)))
+  const result = mergeKnowledgeGraph({nodes:[],relations:[]},{nodes,relations:[edge('r','0','2004')]})
+  assert.equal(result.nodes.length,2000); assert.equal(result.relations.length,0); assert.equal(result.hasMore,true)
 })

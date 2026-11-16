@@ -4,14 +4,69 @@ import { Color, Vector3 } from 'three'
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js'
 import { AggregateRenderer } from '@/vendor/galaxy-view/render/AggregateRenderer'
 import { TIERS } from '@/vendor/galaxy-view/quality/tiers'
-import { toGalaxyData, kindColors, type KnowledgeGraph } from './graphData'
+import ForceWorker from './forceLayout.worker?worker'
+import { seedPositions } from './forceLayout'
+import { getVisualPreset, presetColors, presetPhysics } from './visualPresets'
+import { CameraFlight, type CameraPose, type Vec3 } from './cameraFlight'
+import { toGalaxyData, type KnowledgeGraph } from './graphData'
 
-const props = defineProps<{ graph: KnowledgeGraph; selected: string | null; rotating: boolean }>()
-const emit = defineEmits<{ select: [id: string | null] }>()
+const props = defineProps<{
+  graph: KnowledgeGraph
+  selected: string | null
+  rotating: boolean
+  presetId: string
+  nebula: number
+  bloom: number
+  layoutPaused: boolean
+}>()
+const emit = defineEmits<{ select: [id: string | null]; layoutSettled: [value: boolean] }>()
 const host = ref<HTMLElement>()
 const error = ref('')
 const labels = ref<{ id: string; name: string; x: number; y: number; visible: boolean }[]>([])
 let renderer: AggregateRenderer | undefined
+let layoutWorker: Worker | undefined
+let positions: Float32Array = new Float32Array(0)
+let positionDirty = false
+let latestSettled = false
+let refreshClouds = false
+let autoFramePending = true
+let renderedData: ReturnType<typeof toGalaxyData> = { nodes: [], links: [] }
+const flight = new CameraFlight()
+let focusId: string | null = null
+let focusOffset = new Vector3()
+function pose(): CameraPose {
+  return {
+    position: renderer!.camera.position.toArray() as Vec3,
+    target: controls!.target.toArray() as Vec3
+  }
+}
+function moveCamera(to: CameraPose, animate = true) {
+  if (!renderer || !controls) return
+  if (!animate || reducedMotion.matches) {
+    flight.cancel()
+    renderer.camera.position.fromArray(to.position)
+    controls.target.fromArray(to.target)
+    controls.update()
+    return
+  }
+  flight.begin(pose(), to)
+}
+function applyVisuals() {
+  if (!renderer) return
+  const preset = getVisualPreset(props.presetId),
+    colors = presetColors(props.presetId)
+  renderer.setColorFn((node) => new Color(colors[node.folderTop] || '#a6bcff'))
+  renderer.recolor()
+  renderer.setNebulaTint(colors['设备'], colors['原因'])
+  renderer.setStarfieldEnabled(preset.starfield)
+  renderer.setSpace({ ...preset.space, nebula: props.nebula })
+  renderer.setBloomParams({ ...preset.bloom, strength: props.bloom })
+  renderer.setLinkCurve(preset.look.linkCurve)
+  renderer.setLinkOpacity(preset.look.linkOpacity)
+  renderer.setNodeScale(preset.look.nodeSize * 1.3)
+  renderer.setSizeMode(preset.look.sizeBy)
+  renderer.twinkleFreq = reducedMotion.matches ? 0 : preset.look.twinkle
+}
 let controls: OrbitControls | undefined
 let observer: ResizeObserver | undefined
 let frame = 0,
@@ -24,11 +79,22 @@ const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)')
 let intersection: IntersectionObserver | undefined
 let down: { x: number; y: number } | undefined
 const cleanups: (() => void)[] = []
-function reset() {
+function reset(animate = true) {
   if (!renderer || !controls) return
-  controls.target.set(0, 0, 0)
-  renderer.camera.position.set(0, 260, 180)
-  controls.update()
+  focusId = null
+  let radius = 80
+  props.graph.nodes.forEach((_, i) => {
+    radius = Math.max(radius, renderer!.nodePosition(i, new Vector3()).length())
+  })
+  const distance = Math.max(260, (radius * 2.4) / Math.min(1, width / height))
+  const elevation = ((getVisualPreset(props.presetId).frameElevDeg || 35) * Math.PI) / 180
+  moveCamera(
+    {
+      position: [0, Math.sin(elevation) * distance, Math.cos(elevation) * distance],
+      target: [0, 0, 0]
+    },
+    animate
+  )
 }
 function selectFocus() {
   if (!renderer) return
@@ -49,27 +115,43 @@ function selectFocus() {
 function focusNode(id: string) {
   const i = props.graph.nodes.findIndex((n) => n.id === id)
   if (!renderer || !controls || i < 0) return
+  autoFramePending = false
+  focusId = id
   const point = renderer.nodePosition(i, new Vector3())
-  const offset = renderer.camera.position
-    .clone()
-    .sub(controls.target)
-    .normalize()
-    .multiplyScalar(235)
-  controls.target.copy(point)
-  renderer.camera.position.copy(point).add(offset)
-  controls.update()
+  focusOffset = renderer.camera.position.clone().sub(controls.target)
+  if (focusOffset.lengthSq() < 0.001) focusOffset.set(0, 1, 1)
+  focusOffset.normalize().multiplyScalar(170)
+  moveCamera({
+    position: point.clone().add(focusOffset).toArray() as Vec3,
+    target: point.toArray() as Vec3
+  })
 }
 function projectLabels() {
   if (!renderer) return
-  labels.value = props.graph.nodes.map((node, i) => {
-    const p = renderer!.projectNode(i, width, height)
-    return {
-      id: node.id,
-      name: node.name,
-      x: p.x,
-      y: p.y,
-      visible: !p.behind && p.x > 30 && p.y > 20 && p.x < width - 30 && p.y < height - 25
-    }
+  const nodes = renderedData.nodes
+  const order = nodes
+    .map((node, i) => ({ node, i }))
+    .sort(
+      (a, b) =>
+        Number(b.node.id === props.selected) - Number(a.node.id === props.selected) ||
+        b.node.degree - a.node.degree
+    )
+  const occupied: { x: number; y: number; width: number }[] = []
+  labels.value = order.map(({ node, i }) => {
+    const p = renderer!.projectNode(i, width, height),
+      labelWidth = Math.max(48, node.name.length * 12)
+    const visible =
+      !p.behind &&
+      p.x > 30 &&
+      p.y > 20 &&
+      p.x < width - 30 &&
+      p.y < height - 25 &&
+      occupied.length < 35 &&
+      !occupied.some(
+        (o) => Math.abs(o.x - p.x) < (o.width + labelWidth) / 2 + 8 && Math.abs(o.y - p.y) < 22
+      )
+    if (visible) occupied.push({ x: p.x, y: p.y, width: labelWidth })
+    return { id: node.id, name: node.name, x: p.x, y: p.y, visible }
   })
 }
 function stop() {
@@ -81,19 +163,52 @@ function loop(now: number) {
   if (!renderer || !controls) return
   const delta = previous ? Math.min((now - previous) / 1000, 0.05) : 0
   previous = now
-  controls.autoRotate = props.rotating && !reducedMotion.matches
+  if (flight.active && focusId) {
+    const i = props.graph.nodes.findIndex((n) => n.id === focusId)
+    if (i >= 0) {
+      const point = renderer.nodePosition(i, new Vector3())
+      flight.retarget({
+        position: point.clone().add(focusOffset).toArray() as Vec3,
+        target: point.toArray() as Vec3
+      })
+    }
+  }
+  const nextPose = flight.step(delta)
+  controls.autoRotate = props.rotating && !reducedMotion.matches && !nextPose
+  controls.enableDamping = !nextPose
+  if (nextPose) {
+    renderer.camera.position.fromArray(nextPose.position)
+    controls.target.fromArray(nextPose.target)
+  }
   controls.update()
+  if (positionDirty && (!props.layoutPaused || latestSettled)) {
+    renderer.updatePositions()
+    positionDirty = false
+    if (refreshClouds) {
+      renderer.refreshClusterClouds()
+      if (autoFramePending && !focusId) {
+        reset()
+        autoFramePending = false
+      }
+      refreshClouds = false
+    }
+  }
   renderer.render(reducedMotion.matches ? 0 : delta)
   projectLabels()
   frame = requestAnimationFrame(loop)
 }
 function syncVisibility() {
   visible = !document.hidden
+  layoutWorker?.postMessage({ type: 'pause', value: props.layoutPaused || !visible || !onscreen })
   if (visible && onscreen && !frame && renderer) frame = requestAnimationFrame(loop)
   else if (!visible || !onscreen) stop()
 }
 function dispose() {
   stop()
+  flight.cancel()
+  focusId = null
+  layoutWorker?.terminate()
+  layoutWorker = undefined
   observer?.disconnect()
   intersection?.disconnect()
   cleanups.splice(0).forEach((fn) => fn())
@@ -106,32 +221,53 @@ function initialize() {
   if (!host.value) return
   try {
     const data = toGalaxyData(props.graph)
+    renderedData = data
+    autoFramePending = true
     renderer = new AggregateRenderer(host.value, 110)
     renderer.applyTier(TIERS.low, 0.65)
-    renderer.setColorFn((node) => new Color(kindColors[node.folderTop] || '#9fbaff'))
-    // Fixed spiral seed for this small prototype; does not infer knowledge or relationships.
-    const positions = new Float32Array(data.nodes.length * 3)
-    data.nodes.forEach((_, i) => {
-      const angle = i * 2.399963,
-        radius = i === 0 ? 0 : 38 + Math.sqrt(i) * 38
-      positions.set(
-        [Math.cos(angle) * radius, Math.sin(i * 1.7) * 24, Math.sin(angle) * radius],
-        i * 3
-      )
+    positions = seedPositions(data)
+    positionDirty = false
+    latestSettled = false
+    emit('layoutSettled', false)
+    layoutWorker = new ForceWorker()
+    layoutWorker.onmessage = ({
+      data: update
+    }: MessageEvent<{ positions: Float32Array; settled: boolean }>) => {
+      positions.set(update.positions)
+      positionDirty = true
+      latestSettled = update.settled
+      refreshClouds = update.settled
+      emit('layoutSettled', update.settled)
+    }
+    layoutWorker.onerror = () => {
+      error.value = '力导向布局计算失败，请重新进入图谱。'
+      layoutWorker?.terminate()
+      layoutWorker = undefined
+    }
+    layoutWorker.postMessage({
+      type: 'init',
+      data,
+      positions: positions.slice(),
+      params: presetPhysics(props.presetId),
+      finalOnly: reducedMotion.matches,
+      paused: props.layoutPaused || !visible || !onscreen
     })
     renderer.setData(data, positions)
-    renderer.setLinkCurve(0.28)
-    renderer.setLinkOpacity(0.4)
-    renderer.setNodeScale(1.4)
-    renderer.setSpace({ nebula: 0.18, fieldStars: 0.15, clusterClouds: 0.15 })
-    renderer.twinkleFreq = reducedMotion.matches ? 0 : 0.4
+    applyVisuals()
     controls = new OrbitControls(renderer.camera, renderer.renderer.domElement)
     controls.enableDamping = true
     controls.dampingFactor = 0.08
     controls.autoRotateSpeed = 0.3
     controls.minDistance = 55
-    controls.maxDistance = 1100
-    reset()
+    controls.maxDistance = 12000
+    const cancelFlight = () => {
+      flight.cancel()
+      focusId = null
+      autoFramePending = false
+    }
+    controls.addEventListener('start', cancelFlight)
+    cleanups.push(() => controls?.removeEventListener('start', cancelFlight))
+    reset(false)
     observer = new ResizeObserver(([entry]) => {
       width = entry.contentRect.width
       height = entry.contentRect.height
@@ -186,7 +322,35 @@ function contextLost(e: Event) {
   error.value = '图形上下文已丢失，请重新进入知识图谱。实体列表仍可使用。'
   stop()
 }
-watch(() => props.selected, selectFocus)
+watch(
+  () => props.selected,
+  (id) => {
+    selectFocus()
+    if (id) focusNode(id)
+    else {
+      flight.cancel()
+      focusId = null
+    }
+  }
+)
+watch(() => [props.nebula, props.bloom], applyVisuals)
+watch(
+  () => props.presetId,
+  () => {
+    applyVisuals()
+    autoFramePending = true
+    latestSettled = false
+    emit('layoutSettled', false)
+    layoutWorker?.postMessage({ type: 'params', params: presetPhysics(props.presetId) })
+    reset()
+  }
+)
+watch(
+  () => props.layoutPaused,
+  (value) => {
+    layoutWorker?.postMessage({ type: 'pause', value: value || !visible || !onscreen })
+  }
+)
 watch(
   () => props.graph,
   () => {

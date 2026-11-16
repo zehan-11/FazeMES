@@ -1,8 +1,8 @@
 #requires -Version 7.0
 [CmdletBinding()]
 param([switch]$CoreOnly,
-      [string]$MysqlClient = 'C:\Program Files\MySQL\MySQL Server 8.0\bin\mysql.exe',
-      [string]$MysqlServer = 'C:\Program Files\MySQL\MySQL Server 8.0\bin\mysqld.exe',
+      [string]$MysqlClient = 'D:\MySQL\MySQL Server 8.0\bin\mysql.exe',
+      [string]$MysqlServer = 'D:\MySQL\MySQL Server 8.0\bin\mysqld.exe',
       [string]$ExistingMysqlSecrets)
 $ErrorActionPreference = 'Stop'
 $projectRoot = Split-Path -Parent $PSScriptRoot

@@ -7,11 +7,14 @@ Copyright (c) 2026 Rick. MIT; full license in LICENSE.
 Copied rendering: AggregateRenderer, starfield, nebula, shaders, curved links,
 reveal, palette, coordinate fitting, rendering tokens, quality tiers and their
 pure graph helpers. Obsidian entry points, vault index, UI, GraphController,
-force workers and camera director are intentionally not imported.
+camera director is not imported. The pure MainThreadForceLayout, galaxyForces,
+LayoutEngine and upstream d3-force-3d declarations are now included; a Vite Worker
+wrapper runs the layout off the main thread.
 settings.ts and settings/graphJsonImport.ts are standalone type contracts.
 FazeMES uses its existing Three.js 0.160 dependency; no Obsidian runtime needed.
 The Vue wrapper supplies orbit controls, lifecycle, entity metadata and selection.
-Positions are deterministic, not a migration of upstream force physics.
+Initial coordinates are deterministic; upstream relation, repulsion, centering and
+galaxy forces determine the final three-dimensional layout.
 
 The application entry is views/mes/graph/KnowledgeGraph.vue, lazy mounted in the
 AI assistant's knowledge graph tab. The adapter accepts stable string entity and

@@ -1,5 +1,5 @@
 import request from '@/config/axios'
-import type { GraphEntity, KnowledgeGraph } from '@/views/mes/graph/graphData'
+import type { GraphEntity, GraphRelation, KnowledgeGraph } from '@/views/mes/graph/graphData'
 export interface GraphPayload extends KnowledgeGraph {
   hasMore: boolean
 }
@@ -9,6 +9,18 @@ export interface GraphSearch {
 }
 const base = '/mes/knowledge-graph'
 export const GraphApi = {
+  nodesPage: (after: string, signal?: AbortSignal) =>
+    request.get<{ items: GraphEntity[]; nextCursor?: string }>({
+      url: `${base}/nodes-page`,
+      params: { after, limit: 200 },
+      signal
+    }),
+  relationsPage: (after: string, signal?: AbortSignal) =>
+    request.get<{ items: GraphRelation[]; nextCursor?: string }>({
+      url: `${base}/relations-page`,
+      params: { after, limit: 500 },
+      signal
+    }),
   overview: (limit = 8) =>
     request.get<GraphPayload>({ url: `${base}/overview`, params: { limit } }),
   search: (query: string) =>

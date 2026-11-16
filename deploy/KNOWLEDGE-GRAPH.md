@@ -34,11 +34,11 @@ pwsh -File deploy/start-with-graph.ps1 -Build
 - 节点、关系及两端节点必须属于同一租户与原始存储所有者；显示前按来源库授权投影。
   个人库与原私有图谱仅本人可读，企业规则按当前角色授权；范围来自后端认证上下文，
   不接收客户端指定的 tenantId/ownerId。管理员也不会默认读取他人私有图谱。
-- `/admin-api/mes/knowledge-graph/overview`：初始 8 节点，上限 200。
+- `/admin-api/mes/knowledge-graph/overview`：局部查询默认 8 节点，上限 200；网页默认通过分页接口加载完整图谱。
 - `/search?query=...`：名称/类型查询，上限 50，默认 30。
 - `/node?id=...`：当前授权视图内的实体详情；范围外与不存在统一返回错误。
 - `/neighbors?id=...`：一跳邻居，默认 20，上限 100；范围内的有向关系最多 500。
-- `hasMore` 表示响应截断；浏览器合并按稳定 ID 去重，总量上限 200 节点/500 关系。
+- `hasMore` 表示响应截断；浏览器合并按稳定 ID 去重，总量上限 2000 节点/10000 关系；完整加载超过上限会明确报错，不显示截断结果冒充全部。
 - 所有接口要求 `mes:assistant:knowledge` 或 `mes:assistant:manage` 权限。
 - Cypher 值均参数化，连接异常不向客户端返回凭据或底层连接详情。
 
@@ -52,7 +52,9 @@ GraphSource 包含文档 ID、版本、片段、页码、哈希与原文位置�
 
 Galaxy View 的 AggregateRenderer、节点 shader、曲线、星空、星云与辉光按 MIT 复用，
 原作者署名、许可证及固定 commit 保留。没有 Obsidian 运行时依赖。
-原力学 Worker/CameraDirector 未迁移，采用确定性初始布局和 OrbitControls。
+复用原 MainThreadForceLayout/galaxyForces，由 Vite Worker 独立计算；CameraDirector
+未迁移。确定性坐标仅作初始化，实际位置由关系引力、节点斥力、居中与盘面力确定。
+界面提供暂停/继续布局；布局冷却后自动稳定。系统减少动态效果时仅显示最终布局。
 视图更新会释放旧渲染器；隐藏/离屏暂停帧循环；卸载清理观察器、事件和 GPU 资源。
 
 ## 检查
@@ -76,3 +78,14 @@ pwsh -File deploy/neo4j-local.ps1
 限额与错误脱敏；真实库测试 `MesKnowledgeGraphLiveTest` 仅在显式设置
 `FAZEMES_GRAPH_TEST_CONFIG` 为本地连接 JSON 路径时执行。它使用 UUID 命名的测试
 节点，验证跨用户/跨租户及关系范围，finally 中只清理本次专属测试节点。
+
+## 完整读取与力导向布局
+
+- 「加载全部图谱」依次读完 `/nodes-page`（每页200）和 `/relations-page`（每页500），
+  以稳定 ID 游标推进，继续沿用后端认证用户和租户范围。全部读取后一次更新画布。
+- 两个接口返回 items 与 nextCursor；结束时 nextCursor 为 null。关系查询同时检查
+  关系及两端节点的范围，跨用户关系不会因完整加载而泄漏。
+- 「取消高亮」只取消选中，不发送查询。加载进度、容量上限和失败状态独立显示。
+- Worker 以8ms预算运行布局并分批传回坐标，离屏/隐藏/暂停时停止继续计算；卸载终止。
+- `node --test tests/graph-complete-force.test.cjs` 验证完整分页、取消与异常、边界及布局。
+- 默认设备知识种子文件 `equipment-knowledge.json` 包含110实体、296关系；可通过 `--file` 指定其他种子文件。实际加载数量取决于数据库内容与当前账号权限。

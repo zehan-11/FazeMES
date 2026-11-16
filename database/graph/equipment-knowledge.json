@@ -1,0 +1,3922 @@
+{
+  "nodes": [
+    {
+      "id": "fan",
+      "name": "电风扇",
+      "kind": "设备",
+      "description": "整机与部件、故障及处理方法的关联。"
+    },
+    {
+      "id": "motor",
+      "name": "电机",
+      "kind": "部件",
+      "description": "驱动叶片旋转的部件。"
+    },
+    {
+      "id": "blade",
+      "name": "叶片",
+      "kind": "部件",
+      "description": "产生气流的部件。"
+    },
+    {
+      "id": "base",
+      "name": "底座",
+      "kind": "部件",
+      "description": "支撑整机的部件。"
+    },
+    {
+      "id": "bearing",
+      "name": "轴承",
+      "kind": "部件",
+      "description": "与电机转动相关的部件。"
+    },
+    {
+      "id": "bolt",
+      "name": "固定螺栓",
+      "kind": "部件",
+      "description": "部件装配连接的紧固件。"
+    },
+    {
+      "id": "vibration",
+      "name": "异常振动",
+      "kind": "故障",
+      "description": "设备运行过程中的异常振动现象。"
+    },
+    {
+      "id": "heat",
+      "name": "电机温升异常",
+      "kind": "故障",
+      "description": "电机运行过程中的温升异常现象。"
+    },
+    {
+      "id": "noise",
+      "name": "运行异响",
+      "kind": "故障",
+      "description": "设备运行过程中的异常声音。"
+    },
+    {
+      "id": "loose",
+      "name": "螺栓松动",
+      "kind": "原因",
+      "description": "固定连接的紧固状态异常。"
+    },
+    {
+      "id": "wear",
+      "name": "轴承磨损",
+      "kind": "原因",
+      "description": "轴承部件的磨损状态。"
+    },
+    {
+      "id": "block",
+      "name": "通风受阻",
+      "kind": "原因",
+      "description": "设备通风条件受限。"
+    },
+    {
+      "id": "tighten",
+      "name": "检查紧固状态",
+      "kind": "措施",
+      "description": "检查固定螺栓及相关紧固连接的状态。"
+    },
+    {
+      "id": "inspect",
+      "name": "检查轴承状态",
+      "kind": "措施",
+      "description": "检查轴承及相关转动部件的状态。"
+    },
+    {
+      "id": "vent",
+      "name": "检查通风条件",
+      "kind": "措施",
+      "description": "检查设备通风与散热条件。"
+    },
+    {
+      "id": "mechanical",
+      "name": "机械传动",
+      "kind": "工艺",
+      "description": "机械传动与设备、维护及工艺活动的关联。"
+    },
+    {
+      "id": "electrical",
+      "name": "电气控制",
+      "kind": "工艺",
+      "description": "电气控制与设备、维护及工艺活动的关联。"
+    },
+    {
+      "id": "inspection",
+      "name": "设备巡检",
+      "kind": "工艺",
+      "description": "设备巡检与设备、维护及工艺活动的关联。"
+    },
+    {
+      "id": "maintenance",
+      "name": "设备维护",
+      "kind": "工艺",
+      "description": "设备维护与设备、维护及工艺活动的关联。"
+    },
+    {
+      "id": "assembly",
+      "name": "装配工艺",
+      "kind": "工艺",
+      "description": "装配工艺与设备、维护及工艺活动的关联。"
+    },
+    {
+      "id": "quality",
+      "name": "质量检查",
+      "kind": "工艺",
+      "description": "质量检查与设备、维护及工艺活动的关联。"
+    },
+    {
+      "id": "lubrication",
+      "name": "润滑不足",
+      "kind": "原因",
+      "description": "润滑不足与设备、维护及工艺活动的关联。"
+    },
+    {
+      "id": "misalignment",
+      "name": "装配偏差",
+      "kind": "原因",
+      "description": "装配偏差与设备、维护及工艺活动的关联。"
+    },
+    {
+      "id": "dust",
+      "name": "积尘",
+      "kind": "原因",
+      "description": "积尘与设备、维护及工艺活动的关联。"
+    },
+    {
+      "id": "supply",
+      "name": "供电异常",
+      "kind": "原因",
+      "description": "供电异常与设备、维护及工艺活动的关联。"
+    },
+    {
+      "id": "overload",
+      "name": "负载异常",
+      "kind": "原因",
+      "description": "负载异常与设备、维护及工艺活动的关联。"
+    },
+    {
+      "id": "fastening",
+      "name": "紧固状态检查",
+      "kind": "措施",
+      "description": "紧固状态检查与设备、维护及工艺活动的关联。"
+    },
+    {
+      "id": "lubricating",
+      "name": "润滑状态检查",
+      "kind": "措施",
+      "description": "润滑状态检查与设备、维护及工艺活动的关联。"
+    },
+    {
+      "id": "alignment",
+      "name": "对中检查",
+      "kind": "措施",
+      "description": "对中检查与设备、维护及工艺活动的关联。"
+    },
+    {
+      "id": "cleaning",
+      "name": "清洁状态检查",
+      "kind": "措施",
+      "description": "清洁状态检查与设备、维护及工艺活动的关联。"
+    },
+    {
+      "id": "powercheck",
+      "name": "供电状态检查",
+      "kind": "措施",
+      "description": "供电状态检查与设备、维护及工艺活动的关联。"
+    },
+    {
+      "id": "loadcheck",
+      "name": "负载状态检查",
+      "kind": "措施",
+      "description": "负载状态检查与设备、维护及工艺活动的关联。"
+    },
+    {
+      "id": "pump",
+      "name": "离心泵",
+      "kind": "设备",
+      "description": "离心泵与设备、维护及工艺活动的关联。"
+    },
+    {
+      "id": "pump-part-0",
+      "name": "叶轮",
+      "kind": "部件",
+      "description": "叶轮与设备、维护及工艺活动的关联。"
+    },
+    {
+      "id": "pump-part-1",
+      "name": "泵轴",
+      "kind": "部件",
+      "description": "泵轴与设备、维护及工艺活动的关联。"
+    },
+    {
+      "id": "pump-part-2",
+      "name": "机械密封",
+      "kind": "部件",
+      "description": "机械密封与设备、维护及工艺活动的关联。"
+    },
+    {
+      "id": "pump-part-3",
+      "name": "联轴器",
+      "kind": "部件",
+      "description": "联轴器与设备、维护及工艺活动的关联。"
+    },
+    {
+      "id": "pump-part-4",
+      "name": "泵体",
+      "kind": "部件",
+      "description": "泵体与设备、维护及工艺活动的关联。"
+    },
+    {
+      "id": "pump-fault-0",
+      "name": "流量偏低",
+      "kind": "故障",
+      "description": "流量偏低与设备、维护及工艺活动的关联。"
+    },
+    {
+      "id": "pump-fault-1",
+      "name": "密封泄漏",
+      "kind": "故障",
+      "description": "密封泄漏与设备、维护及工艺活动的关联。"
+    },
+    {
+      "id": "pump-fault-2",
+      "name": "泵体振动",
+      "kind": "故障",
+      "description": "泵体振动与设备、维护及工艺活动的关联。"
+    },
+    {
+      "id": "pump-fault-3",
+      "name": "运行噪声",
+      "kind": "故障",
+      "description": "运行噪声与设备、维护及工艺活动的关联。"
+    },
+    {
+      "id": "pump-process-0",
+      "name": "泵组安装",
+      "kind": "工艺",
+      "description": "泵组安装与设备、维护及工艺活动的关联。"
+    },
+    {
+      "id": "pump-process-1",
+      "name": "对中装配",
+      "kind": "工艺",
+      "description": "对中装配与设备、维护及工艺活动的关联。"
+    },
+    {
+      "id": "pump-process-2",
+      "name": "运行点检",
+      "kind": "工艺",
+      "description": "运行点检与设备、维护及工艺活动的关联。"
+    },
+    {
+      "id": "conveyor",
+      "name": "带式输送机",
+      "kind": "设备",
+      "description": "带式输送机与设备、维护及工艺活动的关联。"
+    },
+    {
+      "id": "conveyor-part-0",
+      "name": "输送带",
+      "kind": "部件",
+      "description": "输送带与设备、维护及工艺活动的关联。"
+    },
+    {
+      "id": "conveyor-part-1",
+      "name": "驱动滚筒",
+      "kind": "部件",
+      "description": "驱动滚筒与设备、维护及工艺活动的关联。"
+    },
+    {
+      "id": "conveyor-part-2",
+      "name": "托辊",
+      "kind": "部件",
+      "description": "托辊与设备、维护及工艺活动的关联。"
+    },
+    {
+      "id": "conveyor-part-3",
+      "name": "张紧装置",
+      "kind": "部件",
+      "description": "张紧装置与设备、维护及工艺活动的关联。"
+    },
+    {
+      "id": "conveyor-part-4",
+      "name": "减速器",
+      "kind": "部件",
+      "description": "减速器与设备、维护及工艺活动的关联。"
+    },
+    {
+      "id": "conveyor-fault-0",
+      "name": "皮带跑偏",
+      "kind": "故障",
+      "description": "皮带跑偏与设备、维护及工艺活动的关联。"
+    },
+    {
+      "id": "conveyor-fault-1",
+      "name": "输送打滑",
+      "kind": "故障",
+      "description": "输送打滑与设备、维护及工艺活动的关联。"
+    },
+    {
+      "id": "conveyor-fault-2",
+      "name": "托辊异响",
+      "kind": "故障",
+      "description": "托辊异响与设备、维护及工艺活动的关联。"
+    },
+    {
+      "id": "conveyor-fault-3",
+      "name": "驱动温升",
+      "kind": "故障",
+      "description": "驱动温升与设备、维护及工艺活动的关联。"
+    },
+    {
+      "id": "conveyor-process-0",
+      "name": "输送线装配",
+      "kind": "工艺",
+      "description": "输送线装配与设备、维护及工艺活动的关联。"
+    },
+    {
+      "id": "conveyor-process-1",
+      "name": "张紧检查",
+      "kind": "工艺",
+      "description": "张紧检查与设备、维护及工艺活动的关联。"
+    },
+    {
+      "id": "conveyor-process-2",
+      "name": "输送点检",
+      "kind": "工艺",
+      "description": "输送点检与设备、维护及工艺活动的关联。"
+    },
+    {
+      "id": "compressor",
+      "name": "空气压缩机",
+      "kind": "设备",
+      "description": "空气压缩机与设备、维护及工艺活动的关联。"
+    },
+    {
+      "id": "compressor-part-0",
+      "name": "压缩主机",
+      "kind": "部件",
+      "description": "压缩主机与设备、维护及工艺活动的关联。"
+    },
+    {
+      "id": "compressor-part-1",
+      "name": "空气滤芯",
+      "kind": "部件",
+      "description": "空气滤芯与设备、维护及工艺活动的关联。"
+    },
+    {
+      "id": "compressor-part-2",
+      "name": "冷却器",
+      "kind": "部件",
+      "description": "冷却器与设备、维护及工艺活动的关联。"
+    },
+    {
+      "id": "compressor-part-3",
+      "name": "油气分离器",
+      "kind": "部件",
+      "description": "油气分离器与设备、维护及工艺活动的关联。"
+    },
+    {
+      "id": "compressor-part-4",
+      "name": "压力传感器",
+      "kind": "部件",
+      "description": "压力传感器与设备、维护及工艺活动的关联。"
+    },
+    {
+      "id": "compressor-fault-0",
+      "name": "排气温度异常",
+      "kind": "故障",
+      "description": "排气温度异常与设备、维护及工艺活动的关联。"
+    },
+    {
+      "id": "compressor-fault-1",
+      "name": "供气压力偏低",
+      "kind": "故障",
+      "description": "供气压力偏低与设备、维护及工艺活动的关联。"
+    },
+    {
+      "id": "compressor-fault-2",
+      "name": "机组振动",
+      "kind": "故障",
+      "description": "机组振动与设备、维护及工艺活动的关联。"
+    },
+    {
+      "id": "compressor-fault-3",
+      "name": "滤芯压差异常",
+      "kind": "故障",
+      "description": "滤芯压差异常与设备、维护及工艺活动的关联。"
+    },
+    {
+      "id": "compressor-process-0",
+      "name": "机组安装",
+      "kind": "工艺",
+      "description": "机组安装与设备、维护及工艺活动的关联。"
+    },
+    {
+      "id": "compressor-process-1",
+      "name": "过滤检查",
+      "kind": "工艺",
+      "description": "过滤检查与设备、维护及工艺活动的关联。"
+    },
+    {
+      "id": "compressor-process-2",
+      "name": "压力巡检",
+      "kind": "工艺",
+      "description": "压力巡检与设备、维护及工艺活动的关联。"
+    },
+    {
+      "id": "cnc",
+      "name": "数控机床",
+      "kind": "设备",
+      "description": "数控机床与设备、维护及工艺活动的关联。"
+    },
+    {
+      "id": "cnc-part-0",
+      "name": "主轴",
+      "kind": "部件",
+      "description": "主轴与设备、维护及工艺活动的关联。"
+    },
+    {
+      "id": "cnc-part-1",
+      "name": "丝杠",
+      "kind": "部件",
+      "description": "丝杠与设备、维护及工艺活动的关联。"
+    },
+    {
+      "id": "cnc-part-2",
+      "name": "导轨",
+      "kind": "部件",
+      "description": "导轨与设备、维护及工艺活动的关联。"
+    },
+    {
+      "id": "cnc-part-3",
+      "name": "冷却泵",
+      "kind": "部件",
+      "description": "冷却泵与设备、维护及工艺活动的关联。"
+    },
+    {
+      "id": "cnc-part-4",
+      "name": "刀具夹持器",
+      "kind": "部件",
+      "description": "刀具夹持器与设备、维护及工艺活动的关联。"
+    },
+    {
+      "id": "cnc-fault-0",
+      "name": "主轴温升",
+      "kind": "故障",
+      "description": "主轴温升与设备、维护及工艺活动的关联。"
+    },
+    {
+      "id": "cnc-fault-1",
+      "name": "进给异响",
+      "kind": "故障",
+      "description": "进给异响与设备、维护及工艺活动的关联。"
+    },
+    {
+      "id": "cnc-fault-2",
+      "name": "定位偏差",
+      "kind": "故障",
+      "description": "定位偏差与设备、维护及工艺活动的关联。"
+    },
+    {
+      "id": "cnc-fault-3",
+      "name": "冷却流量偏低",
+      "kind": "故障",
+      "description": "冷却流量偏低与设备、维护及工艺活动的关联。"
+    },
+    {
+      "id": "cnc-process-0",
+      "name": "主轴装配",
+      "kind": "工艺",
+      "description": "主轴装配与设备、维护及工艺活动的关联。"
+    },
+    {
+      "id": "cnc-process-1",
+      "name": "导轨检查",
+      "kind": "工艺",
+      "description": "导轨检查与设备、维护及工艺活动的关联。"
+    },
+    {
+      "id": "cnc-process-2",
+      "name": "精度检查",
+      "kind": "工艺",
+      "description": "精度检查与设备、维护及工艺活动的关联。"
+    },
+    {
+      "id": "robot",
+      "name": "装配机械臂",
+      "kind": "设备",
+      "description": "装配机械臂与设备、维护及工艺活动的关联。"
+    },
+    {
+      "id": "robot-part-0",
+      "name": "伺服电机",
+      "kind": "部件",
+      "description": "伺服电机与设备、维护及工艺活动的关联。"
+    },
+    {
+      "id": "robot-part-1",
+      "name": "关节减速器",
+      "kind": "部件",
+      "description": "关节减速器与设备、维护及工艺活动的关联。"
+    },
+    {
+      "id": "robot-part-2",
+      "name": "末端夹具",
+      "kind": "部件",
+      "description": "末端夹具与设备、维护及工艺活动的关联。"
+    },
+    {
+      "id": "robot-part-3",
+      "name": "位置编码器",
+      "kind": "部件",
+      "description": "位置编码器与设备、维护及工艺活动的关联。"
+    },
+    {
+      "id": "robot-part-4",
+      "name": "控制柜",
+      "kind": "部件",
+      "description": "控制柜与设备、维护及工艺活动的关联。"
+    },
+    {
+      "id": "robot-fault-0",
+      "name": "关节异响",
+      "kind": "故障",
+      "description": "关节异响与设备、维护及工艺活动的关联。"
+    },
+    {
+      "id": "robot-fault-1",
+      "name": "重复定位偏差",
+      "kind": "故障",
+      "description": "重复定位偏差与设备、维护及工艺活动的关联。"
+    },
+    {
+      "id": "robot-fault-2",
+      "name": "夹持不稳",
+      "kind": "故障",
+      "description": "夹持不稳与设备、维护及工艺活动的关联。"
+    },
+    {
+      "id": "robot-fault-3",
+      "name": "控制柜温升",
+      "kind": "故障",
+      "description": "控制柜温升与设备、维护及工艺活动的关联。"
+    },
+    {
+      "id": "robot-process-0",
+      "name": "夹具装配",
+      "kind": "工艺",
+      "description": "夹具装配与设备、维护及工艺活动的关联。"
+    },
+    {
+      "id": "robot-process-1",
+      "name": "零位检查",
+      "kind": "工艺",
+      "description": "零位检查与设备、维护及工艺活动的关联。"
+    },
+    {
+      "id": "robot-process-2",
+      "name": "装配验证",
+      "kind": "工艺",
+      "description": "装配验证与设备、维护及工艺活动的关联。"
+    },
+    {
+      "id": "cabinet",
+      "name": "配电控制柜",
+      "kind": "设备",
+      "description": "配电控制柜与设备、维护及工艺活动的关联。"
+    },
+    {
+      "id": "cabinet-part-0",
+      "name": "断路器",
+      "kind": "部件",
+      "description": "断路器与设备、维护及工艺活动的关联。"
+    },
+    {
+      "id": "cabinet-part-1",
+      "name": "接触器",
+      "kind": "部件",
+      "description": "接触器与设备、维护及工艺活动的关联。"
+    },
+    {
+      "id": "cabinet-part-2",
+      "name": "变频器",
+      "kind": "部件",
+      "description": "变频器与设备、维护及工艺活动的关联。"
+    },
+    {
+      "id": "cabinet-part-3",
+      "name": "端子排",
+      "kind": "部件",
+      "description": "端子排与设备、维护及工艺活动的关联。"
+    },
+    {
+      "id": "cabinet-part-4",
+      "name": "散热风扇",
+      "kind": "部件",
+      "description": "散热风扇与设备、维护及工艺活动的关联。"
+    },
+    {
+      "id": "cabinet-fault-0",
+      "name": "驱动报警",
+      "kind": "故障",
+      "description": "驱动报警与设备、维护及工艺活动的关联。"
+    },
+    {
+      "id": "cabinet-fault-1",
+      "name": "端子温升",
+      "kind": "故障",
+      "description": "端子温升与设备、维护及工艺活动的关联。"
+    },
+    {
+      "id": "cabinet-fault-2",
+      "name": "风扇异响",
+      "kind": "故障",
+      "description": "风扇异响与设备、维护及工艺活动的关联。"
+    },
+    {
+      "id": "cabinet-fault-3",
+      "name": "柜内温度异常",
+      "kind": "故障",
+      "description": "柜内温度异常与设备、维护及工艺活动的关联。"
+    },
+    {
+      "id": "cabinet-process-0",
+      "name": "电气装配",
+      "kind": "工艺",
+      "description": "电气装配与设备、维护及工艺活动的关联。"
+    },
+    {
+      "id": "cabinet-process-1",
+      "name": "接线核查",
+      "kind": "工艺",
+      "description": "接线核查与设备、维护及工艺活动的关联。"
+    },
+    {
+      "id": "cabinet-process-2",
+      "name": "柜体点检",
+      "kind": "工艺",
+      "description": "柜体点检与设备、维护及工艺活动的关联。"
+    }
+  ],
+  "relations": [
+    {
+      "id": "fan-relation-1",
+      "source": "fan",
+      "target": "motor",
+      "type": "包含部件",
+      "sourceEvidence": {
+        "title": "电风扇维护关系",
+        "section": "关系条目 1",
+        "excerpt": "电风扇 —包含部件→ 电机"
+      }
+    },
+    {
+      "id": "fan-relation-2",
+      "source": "fan",
+      "target": "blade",
+      "type": "包含部件",
+      "sourceEvidence": {
+        "title": "电风扇维护关系",
+        "section": "关系条目 2",
+        "excerpt": "电风扇 —包含部件→ 叶片"
+      }
+    },
+    {
+      "id": "fan-relation-3",
+      "source": "fan",
+      "target": "base",
+      "type": "包含部件",
+      "sourceEvidence": {
+        "title": "电风扇维护关系",
+        "section": "关系条目 3",
+        "excerpt": "电风扇 —包含部件→ 底座"
+      }
+    },
+    {
+      "id": "fan-relation-4",
+      "source": "motor",
+      "target": "bearing",
+      "type": "包含部件",
+      "sourceEvidence": {
+        "title": "电风扇维护关系",
+        "section": "关系条目 4",
+        "excerpt": "电机 —包含部件→ 轴承"
+      }
+    },
+    {
+      "id": "fan-relation-5",
+      "source": "base",
+      "target": "bolt",
+      "type": "装配连接",
+      "sourceEvidence": {
+        "title": "电风扇维护关系",
+        "section": "关系条目 5",
+        "excerpt": "底座 —装配连接→ 固定螺栓"
+      }
+    },
+    {
+      "id": "fan-relation-6",
+      "source": "motor",
+      "target": "vibration",
+      "type": "关联现象",
+      "sourceEvidence": {
+        "title": "电风扇维护关系",
+        "section": "关系条目 6",
+        "excerpt": "电机 —关联现象→ 异常振动"
+      }
+    },
+    {
+      "id": "fan-relation-7",
+      "source": "motor",
+      "target": "heat",
+      "type": "关联现象",
+      "sourceEvidence": {
+        "title": "电风扇维护关系",
+        "section": "关系条目 7",
+        "excerpt": "电机 —关联现象→ 电机温升异常"
+      }
+    },
+    {
+      "id": "fan-relation-8",
+      "source": "bearing",
+      "target": "noise",
+      "type": "关联现象",
+      "sourceEvidence": {
+        "title": "电风扇维护关系",
+        "section": "关系条目 8",
+        "excerpt": "轴承 —关联现象→ 运行异响"
+      }
+    },
+    {
+      "id": "fan-relation-9",
+      "source": "vibration",
+      "target": "loose",
+      "type": "可能原因",
+      "sourceEvidence": {
+        "title": "电风扇维护关系",
+        "section": "关系条目 9",
+        "excerpt": "异常振动 —可能原因→ 螺栓松动"
+      }
+    },
+    {
+      "id": "fan-relation-10",
+      "source": "noise",
+      "target": "wear",
+      "type": "可能原因",
+      "sourceEvidence": {
+        "title": "电风扇维护关系",
+        "section": "关系条目 10",
+        "excerpt": "运行异响 —可能原因→ 轴承磨损"
+      }
+    },
+    {
+      "id": "fan-relation-11",
+      "source": "heat",
+      "target": "block",
+      "type": "可能原因",
+      "sourceEvidence": {
+        "title": "电风扇维护关系",
+        "section": "关系条目 11",
+        "excerpt": "电机温升异常 —可能原因→ 通风受阻"
+      }
+    },
+    {
+      "id": "fan-relation-12",
+      "source": "loose",
+      "target": "bolt",
+      "type": "涉及部件",
+      "sourceEvidence": {
+        "title": "电风扇维护关系",
+        "section": "关系条目 12",
+        "excerpt": "螺栓松动 —涉及部件→ 固定螺栓"
+      }
+    },
+    {
+      "id": "fan-relation-13",
+      "source": "wear",
+      "target": "bearing",
+      "type": "涉及部件",
+      "sourceEvidence": {
+        "title": "电风扇维护关系",
+        "section": "关系条目 13",
+        "excerpt": "轴承磨损 —涉及部件→ 轴承"
+      }
+    },
+    {
+      "id": "fan-relation-14",
+      "source": "loose",
+      "target": "tighten",
+      "type": "建议检查",
+      "sourceEvidence": {
+        "title": "电风扇维护关系",
+        "section": "关系条目 14",
+        "excerpt": "螺栓松动 —建议检查→ 检查紧固状态"
+      }
+    },
+    {
+      "id": "fan-relation-15",
+      "source": "wear",
+      "target": "inspect",
+      "type": "建议检查",
+      "sourceEvidence": {
+        "title": "电风扇维护关系",
+        "section": "关系条目 15",
+        "excerpt": "轴承磨损 —建议检查→ 检查轴承状态"
+      }
+    },
+    {
+      "id": "fan-relation-16",
+      "source": "block",
+      "target": "vent",
+      "type": "建议检查",
+      "sourceEvidence": {
+        "title": "电风扇维护关系",
+        "section": "关系条目 16",
+        "excerpt": "通风受阻 —建议检查→ 检查通风条件"
+      }
+    },
+    {
+      "id": "equipment-relation-0017",
+      "source": "inspection",
+      "target": "maintenance",
+      "type": "异常跟进",
+      "sourceEvidence": {
+        "title": "设备维护与工艺关系",
+        "section": "关系 0017",
+        "excerpt": "设备巡检 —异常跟进→ 设备维护"
+      }
+    },
+    {
+      "id": "equipment-relation-0018",
+      "source": "assembly",
+      "target": "quality",
+      "type": "完成后检查",
+      "sourceEvidence": {
+        "title": "设备维护与工艺关系",
+        "section": "关系 0018",
+        "excerpt": "装配工艺 —完成后检查→ 质量检查"
+      }
+    },
+    {
+      "id": "equipment-relation-0019",
+      "source": "maintenance",
+      "target": "inspection",
+      "type": "完成后复查",
+      "sourceEvidence": {
+        "title": "设备维护与工艺关系",
+        "section": "关系 0019",
+        "excerpt": "设备维护 —完成后复查→ 设备巡检"
+      }
+    },
+    {
+      "id": "equipment-relation-0020",
+      "source": "electrical",
+      "target": "mechanical",
+      "type": "控制驱动",
+      "sourceEvidence": {
+        "title": "设备维护与工艺关系",
+        "section": "关系 0020",
+        "excerpt": "电气控制 —控制驱动→ 机械传动"
+      }
+    },
+    {
+      "id": "equipment-relation-0021",
+      "source": "maintenance",
+      "target": "fastening",
+      "type": "包含检查",
+      "sourceEvidence": {
+        "title": "设备维护与工艺关系",
+        "section": "关系 0021",
+        "excerpt": "设备维护 —包含检查→ 紧固状态检查"
+      }
+    },
+    {
+      "id": "equipment-relation-0022",
+      "source": "fastening",
+      "target": "quality",
+      "type": "记录核查结果",
+      "sourceEvidence": {
+        "title": "设备维护与工艺关系",
+        "section": "关系 0022",
+        "excerpt": "紧固状态检查 —记录核查结果→ 质量检查"
+      }
+    },
+    {
+      "id": "equipment-relation-0023",
+      "source": "maintenance",
+      "target": "lubricating",
+      "type": "包含检查",
+      "sourceEvidence": {
+        "title": "设备维护与工艺关系",
+        "section": "关系 0023",
+        "excerpt": "设备维护 —包含检查→ 润滑状态检查"
+      }
+    },
+    {
+      "id": "equipment-relation-0024",
+      "source": "lubricating",
+      "target": "quality",
+      "type": "记录核查结果",
+      "sourceEvidence": {
+        "title": "设备维护与工艺关系",
+        "section": "关系 0024",
+        "excerpt": "润滑状态检查 —记录核查结果→ 质量检查"
+      }
+    },
+    {
+      "id": "equipment-relation-0025",
+      "source": "maintenance",
+      "target": "alignment",
+      "type": "包含检查",
+      "sourceEvidence": {
+        "title": "设备维护与工艺关系",
+        "section": "关系 0025",
+        "excerpt": "设备维护 —包含检查→ 对中检查"
+      }
+    },
+    {
+      "id": "equipment-relation-0026",
+      "source": "alignment",
+      "target": "quality",
+      "type": "记录核查结果",
+      "sourceEvidence": {
+        "title": "设备维护与工艺关系",
+        "section": "关系 0026",
+        "excerpt": "对中检查 —记录核查结果→ 质量检查"
+      }
+    },
+    {
+      "id": "equipment-relation-0027",
+      "source": "maintenance",
+      "target": "cleaning",
+      "type": "包含检查",
+      "sourceEvidence": {
+        "title": "设备维护与工艺关系",
+        "section": "关系 0027",
+        "excerpt": "设备维护 —包含检查→ 清洁状态检查"
+      }
+    },
+    {
+      "id": "equipment-relation-0028",
+      "source": "cleaning",
+      "target": "quality",
+      "type": "记录核查结果",
+      "sourceEvidence": {
+        "title": "设备维护与工艺关系",
+        "section": "关系 0028",
+        "excerpt": "清洁状态检查 —记录核查结果→ 质量检查"
+      }
+    },
+    {
+      "id": "equipment-relation-0029",
+      "source": "maintenance",
+      "target": "powercheck",
+      "type": "包含检查",
+      "sourceEvidence": {
+        "title": "设备维护与工艺关系",
+        "section": "关系 0029",
+        "excerpt": "设备维护 —包含检查→ 供电状态检查"
+      }
+    },
+    {
+      "id": "equipment-relation-0030",
+      "source": "powercheck",
+      "target": "quality",
+      "type": "记录核查结果",
+      "sourceEvidence": {
+        "title": "设备维护与工艺关系",
+        "section": "关系 0030",
+        "excerpt": "供电状态检查 —记录核查结果→ 质量检查"
+      }
+    },
+    {
+      "id": "equipment-relation-0031",
+      "source": "maintenance",
+      "target": "loadcheck",
+      "type": "包含检查",
+      "sourceEvidence": {
+        "title": "设备维护与工艺关系",
+        "section": "关系 0031",
+        "excerpt": "设备维护 —包含检查→ 负载状态检查"
+      }
+    },
+    {
+      "id": "equipment-relation-0032",
+      "source": "loadcheck",
+      "target": "quality",
+      "type": "记录核查结果",
+      "sourceEvidence": {
+        "title": "设备维护与工艺关系",
+        "section": "关系 0032",
+        "excerpt": "负载状态检查 —记录核查结果→ 质量检查"
+      }
+    },
+    {
+      "id": "equipment-relation-0033",
+      "source": "loose",
+      "target": "fastening",
+      "type": "关联检查",
+      "sourceEvidence": {
+        "title": "设备维护与工艺关系",
+        "section": "关系 0033",
+        "excerpt": "螺栓松动 —关联检查→ 紧固状态检查"
+      }
+    },
+    {
+      "id": "equipment-relation-0034",
+      "source": "wear",
+      "target": "lubricating",
+      "type": "关联检查",
+      "sourceEvidence": {
+        "title": "设备维护与工艺关系",
+        "section": "关系 0034",
+        "excerpt": "轴承磨损 —关联检查→ 润滑状态检查"
+      }
+    },
+    {
+      "id": "equipment-relation-0035",
+      "source": "lubrication",
+      "target": "lubricating",
+      "type": "关联检查",
+      "sourceEvidence": {
+        "title": "设备维护与工艺关系",
+        "section": "关系 0035",
+        "excerpt": "润滑不足 —关联检查→ 润滑状态检查"
+      }
+    },
+    {
+      "id": "equipment-relation-0036",
+      "source": "misalignment",
+      "target": "alignment",
+      "type": "关联检查",
+      "sourceEvidence": {
+        "title": "设备维护与工艺关系",
+        "section": "关系 0036",
+        "excerpt": "装配偏差 —关联检查→ 对中检查"
+      }
+    },
+    {
+      "id": "equipment-relation-0037",
+      "source": "dust",
+      "target": "cleaning",
+      "type": "关联检查",
+      "sourceEvidence": {
+        "title": "设备维护与工艺关系",
+        "section": "关系 0037",
+        "excerpt": "积尘 —关联检查→ 清洁状态检查"
+      }
+    },
+    {
+      "id": "equipment-relation-0038",
+      "source": "block",
+      "target": "cleaning",
+      "type": "关联检查",
+      "sourceEvidence": {
+        "title": "设备维护与工艺关系",
+        "section": "关系 0038",
+        "excerpt": "通风受阻 —关联检查→ 清洁状态检查"
+      }
+    },
+    {
+      "id": "equipment-relation-0039",
+      "source": "supply",
+      "target": "powercheck",
+      "type": "关联检查",
+      "sourceEvidence": {
+        "title": "设备维护与工艺关系",
+        "section": "关系 0039",
+        "excerpt": "供电异常 —关联检查→ 供电状态检查"
+      }
+    },
+    {
+      "id": "equipment-relation-0040",
+      "source": "overload",
+      "target": "loadcheck",
+      "type": "关联检查",
+      "sourceEvidence": {
+        "title": "设备维护与工艺关系",
+        "section": "关系 0040",
+        "excerpt": "负载异常 —关联检查→ 负载状态检查"
+      }
+    },
+    {
+      "id": "equipment-relation-0041",
+      "source": "inspection",
+      "target": "pump",
+      "type": "巡检对象",
+      "sourceEvidence": {
+        "title": "设备维护与工艺关系",
+        "section": "关系 0041",
+        "excerpt": "设备巡检 —巡检对象→ 离心泵"
+      }
+    },
+    {
+      "id": "equipment-relation-0042",
+      "source": "pump",
+      "target": "maintenance",
+      "type": "纳入维护",
+      "sourceEvidence": {
+        "title": "设备维护与工艺关系",
+        "section": "关系 0042",
+        "excerpt": "离心泵 —纳入维护→ 设备维护"
+      }
+    },
+    {
+      "id": "equipment-relation-0043",
+      "source": "pump",
+      "target": "electrical",
+      "type": "关联控制",
+      "sourceEvidence": {
+        "title": "设备维护与工艺关系",
+        "section": "关系 0043",
+        "excerpt": "离心泵 —关联控制→ 电气控制"
+      }
+    },
+    {
+      "id": "equipment-relation-0044",
+      "source": "pump",
+      "target": "mechanical",
+      "type": "关联传动",
+      "sourceEvidence": {
+        "title": "设备维护与工艺关系",
+        "section": "关系 0044",
+        "excerpt": "离心泵 —关联传动→ 机械传动"
+      }
+    },
+    {
+      "id": "equipment-relation-0045",
+      "source": "pump",
+      "target": "pump-part-0",
+      "type": "包含部件",
+      "sourceEvidence": {
+        "title": "设备维护与工艺关系",
+        "section": "关系 0045",
+        "excerpt": "离心泵 —包含部件→ 叶轮"
+      }
+    },
+    {
+      "id": "equipment-relation-0046",
+      "source": "assembly",
+      "target": "pump-part-0",
+      "type": "装配对象",
+      "sourceEvidence": {
+        "title": "设备维护与工艺关系",
+        "section": "关系 0046",
+        "excerpt": "装配工艺 —装配对象→ 叶轮"
+      }
+    },
+    {
+      "id": "equipment-relation-0047",
+      "source": "pump",
+      "target": "pump-part-1",
+      "type": "包含部件",
+      "sourceEvidence": {
+        "title": "设备维护与工艺关系",
+        "section": "关系 0047",
+        "excerpt": "离心泵 —包含部件→ 泵轴"
+      }
+    },
+    {
+      "id": "equipment-relation-0048",
+      "source": "assembly",
+      "target": "pump-part-1",
+      "type": "装配对象",
+      "sourceEvidence": {
+        "title": "设备维护与工艺关系",
+        "section": "关系 0048",
+        "excerpt": "装配工艺 —装配对象→ 泵轴"
+      }
+    },
+    {
+      "id": "equipment-relation-0049",
+      "source": "pump",
+      "target": "pump-part-2",
+      "type": "包含部件",
+      "sourceEvidence": {
+        "title": "设备维护与工艺关系",
+        "section": "关系 0049",
+        "excerpt": "离心泵 —包含部件→ 机械密封"
+      }
+    },
+    {
+      "id": "equipment-relation-0050",
+      "source": "assembly",
+      "target": "pump-part-2",
+      "type": "装配对象",
+      "sourceEvidence": {
+        "title": "设备维护与工艺关系",
+        "section": "关系 0050",
+        "excerpt": "装配工艺 —装配对象→ 机械密封"
+      }
+    },
+    {
+      "id": "equipment-relation-0051",
+      "source": "pump",
+      "target": "pump-part-3",
+      "type": "包含部件",
+      "sourceEvidence": {
+        "title": "设备维护与工艺关系",
+        "section": "关系 0051",
+        "excerpt": "离心泵 —包含部件→ 联轴器"
+      }
+    },
+    {
+      "id": "equipment-relation-0052",
+      "source": "assembly",
+      "target": "pump-part-3",
+      "type": "装配对象",
+      "sourceEvidence": {
+        "title": "设备维护与工艺关系",
+        "section": "关系 0052",
+        "excerpt": "装配工艺 —装配对象→ 联轴器"
+      }
+    },
+    {
+      "id": "equipment-relation-0053",
+      "source": "pump",
+      "target": "pump-part-4",
+      "type": "包含部件",
+      "sourceEvidence": {
+        "title": "设备维护与工艺关系",
+        "section": "关系 0053",
+        "excerpt": "离心泵 —包含部件→ 泵体"
+      }
+    },
+    {
+      "id": "equipment-relation-0054",
+      "source": "assembly",
+      "target": "pump-part-4",
+      "type": "装配对象",
+      "sourceEvidence": {
+        "title": "设备维护与工艺关系",
+        "section": "关系 0054",
+        "excerpt": "装配工艺 —装配对象→ 泵体"
+      }
+    },
+    {
+      "id": "equipment-relation-0055",
+      "source": "pump",
+      "target": "pump-fault-0",
+      "type": "关联现象",
+      "sourceEvidence": {
+        "title": "设备维护与工艺关系",
+        "section": "关系 0055",
+        "excerpt": "离心泵 —关联现象→ 流量偏低"
+      }
+    },
+    {
+      "id": "equipment-relation-0056",
+      "source": "pump-part-0",
+      "target": "pump-fault-0",
+      "type": "关联现象",
+      "sourceEvidence": {
+        "title": "设备维护与工艺关系",
+        "section": "关系 0056",
+        "excerpt": "叶轮 —关联现象→ 流量偏低"
+      }
+    },
+    {
+      "id": "equipment-relation-0057",
+      "source": "pump-fault-0",
+      "target": "block",
+      "type": "可能原因",
+      "sourceEvidence": {
+        "title": "设备维护与工艺关系",
+        "section": "关系 0057",
+        "excerpt": "流量偏低 —可能原因→ 通风受阻"
+      }
+    },
+    {
+      "id": "equipment-relation-0058",
+      "source": "pump-fault-0",
+      "target": "inspection",
+      "type": "需要核查",
+      "sourceEvidence": {
+        "title": "设备维护与工艺关系",
+        "section": "关系 0058",
+        "excerpt": "流量偏低 —需要核查→ 设备巡检"
+      }
+    },
+    {
+      "id": "equipment-relation-0059",
+      "source": "pump",
+      "target": "pump-fault-1",
+      "type": "关联现象",
+      "sourceEvidence": {
+        "title": "设备维护与工艺关系",
+        "section": "关系 0059",
+        "excerpt": "离心泵 —关联现象→ 密封泄漏"
+      }
+    },
+    {
+      "id": "equipment-relation-0060",
+      "source": "pump-part-1",
+      "target": "pump-fault-1",
+      "type": "关联现象",
+      "sourceEvidence": {
+        "title": "设备维护与工艺关系",
+        "section": "关系 0060",
+        "excerpt": "泵轴 —关联现象→ 密封泄漏"
+      }
+    },
+    {
+      "id": "equipment-relation-0061",
+      "source": "pump-fault-1",
+      "target": "wear",
+      "type": "可能原因",
+      "sourceEvidence": {
+        "title": "设备维护与工艺关系",
+        "section": "关系 0061",
+        "excerpt": "密封泄漏 —可能原因→ 轴承磨损"
+      }
+    },
+    {
+      "id": "equipment-relation-0062",
+      "source": "pump-fault-1",
+      "target": "inspection",
+      "type": "需要核查",
+      "sourceEvidence": {
+        "title": "设备维护与工艺关系",
+        "section": "关系 0062",
+        "excerpt": "密封泄漏 —需要核查→ 设备巡检"
+      }
+    },
+    {
+      "id": "equipment-relation-0063",
+      "source": "pump",
+      "target": "pump-fault-2",
+      "type": "关联现象",
+      "sourceEvidence": {
+        "title": "设备维护与工艺关系",
+        "section": "关系 0063",
+        "excerpt": "离心泵 —关联现象→ 泵体振动"
+      }
+    },
+    {
+      "id": "equipment-relation-0064",
+      "source": "pump-part-2",
+      "target": "pump-fault-2",
+      "type": "关联现象",
+      "sourceEvidence": {
+        "title": "设备维护与工艺关系",
+        "section": "关系 0064",
+        "excerpt": "机械密封 —关联现象→ 泵体振动"
+      }
+    },
+    {
+      "id": "equipment-relation-0065",
+      "source": "pump-fault-2",
+      "target": "misalignment",
+      "type": "可能原因",
+      "sourceEvidence": {
+        "title": "设备维护与工艺关系",
+        "section": "关系 0065",
+        "excerpt": "泵体振动 —可能原因→ 装配偏差"
+      }
+    },
+    {
+      "id": "equipment-relation-0066",
+      "source": "pump-fault-2",
+      "target": "inspection",
+      "type": "需要核查",
+      "sourceEvidence": {
+        "title": "设备维护与工艺关系",
+        "section": "关系 0066",
+        "excerpt": "泵体振动 —需要核查→ 设备巡检"
+      }
+    },
+    {
+      "id": "equipment-relation-0067",
+      "source": "pump",
+      "target": "pump-fault-3",
+      "type": "关联现象",
+      "sourceEvidence": {
+        "title": "设备维护与工艺关系",
+        "section": "关系 0067",
+        "excerpt": "离心泵 —关联现象→ 运行噪声"
+      }
+    },
+    {
+      "id": "equipment-relation-0068",
+      "source": "pump-part-3",
+      "target": "pump-fault-3",
+      "type": "关联现象",
+      "sourceEvidence": {
+        "title": "设备维护与工艺关系",
+        "section": "关系 0068",
+        "excerpt": "联轴器 —关联现象→ 运行噪声"
+      }
+    },
+    {
+      "id": "equipment-relation-0069",
+      "source": "pump-fault-3",
+      "target": "lubrication",
+      "type": "可能原因",
+      "sourceEvidence": {
+        "title": "设备维护与工艺关系",
+        "section": "关系 0069",
+        "excerpt": "运行噪声 —可能原因→ 润滑不足"
+      }
+    },
+    {
+      "id": "equipment-relation-0070",
+      "source": "pump-fault-3",
+      "target": "inspection",
+      "type": "需要核查",
+      "sourceEvidence": {
+        "title": "设备维护与工艺关系",
+        "section": "关系 0070",
+        "excerpt": "运行噪声 —需要核查→ 设备巡检"
+      }
+    },
+    {
+      "id": "equipment-relation-0071",
+      "source": "pump",
+      "target": "pump-process-0",
+      "type": "关联工艺",
+      "sourceEvidence": {
+        "title": "设备维护与工艺关系",
+        "section": "关系 0071",
+        "excerpt": "离心泵 —关联工艺→ 泵组安装"
+      }
+    },
+    {
+      "id": "equipment-relation-0072",
+      "source": "pump-process-0",
+      "target": "quality",
+      "type": "关联检查",
+      "sourceEvidence": {
+        "title": "设备维护与工艺关系",
+        "section": "关系 0072",
+        "excerpt": "泵组安装 —关联检查→ 质量检查"
+      }
+    },
+    {
+      "id": "equipment-relation-0073",
+      "source": "pump-process-0",
+      "target": "pump-part-0",
+      "type": "涉及部件",
+      "sourceEvidence": {
+        "title": "设备维护与工艺关系",
+        "section": "关系 0073",
+        "excerpt": "泵组安装 —涉及部件→ 叶轮"
+      }
+    },
+    {
+      "id": "equipment-relation-0074",
+      "source": "pump-process-0",
+      "target": "assembly",
+      "type": "归属活动",
+      "sourceEvidence": {
+        "title": "设备维护与工艺关系",
+        "section": "关系 0074",
+        "excerpt": "泵组安装 —归属活动→ 装配工艺"
+      }
+    },
+    {
+      "id": "equipment-relation-0075",
+      "source": "pump",
+      "target": "pump-process-1",
+      "type": "关联工艺",
+      "sourceEvidence": {
+        "title": "设备维护与工艺关系",
+        "section": "关系 0075",
+        "excerpt": "离心泵 —关联工艺→ 对中装配"
+      }
+    },
+    {
+      "id": "equipment-relation-0076",
+      "source": "pump-process-1",
+      "target": "quality",
+      "type": "关联检查",
+      "sourceEvidence": {
+        "title": "设备维护与工艺关系",
+        "section": "关系 0076",
+        "excerpt": "对中装配 —关联检查→ 质量检查"
+      }
+    },
+    {
+      "id": "equipment-relation-0077",
+      "source": "pump-process-1",
+      "target": "pump-part-1",
+      "type": "涉及部件",
+      "sourceEvidence": {
+        "title": "设备维护与工艺关系",
+        "section": "关系 0077",
+        "excerpt": "对中装配 —涉及部件→ 泵轴"
+      }
+    },
+    {
+      "id": "equipment-relation-0078",
+      "source": "pump-process-1",
+      "target": "inspection",
+      "type": "归属活动",
+      "sourceEvidence": {
+        "title": "设备维护与工艺关系",
+        "section": "关系 0078",
+        "excerpt": "对中装配 —归属活动→ 设备巡检"
+      }
+    },
+    {
+      "id": "equipment-relation-0079",
+      "source": "pump",
+      "target": "pump-process-2",
+      "type": "关联工艺",
+      "sourceEvidence": {
+        "title": "设备维护与工艺关系",
+        "section": "关系 0079",
+        "excerpt": "离心泵 —关联工艺→ 运行点检"
+      }
+    },
+    {
+      "id": "equipment-relation-0080",
+      "source": "pump-process-2",
+      "target": "quality",
+      "type": "关联检查",
+      "sourceEvidence": {
+        "title": "设备维护与工艺关系",
+        "section": "关系 0080",
+        "excerpt": "运行点检 —关联检查→ 质量检查"
+      }
+    },
+    {
+      "id": "equipment-relation-0081",
+      "source": "pump-process-2",
+      "target": "pump-part-2",
+      "type": "涉及部件",
+      "sourceEvidence": {
+        "title": "设备维护与工艺关系",
+        "section": "关系 0081",
+        "excerpt": "运行点检 —涉及部件→ 机械密封"
+      }
+    },
+    {
+      "id": "equipment-relation-0082",
+      "source": "pump-process-2",
+      "target": "inspection",
+      "type": "归属活动",
+      "sourceEvidence": {
+        "title": "设备维护与工艺关系",
+        "section": "关系 0082",
+        "excerpt": "运行点检 —归属活动→ 设备巡检"
+      }
+    },
+    {
+      "id": "equipment-relation-0083",
+      "source": "inspection",
+      "target": "conveyor",
+      "type": "巡检对象",
+      "sourceEvidence": {
+        "title": "设备维护与工艺关系",
+        "section": "关系 0083",
+        "excerpt": "设备巡检 —巡检对象→ 带式输送机"
+      }
+    },
+    {
+      "id": "equipment-relation-0084",
+      "source": "conveyor",
+      "target": "maintenance",
+      "type": "纳入维护",
+      "sourceEvidence": {
+        "title": "设备维护与工艺关系",
+        "section": "关系 0084",
+        "excerpt": "带式输送机 —纳入维护→ 设备维护"
+      }
+    },
+    {
+      "id": "equipment-relation-0085",
+      "source": "conveyor",
+      "target": "electrical",
+      "type": "关联控制",
+      "sourceEvidence": {
+        "title": "设备维护与工艺关系",
+        "section": "关系 0085",
+        "excerpt": "带式输送机 —关联控制→ 电气控制"
+      }
+    },
+    {
+      "id": "equipment-relation-0086",
+      "source": "conveyor",
+      "target": "mechanical",
+      "type": "关联传动",
+      "sourceEvidence": {
+        "title": "设备维护与工艺关系",
+        "section": "关系 0086",
+        "excerpt": "带式输送机 —关联传动→ 机械传动"
+      }
+    },
+    {
+      "id": "equipment-relation-0087",
+      "source": "conveyor",
+      "target": "conveyor-part-0",
+      "type": "包含部件",
+      "sourceEvidence": {
+        "title": "设备维护与工艺关系",
+        "section": "关系 0087",
+        "excerpt": "带式输送机 —包含部件→ 输送带"
+      }
+    },
+    {
+      "id": "equipment-relation-0088",
+      "source": "assembly",
+      "target": "conveyor-part-0",
+      "type": "装配对象",
+      "sourceEvidence": {
+        "title": "设备维护与工艺关系",
+        "section": "关系 0088",
+        "excerpt": "装配工艺 —装配对象→ 输送带"
+      }
+    },
+    {
+      "id": "equipment-relation-0089",
+      "source": "conveyor",
+      "target": "conveyor-part-1",
+      "type": "包含部件",
+      "sourceEvidence": {
+        "title": "设备维护与工艺关系",
+        "section": "关系 0089",
+        "excerpt": "带式输送机 —包含部件→ 驱动滚筒"
+      }
+    },
+    {
+      "id": "equipment-relation-0090",
+      "source": "assembly",
+      "target": "conveyor-part-1",
+      "type": "装配对象",
+      "sourceEvidence": {
+        "title": "设备维护与工艺关系",
+        "section": "关系 0090",
+        "excerpt": "装配工艺 —装配对象→ 驱动滚筒"
+      }
+    },
+    {
+      "id": "equipment-relation-0091",
+      "source": "conveyor",
+      "target": "conveyor-part-2",
+      "type": "包含部件",
+      "sourceEvidence": {
+        "title": "设备维护与工艺关系",
+        "section": "关系 0091",
+        "excerpt": "带式输送机 —包含部件→ 托辊"
+      }
+    },
+    {
+      "id": "equipment-relation-0092",
+      "source": "assembly",
+      "target": "conveyor-part-2",
+      "type": "装配对象",
+      "sourceEvidence": {
+        "title": "设备维护与工艺关系",
+        "section": "关系 0092",
+        "excerpt": "装配工艺 —装配对象→ 托辊"
+      }
+    },
+    {
+      "id": "equipment-relation-0093",
+      "source": "conveyor",
+      "target": "conveyor-part-3",
+      "type": "包含部件",
+      "sourceEvidence": {
+        "title": "设备维护与工艺关系",
+        "section": "关系 0093",
+        "excerpt": "带式输送机 —包含部件→ 张紧装置"
+      }
+    },
+    {
+      "id": "equipment-relation-0094",
+      "source": "assembly",
+      "target": "conveyor-part-3",
+      "type": "装配对象",
+      "sourceEvidence": {
+        "title": "设备维护与工艺关系",
+        "section": "关系 0094",
+        "excerpt": "装配工艺 —装配对象→ 张紧装置"
+      }
+    },
+    {
+      "id": "equipment-relation-0095",
+      "source": "conveyor",
+      "target": "conveyor-part-4",
+      "type": "包含部件",
+      "sourceEvidence": {
+        "title": "设备维护与工艺关系",
+        "section": "关系 0095",
+        "excerpt": "带式输送机 —包含部件→ 减速器"
+      }
+    },
+    {
+      "id": "equipment-relation-0096",
+      "source": "assembly",
+      "target": "conveyor-part-4",
+      "type": "装配对象",
+      "sourceEvidence": {
+        "title": "设备维护与工艺关系",
+        "section": "关系 0096",
+        "excerpt": "装配工艺 —装配对象→ 减速器"
+      }
+    },
+    {
+      "id": "equipment-relation-0097",
+      "source": "conveyor",
+      "target": "conveyor-fault-0",
+      "type": "关联现象",
+      "sourceEvidence": {
+        "title": "设备维护与工艺关系",
+        "section": "关系 0097",
+        "excerpt": "带式输送机 —关联现象→ 皮带跑偏"
+      }
+    },
+    {
+      "id": "equipment-relation-0098",
+      "source": "conveyor-part-0",
+      "target": "conveyor-fault-0",
+      "type": "关联现象",
+      "sourceEvidence": {
+        "title": "设备维护与工艺关系",
+        "section": "关系 0098",
+        "excerpt": "输送带 —关联现象→ 皮带跑偏"
+      }
+    },
+    {
+      "id": "equipment-relation-0099",
+      "source": "conveyor-fault-0",
+      "target": "misalignment",
+      "type": "可能原因",
+      "sourceEvidence": {
+        "title": "设备维护与工艺关系",
+        "section": "关系 0099",
+        "excerpt": "皮带跑偏 —可能原因→ 装配偏差"
+      }
+    },
+    {
+      "id": "equipment-relation-0100",
+      "source": "conveyor-fault-0",
+      "target": "inspection",
+      "type": "需要核查",
+      "sourceEvidence": {
+        "title": "设备维护与工艺关系",
+        "section": "关系 0100",
+        "excerpt": "皮带跑偏 —需要核查→ 设备巡检"
+      }
+    },
+    {
+      "id": "equipment-relation-0101",
+      "source": "conveyor",
+      "target": "conveyor-fault-1",
+      "type": "关联现象",
+      "sourceEvidence": {
+        "title": "设备维护与工艺关系",
+        "section": "关系 0101",
+        "excerpt": "带式输送机 —关联现象→ 输送打滑"
+      }
+    },
+    {
+      "id": "equipment-relation-0102",
+      "source": "conveyor-part-1",
+      "target": "conveyor-fault-1",
+      "type": "关联现象",
+      "sourceEvidence": {
+        "title": "设备维护与工艺关系",
+        "section": "关系 0102",
+        "excerpt": "驱动滚筒 —关联现象→ 输送打滑"
+      }
+    },
+    {
+      "id": "equipment-relation-0103",
+      "source": "conveyor-fault-1",
+      "target": "overload",
+      "type": "可能原因",
+      "sourceEvidence": {
+        "title": "设备维护与工艺关系",
+        "section": "关系 0103",
+        "excerpt": "输送打滑 —可能原因→ 负载异常"
+      }
+    },
+    {
+      "id": "equipment-relation-0104",
+      "source": "conveyor-fault-1",
+      "target": "inspection",
+      "type": "需要核查",
+      "sourceEvidence": {
+        "title": "设备维护与工艺关系",
+        "section": "关系 0104",
+        "excerpt": "输送打滑 —需要核查→ 设备巡检"
+      }
+    },
+    {
+      "id": "equipment-relation-0105",
+      "source": "conveyor",
+      "target": "conveyor-fault-2",
+      "type": "关联现象",
+      "sourceEvidence": {
+        "title": "设备维护与工艺关系",
+        "section": "关系 0105",
+        "excerpt": "带式输送机 —关联现象→ 托辊异响"
+      }
+    },
+    {
+      "id": "equipment-relation-0106",
+      "source": "conveyor-part-2",
+      "target": "conveyor-fault-2",
+      "type": "关联现象",
+      "sourceEvidence": {
+        "title": "设备维护与工艺关系",
+        "section": "关系 0106",
+        "excerpt": "托辊 —关联现象→ 托辊异响"
+      }
+    },
+    {
+      "id": "equipment-relation-0107",
+      "source": "conveyor-fault-2",
+      "target": "wear",
+      "type": "可能原因",
+      "sourceEvidence": {
+        "title": "设备维护与工艺关系",
+        "section": "关系 0107",
+        "excerpt": "托辊异响 —可能原因→ 轴承磨损"
+      }
+    },
+    {
+      "id": "equipment-relation-0108",
+      "source": "conveyor-fault-2",
+      "target": "inspection",
+      "type": "需要核查",
+      "sourceEvidence": {
+        "title": "设备维护与工艺关系",
+        "section": "关系 0108",
+        "excerpt": "托辊异响 —需要核查→ 设备巡检"
+      }
+    },
+    {
+      "id": "equipment-relation-0109",
+      "source": "conveyor",
+      "target": "conveyor-fault-3",
+      "type": "关联现象",
+      "sourceEvidence": {
+        "title": "设备维护与工艺关系",
+        "section": "关系 0109",
+        "excerpt": "带式输送机 —关联现象→ 驱动温升"
+      }
+    },
+    {
+      "id": "equipment-relation-0110",
+      "source": "conveyor-part-3",
+      "target": "conveyor-fault-3",
+      "type": "关联现象",
+      "sourceEvidence": {
+        "title": "设备维护与工艺关系",
+        "section": "关系 0110",
+        "excerpt": "张紧装置 —关联现象→ 驱动温升"
+      }
+    },
+    {
+      "id": "equipment-relation-0111",
+      "source": "conveyor-fault-3",
+      "target": "lubrication",
+      "type": "可能原因",
+      "sourceEvidence": {
+        "title": "设备维护与工艺关系",
+        "section": "关系 0111",
+        "excerpt": "驱动温升 —可能原因→ 润滑不足"
+      }
+    },
+    {
+      "id": "equipment-relation-0112",
+      "source": "conveyor-fault-3",
+      "target": "inspection",
+      "type": "需要核查",
+      "sourceEvidence": {
+        "title": "设备维护与工艺关系",
+        "section": "关系 0112",
+        "excerpt": "驱动温升 —需要核查→ 设备巡检"
+      }
+    },
+    {
+      "id": "equipment-relation-0113",
+      "source": "conveyor",
+      "target": "conveyor-process-0",
+      "type": "关联工艺",
+      "sourceEvidence": {
+        "title": "设备维护与工艺关系",
+        "section": "关系 0113",
+        "excerpt": "带式输送机 —关联工艺→ 输送线装配"
+      }
+    },
+    {
+      "id": "equipment-relation-0114",
+      "source": "conveyor-process-0",
+      "target": "quality",
+      "type": "关联检查",
+      "sourceEvidence": {
+        "title": "设备维护与工艺关系",
+        "section": "关系 0114",
+        "excerpt": "输送线装配 —关联检查→ 质量检查"
+      }
+    },
+    {
+      "id": "equipment-relation-0115",
+      "source": "conveyor-process-0",
+      "target": "conveyor-part-0",
+      "type": "涉及部件",
+      "sourceEvidence": {
+        "title": "设备维护与工艺关系",
+        "section": "关系 0115",
+        "excerpt": "输送线装配 —涉及部件→ 输送带"
+      }
+    },
+    {
+      "id": "equipment-relation-0116",
+      "source": "conveyor-process-0",
+      "target": "assembly",
+      "type": "归属活动",
+      "sourceEvidence": {
+        "title": "设备维护与工艺关系",
+        "section": "关系 0116",
+        "excerpt": "输送线装配 —归属活动→ 装配工艺"
+      }
+    },
+    {
+      "id": "equipment-relation-0117",
+      "source": "conveyor",
+      "target": "conveyor-process-1",
+      "type": "关联工艺",
+      "sourceEvidence": {
+        "title": "设备维护与工艺关系",
+        "section": "关系 0117",
+        "excerpt": "带式输送机 —关联工艺→ 张紧检查"
+      }
+    },
+    {
+      "id": "equipment-relation-0118",
+      "source": "conveyor-process-1",
+      "target": "quality",
+      "type": "关联检查",
+      "sourceEvidence": {
+        "title": "设备维护与工艺关系",
+        "section": "关系 0118",
+        "excerpt": "张紧检查 —关联检查→ 质量检查"
+      }
+    },
+    {
+      "id": "equipment-relation-0119",
+      "source": "conveyor-process-1",
+      "target": "conveyor-part-1",
+      "type": "涉及部件",
+      "sourceEvidence": {
+        "title": "设备维护与工艺关系",
+        "section": "关系 0119",
+        "excerpt": "张紧检查 —涉及部件→ 驱动滚筒"
+      }
+    },
+    {
+      "id": "equipment-relation-0120",
+      "source": "conveyor-process-1",
+      "target": "inspection",
+      "type": "归属活动",
+      "sourceEvidence": {
+        "title": "设备维护与工艺关系",
+        "section": "关系 0120",
+        "excerpt": "张紧检查 —归属活动→ 设备巡检"
+      }
+    },
+    {
+      "id": "equipment-relation-0121",
+      "source": "conveyor",
+      "target": "conveyor-process-2",
+      "type": "关联工艺",
+      "sourceEvidence": {
+        "title": "设备维护与工艺关系",
+        "section": "关系 0121",
+        "excerpt": "带式输送机 —关联工艺→ 输送点检"
+      }
+    },
+    {
+      "id": "equipment-relation-0122",
+      "source": "conveyor-process-2",
+      "target": "quality",
+      "type": "关联检查",
+      "sourceEvidence": {
+        "title": "设备维护与工艺关系",
+        "section": "关系 0122",
+        "excerpt": "输送点检 —关联检查→ 质量检查"
+      }
+    },
+    {
+      "id": "equipment-relation-0123",
+      "source": "conveyor-process-2",
+      "target": "conveyor-part-2",
+      "type": "涉及部件",
+      "sourceEvidence": {
+        "title": "设备维护与工艺关系",
+        "section": "关系 0123",
+        "excerpt": "输送点检 —涉及部件→ 托辊"
+      }
+    },
+    {
+      "id": "equipment-relation-0124",
+      "source": "conveyor-process-2",
+      "target": "inspection",
+      "type": "归属活动",
+      "sourceEvidence": {
+        "title": "设备维护与工艺关系",
+        "section": "关系 0124",
+        "excerpt": "输送点检 —归属活动→ 设备巡检"
+      }
+    },
+    {
+      "id": "equipment-relation-0125",
+      "source": "inspection",
+      "target": "compressor",
+      "type": "巡检对象",
+      "sourceEvidence": {
+        "title": "设备维护与工艺关系",
+        "section": "关系 0125",
+        "excerpt": "设备巡检 —巡检对象→ 空气压缩机"
+      }
+    },
+    {
+      "id": "equipment-relation-0126",
+      "source": "compressor",
+      "target": "maintenance",
+      "type": "纳入维护",
+      "sourceEvidence": {
+        "title": "设备维护与工艺关系",
+        "section": "关系 0126",
+        "excerpt": "空气压缩机 —纳入维护→ 设备维护"
+      }
+    },
+    {
+      "id": "equipment-relation-0127",
+      "source": "compressor",
+      "target": "electrical",
+      "type": "关联控制",
+      "sourceEvidence": {
+        "title": "设备维护与工艺关系",
+        "section": "关系 0127",
+        "excerpt": "空气压缩机 —关联控制→ 电气控制"
+      }
+    },
+    {
+      "id": "equipment-relation-0128",
+      "source": "compressor",
+      "target": "mechanical",
+      "type": "关联传动",
+      "sourceEvidence": {
+        "title": "设备维护与工艺关系",
+        "section": "关系 0128",
+        "excerpt": "空气压缩机 —关联传动→ 机械传动"
+      }
+    },
+    {
+      "id": "equipment-relation-0129",
+      "source": "compressor",
+      "target": "compressor-part-0",
+      "type": "包含部件",
+      "sourceEvidence": {
+        "title": "设备维护与工艺关系",
+        "section": "关系 0129",
+        "excerpt": "空气压缩机 —包含部件→ 压缩主机"
+      }
+    },
+    {
+      "id": "equipment-relation-0130",
+      "source": "assembly",
+      "target": "compressor-part-0",
+      "type": "装配对象",
+      "sourceEvidence": {
+        "title": "设备维护与工艺关系",
+        "section": "关系 0130",
+        "excerpt": "装配工艺 —装配对象→ 压缩主机"
+      }
+    },
+    {
+      "id": "equipment-relation-0131",
+      "source": "compressor",
+      "target": "compressor-part-1",
+      "type": "包含部件",
+      "sourceEvidence": {
+        "title": "设备维护与工艺关系",
+        "section": "关系 0131",
+        "excerpt": "空气压缩机 —包含部件→ 空气滤芯"
+      }
+    },
+    {
+      "id": "equipment-relation-0132",
+      "source": "assembly",
+      "target": "compressor-part-1",
+      "type": "装配对象",
+      "sourceEvidence": {
+        "title": "设备维护与工艺关系",
+        "section": "关系 0132",
+        "excerpt": "装配工艺 —装配对象→ 空气滤芯"
+      }
+    },
+    {
+      "id": "equipment-relation-0133",
+      "source": "compressor",
+      "target": "compressor-part-2",
+      "type": "包含部件",
+      "sourceEvidence": {
+        "title": "设备维护与工艺关系",
+        "section": "关系 0133",
+        "excerpt": "空气压缩机 —包含部件→ 冷却器"
+      }
+    },
+    {
+      "id": "equipment-relation-0134",
+      "source": "assembly",
+      "target": "compressor-part-2",
+      "type": "装配对象",
+      "sourceEvidence": {
+        "title": "设备维护与工艺关系",
+        "section": "关系 0134",
+        "excerpt": "装配工艺 —装配对象→ 冷却器"
+      }
+    },
+    {
+      "id": "equipment-relation-0135",
+      "source": "compressor",
+      "target": "compressor-part-3",
+      "type": "包含部件",
+      "sourceEvidence": {
+        "title": "设备维护与工艺关系",
+        "section": "关系 0135",
+        "excerpt": "空气压缩机 —包含部件→ 油气分离器"
+      }
+    },
+    {
+      "id": "equipment-relation-0136",
+      "source": "assembly",
+      "target": "compressor-part-3",
+      "type": "装配对象",
+      "sourceEvidence": {
+        "title": "设备维护与工艺关系",
+        "section": "关系 0136",
+        "excerpt": "装配工艺 —装配对象→ 油气分离器"
+      }
+    },
+    {
+      "id": "equipment-relation-0137",
+      "source": "compressor",
+      "target": "compressor-part-4",
+      "type": "包含部件",
+      "sourceEvidence": {
+        "title": "设备维护与工艺关系",
+        "section": "关系 0137",
+        "excerpt": "空气压缩机 —包含部件→ 压力传感器"
+      }
+    },
+    {
+      "id": "equipment-relation-0138",
+      "source": "assembly",
+      "target": "compressor-part-4",
+      "type": "装配对象",
+      "sourceEvidence": {
+        "title": "设备维护与工艺关系",
+        "section": "关系 0138",
+        "excerpt": "装配工艺 —装配对象→ 压力传感器"
+      }
+    },
+    {
+      "id": "equipment-relation-0139",
+      "source": "compressor",
+      "target": "compressor-fault-0",
+      "type": "关联现象",
+      "sourceEvidence": {
+        "title": "设备维护与工艺关系",
+        "section": "关系 0139",
+        "excerpt": "空气压缩机 —关联现象→ 排气温度异常"
+      }
+    },
+    {
+      "id": "equipment-relation-0140",
+      "source": "compressor-part-0",
+      "target": "compressor-fault-0",
+      "type": "关联现象",
+      "sourceEvidence": {
+        "title": "设备维护与工艺关系",
+        "section": "关系 0140",
+        "excerpt": "压缩主机 —关联现象→ 排气温度异常"
+      }
+    },
+    {
+      "id": "equipment-relation-0141",
+      "source": "compressor-fault-0",
+      "target": "block",
+      "type": "可能原因",
+      "sourceEvidence": {
+        "title": "设备维护与工艺关系",
+        "section": "关系 0141",
+        "excerpt": "排气温度异常 —可能原因→ 通风受阻"
+      }
+    },
+    {
+      "id": "equipment-relation-0142",
+      "source": "compressor-fault-0",
+      "target": "inspection",
+      "type": "需要核查",
+      "sourceEvidence": {
+        "title": "设备维护与工艺关系",
+        "section": "关系 0142",
+        "excerpt": "排气温度异常 —需要核查→ 设备巡检"
+      }
+    },
+    {
+      "id": "equipment-relation-0143",
+      "source": "compressor",
+      "target": "compressor-fault-1",
+      "type": "关联现象",
+      "sourceEvidence": {
+        "title": "设备维护与工艺关系",
+        "section": "关系 0143",
+        "excerpt": "空气压缩机 —关联现象→ 供气压力偏低"
+      }
+    },
+    {
+      "id": "equipment-relation-0144",
+      "source": "compressor-part-1",
+      "target": "compressor-fault-1",
+      "type": "关联现象",
+      "sourceEvidence": {
+        "title": "设备维护与工艺关系",
+        "section": "关系 0144",
+        "excerpt": "空气滤芯 —关联现象→ 供气压力偏低"
+      }
+    },
+    {
+      "id": "equipment-relation-0145",
+      "source": "compressor-fault-1",
+      "target": "overload",
+      "type": "可能原因",
+      "sourceEvidence": {
+        "title": "设备维护与工艺关系",
+        "section": "关系 0145",
+        "excerpt": "供气压力偏低 —可能原因→ 负载异常"
+      }
+    },
+    {
+      "id": "equipment-relation-0146",
+      "source": "compressor-fault-1",
+      "target": "inspection",
+      "type": "需要核查",
+      "sourceEvidence": {
+        "title": "设备维护与工艺关系",
+        "section": "关系 0146",
+        "excerpt": "供气压力偏低 —需要核查→ 设备巡检"
+      }
+    },
+    {
+      "id": "equipment-relation-0147",
+      "source": "compressor",
+      "target": "compressor-fault-2",
+      "type": "关联现象",
+      "sourceEvidence": {
+        "title": "设备维护与工艺关系",
+        "section": "关系 0147",
+        "excerpt": "空气压缩机 —关联现象→ 机组振动"
+      }
+    },
+    {
+      "id": "equipment-relation-0148",
+      "source": "compressor-part-2",
+      "target": "compressor-fault-2",
+      "type": "关联现象",
+      "sourceEvidence": {
+        "title": "设备维护与工艺关系",
+        "section": "关系 0148",
+        "excerpt": "冷却器 —关联现象→ 机组振动"
+      }
+    },
+    {
+      "id": "equipment-relation-0149",
+      "source": "compressor-fault-2",
+      "target": "loose",
+      "type": "可能原因",
+      "sourceEvidence": {
+        "title": "设备维护与工艺关系",
+        "section": "关系 0149",
+        "excerpt": "机组振动 —可能原因→ 螺栓松动"
+      }
+    },
+    {
+      "id": "equipment-relation-0150",
+      "source": "compressor-fault-2",
+      "target": "inspection",
+      "type": "需要核查",
+      "sourceEvidence": {
+        "title": "设备维护与工艺关系",
+        "section": "关系 0150",
+        "excerpt": "机组振动 —需要核查→ 设备巡检"
+      }
+    },
+    {
+      "id": "equipment-relation-0151",
+      "source": "compressor",
+      "target": "compressor-fault-3",
+      "type": "关联现象",
+      "sourceEvidence": {
+        "title": "设备维护与工艺关系",
+        "section": "关系 0151",
+        "excerpt": "空气压缩机 —关联现象→ 滤芯压差异常"
+      }
+    },
+    {
+      "id": "equipment-relation-0152",
+      "source": "compressor-part-3",
+      "target": "compressor-fault-3",
+      "type": "关联现象",
+      "sourceEvidence": {
+        "title": "设备维护与工艺关系",
+        "section": "关系 0152",
+        "excerpt": "油气分离器 —关联现象→ 滤芯压差异常"
+      }
+    },
+    {
+      "id": "equipment-relation-0153",
+      "source": "compressor-fault-3",
+      "target": "dust",
+      "type": "可能原因",
+      "sourceEvidence": {
+        "title": "设备维护与工艺关系",
+        "section": "关系 0153",
+        "excerpt": "滤芯压差异常 —可能原因→ 积尘"
+      }
+    },
+    {
+      "id": "equipment-relation-0154",
+      "source": "compressor-fault-3",
+      "target": "inspection",
+      "type": "需要核查",
+      "sourceEvidence": {
+        "title": "设备维护与工艺关系",
+        "section": "关系 0154",
+        "excerpt": "滤芯压差异常 —需要核查→ 设备巡检"
+      }
+    },
+    {
+      "id": "equipment-relation-0155",
+      "source": "compressor",
+      "target": "compressor-process-0",
+      "type": "关联工艺",
+      "sourceEvidence": {
+        "title": "设备维护与工艺关系",
+        "section": "关系 0155",
+        "excerpt": "空气压缩机 —关联工艺→ 机组安装"
+      }
+    },
+    {
+      "id": "equipment-relation-0156",
+      "source": "compressor-process-0",
+      "target": "quality",
+      "type": "关联检查",
+      "sourceEvidence": {
+        "title": "设备维护与工艺关系",
+        "section": "关系 0156",
+        "excerpt": "机组安装 —关联检查→ 质量检查"
+      }
+    },
+    {
+      "id": "equipment-relation-0157",
+      "source": "compressor-process-0",
+      "target": "compressor-part-0",
+      "type": "涉及部件",
+      "sourceEvidence": {
+        "title": "设备维护与工艺关系",
+        "section": "关系 0157",
+        "excerpt": "机组安装 —涉及部件→ 压缩主机"
+      }
+    },
+    {
+      "id": "equipment-relation-0158",
+      "source": "compressor-process-0",
+      "target": "assembly",
+      "type": "归属活动",
+      "sourceEvidence": {
+        "title": "设备维护与工艺关系",
+        "section": "关系 0158",
+        "excerpt": "机组安装 —归属活动→ 装配工艺"
+      }
+    },
+    {
+      "id": "equipment-relation-0159",
+      "source": "compressor",
+      "target": "compressor-process-1",
+      "type": "关联工艺",
+      "sourceEvidence": {
+        "title": "设备维护与工艺关系",
+        "section": "关系 0159",
+        "excerpt": "空气压缩机 —关联工艺→ 过滤检查"
+      }
+    },
+    {
+      "id": "equipment-relation-0160",
+      "source": "compressor-process-1",
+      "target": "quality",
+      "type": "关联检查",
+      "sourceEvidence": {
+        "title": "设备维护与工艺关系",
+        "section": "关系 0160",
+        "excerpt": "过滤检查 —关联检查→ 质量检查"
+      }
+    },
+    {
+      "id": "equipment-relation-0161",
+      "source": "compressor-process-1",
+      "target": "compressor-part-1",
+      "type": "涉及部件",
+      "sourceEvidence": {
+        "title": "设备维护与工艺关系",
+        "section": "关系 0161",
+        "excerpt": "过滤检查 —涉及部件→ 空气滤芯"
+      }
+    },
+    {
+      "id": "equipment-relation-0162",
+      "source": "compressor-process-1",
+      "target": "inspection",
+      "type": "归属活动",
+      "sourceEvidence": {
+        "title": "设备维护与工艺关系",
+        "section": "关系 0162",
+        "excerpt": "过滤检查 —归属活动→ 设备巡检"
+      }
+    },
+    {
+      "id": "equipment-relation-0163",
+      "source": "compressor",
+      "target": "compressor-process-2",
+      "type": "关联工艺",
+      "sourceEvidence": {
+        "title": "设备维护与工艺关系",
+        "section": "关系 0163",
+        "excerpt": "空气压缩机 —关联工艺→ 压力巡检"
+      }
+    },
+    {
+      "id": "equipment-relation-0164",
+      "source": "compressor-process-2",
+      "target": "quality",
+      "type": "关联检查",
+      "sourceEvidence": {
+        "title": "设备维护与工艺关系",
+        "section": "关系 0164",
+        "excerpt": "压力巡检 —关联检查→ 质量检查"
+      }
+    },
+    {
+      "id": "equipment-relation-0165",
+      "source": "compressor-process-2",
+      "target": "compressor-part-2",
+      "type": "涉及部件",
+      "sourceEvidence": {
+        "title": "设备维护与工艺关系",
+        "section": "关系 0165",
+        "excerpt": "压力巡检 —涉及部件→ 冷却器"
+      }
+    },
+    {
+      "id": "equipment-relation-0166",
+      "source": "compressor-process-2",
+      "target": "inspection",
+      "type": "归属活动",
+      "sourceEvidence": {
+        "title": "设备维护与工艺关系",
+        "section": "关系 0166",
+        "excerpt": "压力巡检 —归属活动→ 设备巡检"
+      }
+    },
+    {
+      "id": "equipment-relation-0167",
+      "source": "inspection",
+      "target": "cnc",
+      "type": "巡检对象",
+      "sourceEvidence": {
+        "title": "设备维护与工艺关系",
+        "section": "关系 0167",
+        "excerpt": "设备巡检 —巡检对象→ 数控机床"
+      }
+    },
+    {
+      "id": "equipment-relation-0168",
+      "source": "cnc",
+      "target": "maintenance",
+      "type": "纳入维护",
+      "sourceEvidence": {
+        "title": "设备维护与工艺关系",
+        "section": "关系 0168",
+        "excerpt": "数控机床 —纳入维护→ 设备维护"
+      }
+    },
+    {
+      "id": "equipment-relation-0169",
+      "source": "cnc",
+      "target": "electrical",
+      "type": "关联控制",
+      "sourceEvidence": {
+        "title": "设备维护与工艺关系",
+        "section": "关系 0169",
+        "excerpt": "数控机床 —关联控制→ 电气控制"
+      }
+    },
+    {
+      "id": "equipment-relation-0170",
+      "source": "cnc",
+      "target": "mechanical",
+      "type": "关联传动",
+      "sourceEvidence": {
+        "title": "设备维护与工艺关系",
+        "section": "关系 0170",
+        "excerpt": "数控机床 —关联传动→ 机械传动"
+      }
+    },
+    {
+      "id": "equipment-relation-0171",
+      "source": "cnc",
+      "target": "cnc-part-0",
+      "type": "包含部件",
+      "sourceEvidence": {
+        "title": "设备维护与工艺关系",
+        "section": "关系 0171",
+        "excerpt": "数控机床 —包含部件→ 主轴"
+      }
+    },
+    {
+      "id": "equipment-relation-0172",
+      "source": "assembly",
+      "target": "cnc-part-0",
+      "type": "装配对象",
+      "sourceEvidence": {
+        "title": "设备维护与工艺关系",
+        "section": "关系 0172",
+        "excerpt": "装配工艺 —装配对象→ 主轴"
+      }
+    },
+    {
+      "id": "equipment-relation-0173",
+      "source": "cnc",
+      "target": "cnc-part-1",
+      "type": "包含部件",
+      "sourceEvidence": {
+        "title": "设备维护与工艺关系",
+        "section": "关系 0173",
+        "excerpt": "数控机床 —包含部件→ 丝杠"
+      }
+    },
+    {
+      "id": "equipment-relation-0174",
+      "source": "assembly",
+      "target": "cnc-part-1",
+      "type": "装配对象",
+      "sourceEvidence": {
+        "title": "设备维护与工艺关系",
+        "section": "关系 0174",
+        "excerpt": "装配工艺 —装配对象→ 丝杠"
+      }
+    },
+    {
+      "id": "equipment-relation-0175",
+      "source": "cnc",
+      "target": "cnc-part-2",
+      "type": "包含部件",
+      "sourceEvidence": {
+        "title": "设备维护与工艺关系",
+        "section": "关系 0175",
+        "excerpt": "数控机床 —包含部件→ 导轨"
+      }
+    },
+    {
+      "id": "equipment-relation-0176",
+      "source": "assembly",
+      "target": "cnc-part-2",
+      "type": "装配对象",
+      "sourceEvidence": {
+        "title": "设备维护与工艺关系",
+        "section": "关系 0176",
+        "excerpt": "装配工艺 —装配对象→ 导轨"
+      }
+    },
+    {
+      "id": "equipment-relation-0177",
+      "source": "cnc",
+      "target": "cnc-part-3",
+      "type": "包含部件",
+      "sourceEvidence": {
+        "title": "设备维护与工艺关系",
+        "section": "关系 0177",
+        "excerpt": "数控机床 —包含部件→ 冷却泵"
+      }
+    },
+    {
+      "id": "equipment-relation-0178",
+      "source": "assembly",
+      "target": "cnc-part-3",
+      "type": "装配对象",
+      "sourceEvidence": {
+        "title": "设备维护与工艺关系",
+        "section": "关系 0178",
+        "excerpt": "装配工艺 —装配对象→ 冷却泵"
+      }
+    },
+    {
+      "id": "equipment-relation-0179",
+      "source": "cnc",
+      "target": "cnc-part-4",
+      "type": "包含部件",
+      "sourceEvidence": {
+        "title": "设备维护与工艺关系",
+        "section": "关系 0179",
+        "excerpt": "数控机床 —包含部件→ 刀具夹持器"
+      }
+    },
+    {
+      "id": "equipment-relation-0180",
+      "source": "assembly",
+      "target": "cnc-part-4",
+      "type": "装配对象",
+      "sourceEvidence": {
+        "title": "设备维护与工艺关系",
+        "section": "关系 0180",
+        "excerpt": "装配工艺 —装配对象→ 刀具夹持器"
+      }
+    },
+    {
+      "id": "equipment-relation-0181",
+      "source": "cnc",
+      "target": "cnc-fault-0",
+      "type": "关联现象",
+      "sourceEvidence": {
+        "title": "设备维护与工艺关系",
+        "section": "关系 0181",
+        "excerpt": "数控机床 —关联现象→ 主轴温升"
+      }
+    },
+    {
+      "id": "equipment-relation-0182",
+      "source": "cnc-part-0",
+      "target": "cnc-fault-0",
+      "type": "关联现象",
+      "sourceEvidence": {
+        "title": "设备维护与工艺关系",
+        "section": "关系 0182",
+        "excerpt": "主轴 —关联现象→ 主轴温升"
+      }
+    },
+    {
+      "id": "equipment-relation-0183",
+      "source": "cnc-fault-0",
+      "target": "lubrication",
+      "type": "可能原因",
+      "sourceEvidence": {
+        "title": "设备维护与工艺关系",
+        "section": "关系 0183",
+        "excerpt": "主轴温升 —可能原因→ 润滑不足"
+      }
+    },
+    {
+      "id": "equipment-relation-0184",
+      "source": "cnc-fault-0",
+      "target": "inspection",
+      "type": "需要核查",
+      "sourceEvidence": {
+        "title": "设备维护与工艺关系",
+        "section": "关系 0184",
+        "excerpt": "主轴温升 —需要核查→ 设备巡检"
+      }
+    },
+    {
+      "id": "equipment-relation-0185",
+      "source": "cnc",
+      "target": "cnc-fault-1",
+      "type": "关联现象",
+      "sourceEvidence": {
+        "title": "设备维护与工艺关系",
+        "section": "关系 0185",
+        "excerpt": "数控机床 —关联现象→ 进给异响"
+      }
+    },
+    {
+      "id": "equipment-relation-0186",
+      "source": "cnc-part-1",
+      "target": "cnc-fault-1",
+      "type": "关联现象",
+      "sourceEvidence": {
+        "title": "设备维护与工艺关系",
+        "section": "关系 0186",
+        "excerpt": "丝杠 —关联现象→ 进给异响"
+      }
+    },
+    {
+      "id": "equipment-relation-0187",
+      "source": "cnc-fault-1",
+      "target": "wear",
+      "type": "可能原因",
+      "sourceEvidence": {
+        "title": "设备维护与工艺关系",
+        "section": "关系 0187",
+        "excerpt": "进给异响 —可能原因→ 轴承磨损"
+      }
+    },
+    {
+      "id": "equipment-relation-0188",
+      "source": "cnc-fault-1",
+      "target": "inspection",
+      "type": "需要核查",
+      "sourceEvidence": {
+        "title": "设备维护与工艺关系",
+        "section": "关系 0188",
+        "excerpt": "进给异响 —需要核查→ 设备巡检"
+      }
+    },
+    {
+      "id": "equipment-relation-0189",
+      "source": "cnc",
+      "target": "cnc-fault-2",
+      "type": "关联现象",
+      "sourceEvidence": {
+        "title": "设备维护与工艺关系",
+        "section": "关系 0189",
+        "excerpt": "数控机床 —关联现象→ 定位偏差"
+      }
+    },
+    {
+      "id": "equipment-relation-0190",
+      "source": "cnc-part-2",
+      "target": "cnc-fault-2",
+      "type": "关联现象",
+      "sourceEvidence": {
+        "title": "设备维护与工艺关系",
+        "section": "关系 0190",
+        "excerpt": "导轨 —关联现象→ 定位偏差"
+      }
+    },
+    {
+      "id": "equipment-relation-0191",
+      "source": "cnc-fault-2",
+      "target": "misalignment",
+      "type": "可能原因",
+      "sourceEvidence": {
+        "title": "设备维护与工艺关系",
+        "section": "关系 0191",
+        "excerpt": "定位偏差 —可能原因→ 装配偏差"
+      }
+    },
+    {
+      "id": "equipment-relation-0192",
+      "source": "cnc-fault-2",
+      "target": "inspection",
+      "type": "需要核查",
+      "sourceEvidence": {
+        "title": "设备维护与工艺关系",
+        "section": "关系 0192",
+        "excerpt": "定位偏差 —需要核查→ 设备巡检"
+      }
+    },
+    {
+      "id": "equipment-relation-0193",
+      "source": "cnc",
+      "target": "cnc-fault-3",
+      "type": "关联现象",
+      "sourceEvidence": {
+        "title": "设备维护与工艺关系",
+        "section": "关系 0193",
+        "excerpt": "数控机床 —关联现象→ 冷却流量偏低"
+      }
+    },
+    {
+      "id": "equipment-relation-0194",
+      "source": "cnc-part-3",
+      "target": "cnc-fault-3",
+      "type": "关联现象",
+      "sourceEvidence": {
+        "title": "设备维护与工艺关系",
+        "section": "关系 0194",
+        "excerpt": "冷却泵 —关联现象→ 冷却流量偏低"
+      }
+    },
+    {
+      "id": "equipment-relation-0195",
+      "source": "cnc-fault-3",
+      "target": "block",
+      "type": "可能原因",
+      "sourceEvidence": {
+        "title": "设备维护与工艺关系",
+        "section": "关系 0195",
+        "excerpt": "冷却流量偏低 —可能原因→ 通风受阻"
+      }
+    },
+    {
+      "id": "equipment-relation-0196",
+      "source": "cnc-fault-3",
+      "target": "inspection",
+      "type": "需要核查",
+      "sourceEvidence": {
+        "title": "设备维护与工艺关系",
+        "section": "关系 0196",
+        "excerpt": "冷却流量偏低 —需要核查→ 设备巡检"
+      }
+    },
+    {
+      "id": "equipment-relation-0197",
+      "source": "cnc",
+      "target": "cnc-process-0",
+      "type": "关联工艺",
+      "sourceEvidence": {
+        "title": "设备维护与工艺关系",
+        "section": "关系 0197",
+        "excerpt": "数控机床 —关联工艺→ 主轴装配"
+      }
+    },
+    {
+      "id": "equipment-relation-0198",
+      "source": "cnc-process-0",
+      "target": "quality",
+      "type": "关联检查",
+      "sourceEvidence": {
+        "title": "设备维护与工艺关系",
+        "section": "关系 0198",
+        "excerpt": "主轴装配 —关联检查→ 质量检查"
+      }
+    },
+    {
+      "id": "equipment-relation-0199",
+      "source": "cnc-process-0",
+      "target": "cnc-part-0",
+      "type": "涉及部件",
+      "sourceEvidence": {
+        "title": "设备维护与工艺关系",
+        "section": "关系 0199",
+        "excerpt": "主轴装配 —涉及部件→ 主轴"
+      }
+    },
+    {
+      "id": "equipment-relation-0200",
+      "source": "cnc-process-0",
+      "target": "assembly",
+      "type": "归属活动",
+      "sourceEvidence": {
+        "title": "设备维护与工艺关系",
+        "section": "关系 0200",
+        "excerpt": "主轴装配 —归属活动→ 装配工艺"
+      }
+    },
+    {
+      "id": "equipment-relation-0201",
+      "source": "cnc",
+      "target": "cnc-process-1",
+      "type": "关联工艺",
+      "sourceEvidence": {
+        "title": "设备维护与工艺关系",
+        "section": "关系 0201",
+        "excerpt": "数控机床 —关联工艺→ 导轨检查"
+      }
+    },
+    {
+      "id": "equipment-relation-0202",
+      "source": "cnc-process-1",
+      "target": "quality",
+      "type": "关联检查",
+      "sourceEvidence": {
+        "title": "设备维护与工艺关系",
+        "section": "关系 0202",
+        "excerpt": "导轨检查 —关联检查→ 质量检查"
+      }
+    },
+    {
+      "id": "equipment-relation-0203",
+      "source": "cnc-process-1",
+      "target": "cnc-part-1",
+      "type": "涉及部件",
+      "sourceEvidence": {
+        "title": "设备维护与工艺关系",
+        "section": "关系 0203",
+        "excerpt": "导轨检查 —涉及部件→ 丝杠"
+      }
+    },
+    {
+      "id": "equipment-relation-0204",
+      "source": "cnc-process-1",
+      "target": "inspection",
+      "type": "归属活动",
+      "sourceEvidence": {
+        "title": "设备维护与工艺关系",
+        "section": "关系 0204",
+        "excerpt": "导轨检查 —归属活动→ 设备巡检"
+      }
+    },
+    {
+      "id": "equipment-relation-0205",
+      "source": "cnc",
+      "target": "cnc-process-2",
+      "type": "关联工艺",
+      "sourceEvidence": {
+        "title": "设备维护与工艺关系",
+        "section": "关系 0205",
+        "excerpt": "数控机床 —关联工艺→ 精度检查"
+      }
+    },
+    {
+      "id": "equipment-relation-0206",
+      "source": "cnc-process-2",
+      "target": "quality",
+      "type": "关联检查",
+      "sourceEvidence": {
+        "title": "设备维护与工艺关系",
+        "section": "关系 0206",
+        "excerpt": "精度检查 —关联检查→ 质量检查"
+      }
+    },
+    {
+      "id": "equipment-relation-0207",
+      "source": "cnc-process-2",
+      "target": "cnc-part-2",
+      "type": "涉及部件",
+      "sourceEvidence": {
+        "title": "设备维护与工艺关系",
+        "section": "关系 0207",
+        "excerpt": "精度检查 —涉及部件→ 导轨"
+      }
+    },
+    {
+      "id": "equipment-relation-0208",
+      "source": "cnc-process-2",
+      "target": "inspection",
+      "type": "归属活动",
+      "sourceEvidence": {
+        "title": "设备维护与工艺关系",
+        "section": "关系 0208",
+        "excerpt": "精度检查 —归属活动→ 设备巡检"
+      }
+    },
+    {
+      "id": "equipment-relation-0209",
+      "source": "inspection",
+      "target": "robot",
+      "type": "巡检对象",
+      "sourceEvidence": {
+        "title": "设备维护与工艺关系",
+        "section": "关系 0209",
+        "excerpt": "设备巡检 —巡检对象→ 装配机械臂"
+      }
+    },
+    {
+      "id": "equipment-relation-0210",
+      "source": "robot",
+      "target": "maintenance",
+      "type": "纳入维护",
+      "sourceEvidence": {
+        "title": "设备维护与工艺关系",
+        "section": "关系 0210",
+        "excerpt": "装配机械臂 —纳入维护→ 设备维护"
+      }
+    },
+    {
+      "id": "equipment-relation-0211",
+      "source": "robot",
+      "target": "electrical",
+      "type": "关联控制",
+      "sourceEvidence": {
+        "title": "设备维护与工艺关系",
+        "section": "关系 0211",
+        "excerpt": "装配机械臂 —关联控制→ 电气控制"
+      }
+    },
+    {
+      "id": "equipment-relation-0212",
+      "source": "robot",
+      "target": "mechanical",
+      "type": "关联传动",
+      "sourceEvidence": {
+        "title": "设备维护与工艺关系",
+        "section": "关系 0212",
+        "excerpt": "装配机械臂 —关联传动→ 机械传动"
+      }
+    },
+    {
+      "id": "equipment-relation-0213",
+      "source": "robot",
+      "target": "robot-part-0",
+      "type": "包含部件",
+      "sourceEvidence": {
+        "title": "设备维护与工艺关系",
+        "section": "关系 0213",
+        "excerpt": "装配机械臂 —包含部件→ 伺服电机"
+      }
+    },
+    {
+      "id": "equipment-relation-0214",
+      "source": "assembly",
+      "target": "robot-part-0",
+      "type": "装配对象",
+      "sourceEvidence": {
+        "title": "设备维护与工艺关系",
+        "section": "关系 0214",
+        "excerpt": "装配工艺 —装配对象→ 伺服电机"
+      }
+    },
+    {
+      "id": "equipment-relation-0215",
+      "source": "robot",
+      "target": "robot-part-1",
+      "type": "包含部件",
+      "sourceEvidence": {
+        "title": "设备维护与工艺关系",
+        "section": "关系 0215",
+        "excerpt": "装配机械臂 —包含部件→ 关节减速器"
+      }
+    },
+    {
+      "id": "equipment-relation-0216",
+      "source": "assembly",
+      "target": "robot-part-1",
+      "type": "装配对象",
+      "sourceEvidence": {
+        "title": "设备维护与工艺关系",
+        "section": "关系 0216",
+        "excerpt": "装配工艺 —装配对象→ 关节减速器"
+      }
+    },
+    {
+      "id": "equipment-relation-0217",
+      "source": "robot",
+      "target": "robot-part-2",
+      "type": "包含部件",
+      "sourceEvidence": {
+        "title": "设备维护与工艺关系",
+        "section": "关系 0217",
+        "excerpt": "装配机械臂 —包含部件→ 末端夹具"
+      }
+    },
+    {
+      "id": "equipment-relation-0218",
+      "source": "assembly",
+      "target": "robot-part-2",
+      "type": "装配对象",
+      "sourceEvidence": {
+        "title": "设备维护与工艺关系",
+        "section": "关系 0218",
+        "excerpt": "装配工艺 —装配对象→ 末端夹具"
+      }
+    },
+    {
+      "id": "equipment-relation-0219",
+      "source": "robot",
+      "target": "robot-part-3",
+      "type": "包含部件",
+      "sourceEvidence": {
+        "title": "设备维护与工艺关系",
+        "section": "关系 0219",
+        "excerpt": "装配机械臂 —包含部件→ 位置编码器"
+      }
+    },
+    {
+      "id": "equipment-relation-0220",
+      "source": "assembly",
+      "target": "robot-part-3",
+      "type": "装配对象",
+      "sourceEvidence": {
+        "title": "设备维护与工艺关系",
+        "section": "关系 0220",
+        "excerpt": "装配工艺 —装配对象→ 位置编码器"
+      }
+    },
+    {
+      "id": "equipment-relation-0221",
+      "source": "robot",
+      "target": "robot-part-4",
+      "type": "包含部件",
+      "sourceEvidence": {
+        "title": "设备维护与工艺关系",
+        "section": "关系 0221",
+        "excerpt": "装配机械臂 —包含部件→ 控制柜"
+      }
+    },
+    {
+      "id": "equipment-relation-0222",
+      "source": "assembly",
+      "target": "robot-part-4",
+      "type": "装配对象",
+      "sourceEvidence": {
+        "title": "设备维护与工艺关系",
+        "section": "关系 0222",
+        "excerpt": "装配工艺 —装配对象→ 控制柜"
+      }
+    },
+    {
+      "id": "equipment-relation-0223",
+      "source": "robot",
+      "target": "robot-fault-0",
+      "type": "关联现象",
+      "sourceEvidence": {
+        "title": "设备维护与工艺关系",
+        "section": "关系 0223",
+        "excerpt": "装配机械臂 —关联现象→ 关节异响"
+      }
+    },
+    {
+      "id": "equipment-relation-0224",
+      "source": "robot-part-0",
+      "target": "robot-fault-0",
+      "type": "关联现象",
+      "sourceEvidence": {
+        "title": "设备维护与工艺关系",
+        "section": "关系 0224",
+        "excerpt": "伺服电机 —关联现象→ 关节异响"
+      }
+    },
+    {
+      "id": "equipment-relation-0225",
+      "source": "robot-fault-0",
+      "target": "wear",
+      "type": "可能原因",
+      "sourceEvidence": {
+        "title": "设备维护与工艺关系",
+        "section": "关系 0225",
+        "excerpt": "关节异响 —可能原因→ 轴承磨损"
+      }
+    },
+    {
+      "id": "equipment-relation-0226",
+      "source": "robot-fault-0",
+      "target": "inspection",
+      "type": "需要核查",
+      "sourceEvidence": {
+        "title": "设备维护与工艺关系",
+        "section": "关系 0226",
+        "excerpt": "关节异响 —需要核查→ 设备巡检"
+      }
+    },
+    {
+      "id": "equipment-relation-0227",
+      "source": "robot",
+      "target": "robot-fault-1",
+      "type": "关联现象",
+      "sourceEvidence": {
+        "title": "设备维护与工艺关系",
+        "section": "关系 0227",
+        "excerpt": "装配机械臂 —关联现象→ 重复定位偏差"
+      }
+    },
+    {
+      "id": "equipment-relation-0228",
+      "source": "robot-part-1",
+      "target": "robot-fault-1",
+      "type": "关联现象",
+      "sourceEvidence": {
+        "title": "设备维护与工艺关系",
+        "section": "关系 0228",
+        "excerpt": "关节减速器 —关联现象→ 重复定位偏差"
+      }
+    },
+    {
+      "id": "equipment-relation-0229",
+      "source": "robot-fault-1",
+      "target": "misalignment",
+      "type": "可能原因",
+      "sourceEvidence": {
+        "title": "设备维护与工艺关系",
+        "section": "关系 0229",
+        "excerpt": "重复定位偏差 —可能原因→ 装配偏差"
+      }
+    },
+    {
+      "id": "equipment-relation-0230",
+      "source": "robot-fault-1",
+      "target": "inspection",
+      "type": "需要核查",
+      "sourceEvidence": {
+        "title": "设备维护与工艺关系",
+        "section": "关系 0230",
+        "excerpt": "重复定位偏差 —需要核查→ 设备巡检"
+      }
+    },
+    {
+      "id": "equipment-relation-0231",
+      "source": "robot",
+      "target": "robot-fault-2",
+      "type": "关联现象",
+      "sourceEvidence": {
+        "title": "设备维护与工艺关系",
+        "section": "关系 0231",
+        "excerpt": "装配机械臂 —关联现象→ 夹持不稳"
+      }
+    },
+    {
+      "id": "equipment-relation-0232",
+      "source": "robot-part-2",
+      "target": "robot-fault-2",
+      "type": "关联现象",
+      "sourceEvidence": {
+        "title": "设备维护与工艺关系",
+        "section": "关系 0232",
+        "excerpt": "末端夹具 —关联现象→ 夹持不稳"
+      }
+    },
+    {
+      "id": "equipment-relation-0233",
+      "source": "robot-fault-2",
+      "target": "loose",
+      "type": "可能原因",
+      "sourceEvidence": {
+        "title": "设备维护与工艺关系",
+        "section": "关系 0233",
+        "excerpt": "夹持不稳 —可能原因→ 螺栓松动"
+      }
+    },
+    {
+      "id": "equipment-relation-0234",
+      "source": "robot-fault-2",
+      "target": "inspection",
+      "type": "需要核查",
+      "sourceEvidence": {
+        "title": "设备维护与工艺关系",
+        "section": "关系 0234",
+        "excerpt": "夹持不稳 —需要核查→ 设备巡检"
+      }
+    },
+    {
+      "id": "equipment-relation-0235",
+      "source": "robot",
+      "target": "robot-fault-3",
+      "type": "关联现象",
+      "sourceEvidence": {
+        "title": "设备维护与工艺关系",
+        "section": "关系 0235",
+        "excerpt": "装配机械臂 —关联现象→ 控制柜温升"
+      }
+    },
+    {
+      "id": "equipment-relation-0236",
+      "source": "robot-part-3",
+      "target": "robot-fault-3",
+      "type": "关联现象",
+      "sourceEvidence": {
+        "title": "设备维护与工艺关系",
+        "section": "关系 0236",
+        "excerpt": "位置编码器 —关联现象→ 控制柜温升"
+      }
+    },
+    {
+      "id": "equipment-relation-0237",
+      "source": "robot-fault-3",
+      "target": "block",
+      "type": "可能原因",
+      "sourceEvidence": {
+        "title": "设备维护与工艺关系",
+        "section": "关系 0237",
+        "excerpt": "控制柜温升 —可能原因→ 通风受阻"
+      }
+    },
+    {
+      "id": "equipment-relation-0238",
+      "source": "robot-fault-3",
+      "target": "inspection",
+      "type": "需要核查",
+      "sourceEvidence": {
+        "title": "设备维护与工艺关系",
+        "section": "关系 0238",
+        "excerpt": "控制柜温升 —需要核查→ 设备巡检"
+      }
+    },
+    {
+      "id": "equipment-relation-0239",
+      "source": "robot",
+      "target": "robot-process-0",
+      "type": "关联工艺",
+      "sourceEvidence": {
+        "title": "设备维护与工艺关系",
+        "section": "关系 0239",
+        "excerpt": "装配机械臂 —关联工艺→ 夹具装配"
+      }
+    },
+    {
+      "id": "equipment-relation-0240",
+      "source": "robot-process-0",
+      "target": "quality",
+      "type": "关联检查",
+      "sourceEvidence": {
+        "title": "设备维护与工艺关系",
+        "section": "关系 0240",
+        "excerpt": "夹具装配 —关联检查→ 质量检查"
+      }
+    },
+    {
+      "id": "equipment-relation-0241",
+      "source": "robot-process-0",
+      "target": "robot-part-0",
+      "type": "涉及部件",
+      "sourceEvidence": {
+        "title": "设备维护与工艺关系",
+        "section": "关系 0241",
+        "excerpt": "夹具装配 —涉及部件→ 伺服电机"
+      }
+    },
+    {
+      "id": "equipment-relation-0242",
+      "source": "robot-process-0",
+      "target": "assembly",
+      "type": "归属活动",
+      "sourceEvidence": {
+        "title": "设备维护与工艺关系",
+        "section": "关系 0242",
+        "excerpt": "夹具装配 —归属活动→ 装配工艺"
+      }
+    },
+    {
+      "id": "equipment-relation-0243",
+      "source": "robot",
+      "target": "robot-process-1",
+      "type": "关联工艺",
+      "sourceEvidence": {
+        "title": "设备维护与工艺关系",
+        "section": "关系 0243",
+        "excerpt": "装配机械臂 —关联工艺→ 零位检查"
+      }
+    },
+    {
+      "id": "equipment-relation-0244",
+      "source": "robot-process-1",
+      "target": "quality",
+      "type": "关联检查",
+      "sourceEvidence": {
+        "title": "设备维护与工艺关系",
+        "section": "关系 0244",
+        "excerpt": "零位检查 —关联检查→ 质量检查"
+      }
+    },
+    {
+      "id": "equipment-relation-0245",
+      "source": "robot-process-1",
+      "target": "robot-part-1",
+      "type": "涉及部件",
+      "sourceEvidence": {
+        "title": "设备维护与工艺关系",
+        "section": "关系 0245",
+        "excerpt": "零位检查 —涉及部件→ 关节减速器"
+      }
+    },
+    {
+      "id": "equipment-relation-0246",
+      "source": "robot-process-1",
+      "target": "inspection",
+      "type": "归属活动",
+      "sourceEvidence": {
+        "title": "设备维护与工艺关系",
+        "section": "关系 0246",
+        "excerpt": "零位检查 —归属活动→ 设备巡检"
+      }
+    },
+    {
+      "id": "equipment-relation-0247",
+      "source": "robot",
+      "target": "robot-process-2",
+      "type": "关联工艺",
+      "sourceEvidence": {
+        "title": "设备维护与工艺关系",
+        "section": "关系 0247",
+        "excerpt": "装配机械臂 —关联工艺→ 装配验证"
+      }
+    },
+    {
+      "id": "equipment-relation-0248",
+      "source": "robot-process-2",
+      "target": "quality",
+      "type": "关联检查",
+      "sourceEvidence": {
+        "title": "设备维护与工艺关系",
+        "section": "关系 0248",
+        "excerpt": "装配验证 —关联检查→ 质量检查"
+      }
+    },
+    {
+      "id": "equipment-relation-0249",
+      "source": "robot-process-2",
+      "target": "robot-part-2",
+      "type": "涉及部件",
+      "sourceEvidence": {
+        "title": "设备维护与工艺关系",
+        "section": "关系 0249",
+        "excerpt": "装配验证 —涉及部件→ 末端夹具"
+      }
+    },
+    {
+      "id": "equipment-relation-0250",
+      "source": "robot-process-2",
+      "target": "inspection",
+      "type": "归属活动",
+      "sourceEvidence": {
+        "title": "设备维护与工艺关系",
+        "section": "关系 0250",
+        "excerpt": "装配验证 —归属活动→ 设备巡检"
+      }
+    },
+    {
+      "id": "equipment-relation-0251",
+      "source": "inspection",
+      "target": "cabinet",
+      "type": "巡检对象",
+      "sourceEvidence": {
+        "title": "设备维护与工艺关系",
+        "section": "关系 0251",
+        "excerpt": "设备巡检 —巡检对象→ 配电控制柜"
+      }
+    },
+    {
+      "id": "equipment-relation-0252",
+      "source": "cabinet",
+      "target": "maintenance",
+      "type": "纳入维护",
+      "sourceEvidence": {
+        "title": "设备维护与工艺关系",
+        "section": "关系 0252",
+        "excerpt": "配电控制柜 —纳入维护→ 设备维护"
+      }
+    },
+    {
+      "id": "equipment-relation-0253",
+      "source": "cabinet",
+      "target": "electrical",
+      "type": "关联控制",
+      "sourceEvidence": {
+        "title": "设备维护与工艺关系",
+        "section": "关系 0253",
+        "excerpt": "配电控制柜 —关联控制→ 电气控制"
+      }
+    },
+    {
+      "id": "equipment-relation-0254",
+      "source": "cabinet",
+      "target": "mechanical",
+      "type": "关联传动",
+      "sourceEvidence": {
+        "title": "设备维护与工艺关系",
+        "section": "关系 0254",
+        "excerpt": "配电控制柜 —关联传动→ 机械传动"
+      }
+    },
+    {
+      "id": "equipment-relation-0255",
+      "source": "cabinet",
+      "target": "cabinet-part-0",
+      "type": "包含部件",
+      "sourceEvidence": {
+        "title": "设备维护与工艺关系",
+        "section": "关系 0255",
+        "excerpt": "配电控制柜 —包含部件→ 断路器"
+      }
+    },
+    {
+      "id": "equipment-relation-0256",
+      "source": "assembly",
+      "target": "cabinet-part-0",
+      "type": "装配对象",
+      "sourceEvidence": {
+        "title": "设备维护与工艺关系",
+        "section": "关系 0256",
+        "excerpt": "装配工艺 —装配对象→ 断路器"
+      }
+    },
+    {
+      "id": "equipment-relation-0257",
+      "source": "cabinet",
+      "target": "cabinet-part-1",
+      "type": "包含部件",
+      "sourceEvidence": {
+        "title": "设备维护与工艺关系",
+        "section": "关系 0257",
+        "excerpt": "配电控制柜 —包含部件→ 接触器"
+      }
+    },
+    {
+      "id": "equipment-relation-0258",
+      "source": "assembly",
+      "target": "cabinet-part-1",
+      "type": "装配对象",
+      "sourceEvidence": {
+        "title": "设备维护与工艺关系",
+        "section": "关系 0258",
+        "excerpt": "装配工艺 —装配对象→ 接触器"
+      }
+    },
+    {
+      "id": "equipment-relation-0259",
+      "source": "cabinet",
+      "target": "cabinet-part-2",
+      "type": "包含部件",
+      "sourceEvidence": {
+        "title": "设备维护与工艺关系",
+        "section": "关系 0259",
+        "excerpt": "配电控制柜 —包含部件→ 变频器"
+      }
+    },
+    {
+      "id": "equipment-relation-0260",
+      "source": "assembly",
+      "target": "cabinet-part-2",
+      "type": "装配对象",
+      "sourceEvidence": {
+        "title": "设备维护与工艺关系",
+        "section": "关系 0260",
+        "excerpt": "装配工艺 —装配对象→ 变频器"
+      }
+    },
+    {
+      "id": "equipment-relation-0261",
+      "source": "cabinet",
+      "target": "cabinet-part-3",
+      "type": "包含部件",
+      "sourceEvidence": {
+        "title": "设备维护与工艺关系",
+        "section": "关系 0261",
+        "excerpt": "配电控制柜 —包含部件→ 端子排"
+      }
+    },
+    {
+      "id": "equipment-relation-0262",
+      "source": "assembly",
+      "target": "cabinet-part-3",
+      "type": "装配对象",
+      "sourceEvidence": {
+        "title": "设备维护与工艺关系",
+        "section": "关系 0262",
+        "excerpt": "装配工艺 —装配对象→ 端子排"
+      }
+    },
+    {
+      "id": "equipment-relation-0263",
+      "source": "cabinet",
+      "target": "cabinet-part-4",
+      "type": "包含部件",
+      "sourceEvidence": {
+        "title": "设备维护与工艺关系",
+        "section": "关系 0263",
+        "excerpt": "配电控制柜 —包含部件→ 散热风扇"
+      }
+    },
+    {
+      "id": "equipment-relation-0264",
+      "source": "assembly",
+      "target": "cabinet-part-4",
+      "type": "装配对象",
+      "sourceEvidence": {
+        "title": "设备维护与工艺关系",
+        "section": "关系 0264",
+        "excerpt": "装配工艺 —装配对象→ 散热风扇"
+      }
+    },
+    {
+      "id": "equipment-relation-0265",
+      "source": "cabinet",
+      "target": "cabinet-fault-0",
+      "type": "关联现象",
+      "sourceEvidence": {
+        "title": "设备维护与工艺关系",
+        "section": "关系 0265",
+        "excerpt": "配电控制柜 —关联现象→ 驱动报警"
+      }
+    },
+    {
+      "id": "equipment-relation-0266",
+      "source": "cabinet-part-0",
+      "target": "cabinet-fault-0",
+      "type": "关联现象",
+      "sourceEvidence": {
+        "title": "设备维护与工艺关系",
+        "section": "关系 0266",
+        "excerpt": "断路器 —关联现象→ 驱动报警"
+      }
+    },
+    {
+      "id": "equipment-relation-0267",
+      "source": "cabinet-fault-0",
+      "target": "supply",
+      "type": "可能原因",
+      "sourceEvidence": {
+        "title": "设备维护与工艺关系",
+        "section": "关系 0267",
+        "excerpt": "驱动报警 —可能原因→ 供电异常"
+      }
+    },
+    {
+      "id": "equipment-relation-0268",
+      "source": "cabinet-fault-0",
+      "target": "inspection",
+      "type": "需要核查",
+      "sourceEvidence": {
+        "title": "设备维护与工艺关系",
+        "section": "关系 0268",
+        "excerpt": "驱动报警 —需要核查→ 设备巡检"
+      }
+    },
+    {
+      "id": "equipment-relation-0269",
+      "source": "cabinet",
+      "target": "cabinet-fault-1",
+      "type": "关联现象",
+      "sourceEvidence": {
+        "title": "设备维护与工艺关系",
+        "section": "关系 0269",
+        "excerpt": "配电控制柜 —关联现象→ 端子温升"
+      }
+    },
+    {
+      "id": "equipment-relation-0270",
+      "source": "cabinet-part-1",
+      "target": "cabinet-fault-1",
+      "type": "关联现象",
+      "sourceEvidence": {
+        "title": "设备维护与工艺关系",
+        "section": "关系 0270",
+        "excerpt": "接触器 —关联现象→ 端子温升"
+      }
+    },
+    {
+      "id": "equipment-relation-0271",
+      "source": "cabinet-fault-1",
+      "target": "loose",
+      "type": "可能原因",
+      "sourceEvidence": {
+        "title": "设备维护与工艺关系",
+        "section": "关系 0271",
+        "excerpt": "端子温升 —可能原因→ 螺栓松动"
+      }
+    },
+    {
+      "id": "equipment-relation-0272",
+      "source": "cabinet-fault-1",
+      "target": "inspection",
+      "type": "需要核查",
+      "sourceEvidence": {
+        "title": "设备维护与工艺关系",
+        "section": "关系 0272",
+        "excerpt": "端子温升 —需要核查→ 设备巡检"
+      }
+    },
+    {
+      "id": "equipment-relation-0273",
+      "source": "cabinet",
+      "target": "cabinet-fault-2",
+      "type": "关联现象",
+      "sourceEvidence": {
+        "title": "设备维护与工艺关系",
+        "section": "关系 0273",
+        "excerpt": "配电控制柜 —关联现象→ 风扇异响"
+      }
+    },
+    {
+      "id": "equipment-relation-0274",
+      "source": "cabinet-part-2",
+      "target": "cabinet-fault-2",
+      "type": "关联现象",
+      "sourceEvidence": {
+        "title": "设备维护与工艺关系",
+        "section": "关系 0274",
+        "excerpt": "变频器 —关联现象→ 风扇异响"
+      }
+    },
+    {
+      "id": "equipment-relation-0275",
+      "source": "cabinet-fault-2",
+      "target": "wear",
+      "type": "可能原因",
+      "sourceEvidence": {
+        "title": "设备维护与工艺关系",
+        "section": "关系 0275",
+        "excerpt": "风扇异响 —可能原因→ 轴承磨损"
+      }
+    },
+    {
+      "id": "equipment-relation-0276",
+      "source": "cabinet-fault-2",
+      "target": "inspection",
+      "type": "需要核查",
+      "sourceEvidence": {
+        "title": "设备维护与工艺关系",
+        "section": "关系 0276",
+        "excerpt": "风扇异响 —需要核查→ 设备巡检"
+      }
+    },
+    {
+      "id": "equipment-relation-0277",
+      "source": "cabinet",
+      "target": "cabinet-fault-3",
+      "type": "关联现象",
+      "sourceEvidence": {
+        "title": "设备维护与工艺关系",
+        "section": "关系 0277",
+        "excerpt": "配电控制柜 —关联现象→ 柜内温度异常"
+      }
+    },
+    {
+      "id": "equipment-relation-0278",
+      "source": "cabinet-part-3",
+      "target": "cabinet-fault-3",
+      "type": "关联现象",
+      "sourceEvidence": {
+        "title": "设备维护与工艺关系",
+        "section": "关系 0278",
+        "excerpt": "端子排 —关联现象→ 柜内温度异常"
+      }
+    },
+    {
+      "id": "equipment-relation-0279",
+      "source": "cabinet-fault-3",
+      "target": "dust",
+      "type": "可能原因",
+      "sourceEvidence": {
+        "title": "设备维护与工艺关系",
+        "section": "关系 0279",
+        "excerpt": "柜内温度异常 —可能原因→ 积尘"
+      }
+    },
+    {
+      "id": "equipment-relation-0280",
+      "source": "cabinet-fault-3",
+      "target": "inspection",
+      "type": "需要核查",
+      "sourceEvidence": {
+        "title": "设备维护与工艺关系",
+        "section": "关系 0280",
+        "excerpt": "柜内温度异常 —需要核查→ 设备巡检"
+      }
+    },
+    {
+      "id": "equipment-relation-0281",
+      "source": "cabinet",
+      "target": "cabinet-process-0",
+      "type": "关联工艺",
+      "sourceEvidence": {
+        "title": "设备维护与工艺关系",
+        "section": "关系 0281",
+        "excerpt": "配电控制柜 —关联工艺→ 电气装配"
+      }
+    },
+    {
+      "id": "equipment-relation-0282",
+      "source": "cabinet-process-0",
+      "target": "quality",
+      "type": "关联检查",
+      "sourceEvidence": {
+        "title": "设备维护与工艺关系",
+        "section": "关系 0282",
+        "excerpt": "电气装配 —关联检查→ 质量检查"
+      }
+    },
+    {
+      "id": "equipment-relation-0283",
+      "source": "cabinet-process-0",
+      "target": "cabinet-part-0",
+      "type": "涉及部件",
+      "sourceEvidence": {
+        "title": "设备维护与工艺关系",
+        "section": "关系 0283",
+        "excerpt": "电气装配 —涉及部件→ 断路器"
+      }
+    },
+    {
+      "id": "equipment-relation-0284",
+      "source": "cabinet-process-0",
+      "target": "assembly",
+      "type": "归属活动",
+      "sourceEvidence": {
+        "title": "设备维护与工艺关系",
+        "section": "关系 0284",
+        "excerpt": "电气装配 —归属活动→ 装配工艺"
+      }
+    },
+    {
+      "id": "equipment-relation-0285",
+      "source": "cabinet",
+      "target": "cabinet-process-1",
+      "type": "关联工艺",
+      "sourceEvidence": {
+        "title": "设备维护与工艺关系",
+        "section": "关系 0285",
+        "excerpt": "配电控制柜 —关联工艺→ 接线核查"
+      }
+    },
+    {
+      "id": "equipment-relation-0286",
+      "source": "cabinet-process-1",
+      "target": "quality",
+      "type": "关联检查",
+      "sourceEvidence": {
+        "title": "设备维护与工艺关系",
+        "section": "关系 0286",
+        "excerpt": "接线核查 —关联检查→ 质量检查"
+      }
+    },
+    {
+      "id": "equipment-relation-0287",
+      "source": "cabinet-process-1",
+      "target": "cabinet-part-1",
+      "type": "涉及部件",
+      "sourceEvidence": {
+        "title": "设备维护与工艺关系",
+        "section": "关系 0287",
+        "excerpt": "接线核查 —涉及部件→ 接触器"
+      }
+    },
+    {
+      "id": "equipment-relation-0288",
+      "source": "cabinet-process-1",
+      "target": "inspection",
+      "type": "归属活动",
+      "sourceEvidence": {
+        "title": "设备维护与工艺关系",
+        "section": "关系 0288",
+        "excerpt": "接线核查 —归属活动→ 设备巡检"
+      }
+    },
+    {
+      "id": "equipment-relation-0289",
+      "source": "cabinet",
+      "target": "cabinet-process-2",
+      "type": "关联工艺",
+      "sourceEvidence": {
+        "title": "设备维护与工艺关系",
+        "section": "关系 0289",
+        "excerpt": "配电控制柜 —关联工艺→ 柜体点检"
+      }
+    },
+    {
+      "id": "equipment-relation-0290",
+      "source": "cabinet-process-2",
+      "target": "quality",
+      "type": "关联检查",
+      "sourceEvidence": {
+        "title": "设备维护与工艺关系",
+        "section": "关系 0290",
+        "excerpt": "柜体点检 —关联检查→ 质量检查"
+      }
+    },
+    {
+      "id": "equipment-relation-0291",
+      "source": "cabinet-process-2",
+      "target": "cabinet-part-2",
+      "type": "涉及部件",
+      "sourceEvidence": {
+        "title": "设备维护与工艺关系",
+        "section": "关系 0291",
+        "excerpt": "柜体点检 —涉及部件→ 变频器"
+      }
+    },
+    {
+      "id": "equipment-relation-0292",
+      "source": "cabinet-process-2",
+      "target": "inspection",
+      "type": "归属活动",
+      "sourceEvidence": {
+        "title": "设备维护与工艺关系",
+        "section": "关系 0292",
+        "excerpt": "柜体点检 —归属活动→ 设备巡检"
+      }
+    },
+    {
+      "id": "equipment-relation-0293",
+      "source": "fan",
+      "target": "inspection",
+      "type": "巡检对象",
+      "sourceEvidence": {
+        "title": "设备维护与工艺关系",
+        "section": "关系 0293",
+        "excerpt": "电风扇 —巡检对象→ 设备巡检"
+      }
+    },
+    {
+      "id": "equipment-relation-0294",
+      "source": "motor",
+      "target": "electrical",
+      "type": "关联控制",
+      "sourceEvidence": {
+        "title": "设备维护与工艺关系",
+        "section": "关系 0294",
+        "excerpt": "电机 —关联控制→ 电气控制"
+      }
+    },
+    {
+      "id": "equipment-relation-0295",
+      "source": "bearing",
+      "target": "mechanical",
+      "type": "关联传动",
+      "sourceEvidence": {
+        "title": "设备维护与工艺关系",
+        "section": "关系 0295",
+        "excerpt": "轴承 —关联传动→ 机械传动"
+      }
+    },
+    {
+      "id": "equipment-relation-0296",
+      "source": "bolt",
+      "target": "assembly",
+      "type": "装配对象",
+      "sourceEvidence": {
+        "title": "设备维护与工艺关系",
+        "section": "关系 0296",
+        "excerpt": "固定螺栓 —装配对象→ 装配工艺"
+      }
+    }
+  ]
+}

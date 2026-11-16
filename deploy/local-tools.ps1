@@ -121,8 +121,8 @@ function Start-LocalBackupScheduler {
     $runtime = Join-Path $ProjectRoot '.runtime'
     $script = Join-Path $ProjectRoot 'database\tools\operational_backups.py'
     $python = Resolve-LocalTool -Name python.exe
-    $mysql = 'C:\Program Files\MySQL\MySQL Server 8.0\bin\mysql.exe'
-    $dump = 'C:\Program Files\MySQL\MySQL Server 8.0\bin\mysqldump.exe'
+    $mysql = 'D:\MySQL\MySQL Server 8.0\bin\mysql.exe'
+    $dump = 'D:\MySQL\MySQL Server 8.0\bin\mysqldump.exe'
     foreach ($required in @($script,$python,$mysql,$dump,(Join-Path $runtime 'mysql-admin.local.ini'))) {
         if (-not (Test-Path -LiteralPath $required -PathType Leaf)) { throw 'Operational backup prerequisite is missing.' }
     }

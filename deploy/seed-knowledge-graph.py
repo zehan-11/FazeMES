@@ -18,10 +18,11 @@ SET r.type=item.type,r.sourceTitle=item.sourceEvidence.title,r.sourceSection=ite
         return session.run("MATCH (n:FazeEntity {tenantId:$tenant,ownerId:$owner}) OPTIONAL MATCH (n)-[r:FazeRelation {tenantId:$tenant,ownerId:$owner}]->(:FazeEntity {tenantId:$tenant,ownerId:$owner}) RETURN count(DISTINCT n) AS nodes,count(DISTINCT r) AS relations",tenant=tenant,owner=owner).single().data()
 def main():
     parser=argparse.ArgumentParser();parser.add_argument('--tenant-id',type=int,required=True);parser.add_argument('--owner-id',type=int,required=True)
+    parser.add_argument('--file',type=Path,default=root/'database/graph/equipment-knowledge.json')
     args=parser.parse_args()
     if args.tenant_id<1 or args.owner_id<1:parser.error('Scope IDs must be positive')
     connection=json.loads((root/'.runtime/neo4j/connection.local.json').read_text(encoding='utf-8-sig'))
-    graph=json.loads((root/'database/graph/fan-knowledge.json').read_text(encoding='utf-8'))
+    graph=json.loads(args.file.read_text(encoding='utf-8'))
     with GraphDatabase.driver(connection['uri'],auth=(connection['username'],connection['password'])) as driver:
         driver.verify_connectivity();print(json.dumps(seed(driver,connection['database'],args.tenant_id,args.owner_id,graph)))
 if __name__=='__main__':main()

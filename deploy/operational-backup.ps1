@@ -15,8 +15,8 @@ $runtimeRoot = Join-Path $projectRoot '.runtime'
 . (Join-Path $PSScriptRoot 'local-tools.ps1')
 $python = Resolve-LocalTool -Name python.exe
 $script = Join-Path $projectRoot 'database\tools\operational_backups.py'
-$mysql = 'C:\Program Files\MySQL\MySQL Server 8.0\bin\mysql.exe'
-$dump = 'C:\Program Files\MySQL\MySQL Server 8.0\bin\mysqldump.exe'
+$mysql = 'D:\MySQL\MySQL Server 8.0\bin\mysql.exe'
+$dump = 'D:\MySQL\MySQL Server 8.0\bin\mysqldump.exe'
 $taskName = 'FazeMES-Backup-' + [Convert]::ToHexString([Security.Cryptography.SHA256]::HashData([Text.Encoding]::UTF8.GetBytes($projectRoot))).Substring(0,16)
 if ($Action -eq 'Status') {
     $status = Join-Path $runtimeRoot 'operational-backup-status.json'

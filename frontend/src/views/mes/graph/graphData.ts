@@ -76,21 +76,25 @@ export const kindColors: Record<string, string> = {
   部件: '#79bbff',
   故障: '#fa91b1',
   原因: '#ba9aff',
-  措施: '#73e4c6'
+  措施: '#73e4c6',
+  工艺: '#ffb57c'
 }
 
 /** Merge by stable IDs. Keep the existing graph unchanged and bound rendering work. */
+export const GRAPH_NODE_LIMIT = 2000
+export const GRAPH_RELATION_LIMIT = 10000
+
 export function mergeKnowledgeGraph(current: KnowledgeGraph, incoming: KnowledgeGraph) {
   toGalaxyData(incoming)
   const nodes = [...new Map([...current.nodes, ...incoming.nodes].map((n) => [n.id, n])).values()]
-  const retained = nodes.slice(0, 200)
+  const retained = nodes.slice(0, GRAPH_NODE_LIMIT)
   const ids = new Set(retained.map((n) => n.id))
   const edges = [
     ...new Map([...current.relations, ...incoming.relations].map((e) => [e.id, e])).values()
   ].filter((e) => ids.has(e.source) && ids.has(e.target))
   return {
     nodes: retained,
-    relations: edges.slice(0, 500),
-    hasMore: nodes.length > 200 || edges.length > 500
+    relations: edges.slice(0, GRAPH_RELATION_LIMIT),
+    hasMore: nodes.length > GRAPH_NODE_LIMIT || edges.length > GRAPH_RELATION_LIMIT
   }
 }

@@ -28,7 +28,7 @@ class MesKnowledgeGraphServiceTest {
     }
     @Test void everyJoinUsesTrustedScopeAndStableIdParameters(){
         when(store.read(any(),anyString(),anyMap())).thenAnswer(call->{String query=call.getArgument(1);return query.contains("AS entity")?List.of(entity("a")):List.of();});
-        assertEquals(1,service.overview(8).nodes().size());service.search("' OR true //",20);service.neighbors("a",20);
+        assertEquals(1,service.overview(8).nodes().size());service.search("' OR true //",20);service.neighbors("a",20);service.nodePage("",2);service.relationPage("",2);
         var captor=org.mockito.ArgumentCaptor.forClass(String.class);
         verify(store,atLeast(1)).read(eq(new MesKnowledgeGraphService.Scope(1,10)),captor.capture(),anyMap());
         for(String query:captor.getAllValues()){
@@ -39,6 +39,7 @@ class MesKnowledgeGraphServiceTest {
     @Test void queryLimitsAndMissingIdsAreRejected(){
         assertThrows(ServiceException.class,()->service.overview(201));assertThrows(ServiceException.class,()->service.search("",20));
         assertThrows(ServiceException.class,()->service.neighbors("a",101));assertThrows(ServiceException.class,()->service.detail(" "));
+        assertThrows(ServiceException.class,()->service.nodePage("",201));assertThrows(ServiceException.class,()->service.relationPage("",501));
         verifyNoInteractions(store);assertThrows(ServiceException.class,()->service.detail("missing"));
     }
     @Test void noFallbackOrCredentialDetailsWhenDatabaseFails(){
@@ -64,6 +65,7 @@ class MesKnowledgeGraphServiceTest {
             var controller=context.getBean(MesKnowledgeGraphController.class);
             assertThrows(AccessDeniedException.class,()->controller.overview(8));assertThrows(AccessDeniedException.class,()->controller.search("a",20));
             assertThrows(AccessDeniedException.class,()->controller.node("a"));assertThrows(AccessDeniedException.class,()->controller.neighbors("a",20));
+            assertThrows(AccessDeniedException.class,()->controller.nodes("",200));assertThrows(AccessDeniedException.class,()->controller.relations("",500));
             permissions.add("mes:assistant:knowledge");assertNotNull(controller.overview(8).getData());
         }
     }

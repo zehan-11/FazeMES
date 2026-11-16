@@ -27,6 +27,10 @@ class MesKnowledgeGraphLiveTest {
                 var service=new MesKnowledgeGraphService(store);actor(900001,10);
                 var graph=service.overview(200);assertEquals(2,graph.nodes().size());assertEquals(1,graph.relations().size());
                 assertEquals(prefix+"a",graph.relations().get(0).source());assertEquals(prefix+"b",graph.relations().get(0).target());
+                var firstPage=service.nodePage("",1);assertEquals(1,firstPage.items().size());assertNotNull(firstPage.nextCursor());
+                var secondPage=service.nodePage(firstPage.nextCursor(),1);assertEquals(1,secondPage.items().size());assertNull(secondPage.nextCursor());
+                assertNotEquals(firstPage.items().get(0).id(),secondPage.items().get(0).id());
+                var relationPage=service.relationPage("",1);assertEquals(1,relationPage.items().size());assertNull(relationPage.nextCursor());
                 assertEquals(2,service.neighbors(prefix+"a",20).nodes().size());assertEquals(1,service.search("motor",20).items().size());
                 assertThrows(RuntimeException.class,()->service.detail(prefix+"c"));assertThrows(RuntimeException.class,()->service.detail(prefix+"d"));
                 actor(900001,11);assertEquals(1,service.overview(200).nodes().size());assertTrue(service.overview(200).relations().isEmpty());

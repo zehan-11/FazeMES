@@ -1,13 +1,28 @@
 <script setup lang="ts">
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import GalaxyCanvas from './GalaxyCanvas.vue'
-import { kindColors, mergeKnowledgeGraph, type KnowledgeGraph, type GraphEntity } from './graphData'
+import { mergeKnowledgeGraph, type KnowledgeGraph, type GraphEntity } from './graphData'
 import { GraphApi } from '@/api/mes/graph'
+import { loadCompleteGraph } from './loadCompleteGraph'
+import { STYLE_PRESETS, getVisualPreset, presetColors } from './visualPresets'
 const graph = ref<KnowledgeGraph>({ nodes: [], relations: [] })
+const presetId = ref('galaxy')
+const nebula = ref(getVisualPreset('galaxy').space.nebula)
+const bloom = ref(getVisualPreset('galaxy').bloom.strength)
+const palette = computed(() => presetColors(presetId.value))
+function restorePreset() {
+  const preset = getVisualPreset(presetId.value)
+  nebula.value = preset.space.nebula
+  bloom.value = preset.bloom.strength
+}
+watch(presetId, restorePreset)
 const query = ref('')
 const selectedId = ref<string | null>(null)
 const rotating = ref(false)
 const loading = ref(false)
+const loadProgress = ref('')
+const layoutPaused = ref(false)
+const layoutSettled = ref(false)
 const searching = ref(false)
 const expanding = ref(false)
 const connected = ref(false)
@@ -21,6 +36,7 @@ let generation = 0,
   selectionGeneration = 0,
   timer: ReturnType<typeof setTimeout> | undefined
 let disposed = false
+let fullRequest: AbortController | undefined
 const selected = computed(() => graph.value.nodes.find((node) => node.id === selectedId.value))
 const filtered = computed(() => (query.value.trim() ? searchResults.value : graph.value.nodes))
 const relations = computed(() =>
@@ -37,10 +53,15 @@ function fail(e: unknown) {
   searchResults.value = []
 }
 async function refresh() {
+  fullRequest?.abort()
+  fullRequest = new AbortController()
+  const signal = fullRequest.signal
   const request = ++generation
   ++searchGeneration
   ++selectionGeneration
   loading.value = true
+  loadProgress.value = '正在读取完整图谱…'
+  layoutPaused.value = false
   expanding.value = false
   searching.value = false
   error.value = ''
@@ -50,11 +71,21 @@ async function refresh() {
   query.value = ''
   hasMore.value = false
   try {
-    const result = await GraphApi.overview()
+    const result = await loadCompleteGraph(
+      {
+        nodes: (cursor) => GraphApi.nodesPage(cursor, signal),
+        relations: (cursor) => GraphApi.relationsPage(cursor, signal)
+      },
+      () => !disposed && request === generation,
+      (nodes, relations) => {
+        if (!disposed && request === generation)
+          loadProgress.value = `已读取 ${nodes} 个实体、${relations} 条关系`
+      }
+    )
     if (disposed || request !== generation) return
     const merged = mergeKnowledgeGraph({ nodes: [], relations: [] }, result)
     graph.value = merged
-    hasMore.value = result.hasMore || merged.hasMore
+    hasMore.value = merged.hasMore
     connected.value = true
   } catch (e) {
     if (!disposed && request === generation) fail(e)
@@ -134,6 +165,7 @@ watch(query, () => {
 onMounted(refresh)
 onBeforeUnmount(() => {
   disposed = true
+  fullRequest?.abort()
   ++generation
   ++searchGeneration
   ++selectionGeneration
@@ -151,18 +183,20 @@ onBeforeUnmount(() => {
     <el-alert v-if="error" :title="error" type="error" :closable="false" show-icon />
     <el-alert
       v-if="hasMore && connected"
-      title="当前显示部分图谱，可搜索实体并展开邻居；单次画布最多显示 200 个实体、500 条关系。"
+      title="当前显示部分图谱，可搜索实体并展开邻居；单次画布最多显示 2000 个实体、10000 条关系。"
       type="info"
       :closable="false"
     />
     <div class="graph-toolbar">
       <div class="graph-legend"
-        ><span v-for="(color, kind) in kindColors" :key="kind"
+        ><span v-for="(color, kind) in palette" :key="kind"
           ><i :style="{ background: color }"></i>{{ kind }}</span
         ></div
       >
       <div class="graph-actions">
-        <el-button :loading="loading" :disabled="expanding" @click="refresh">刷新图谱</el-button>
+        <el-button :loading="loading" :disabled="expanding" @click="refresh"
+          >加载全部图谱</el-button
+        >
         <el-button
           type="primary"
           :loading="expanding"
@@ -174,8 +208,41 @@ onBeforeUnmount(() => {
           rotating ? '暂停旋转' : '自动旋转'
         }}</el-button>
         <el-button @click="canvas?.reset()">重置视角</el-button>
-        <el-button @click="selectLocal(null)">显示全部关系</el-button>
+        <el-button :disabled="loading || !connected" @click="selectLocal(null)">取消高亮</el-button>
+        <el-button :disabled="!connected || layoutSettled" @click="layoutPaused = !layoutPaused">{{
+          layoutSettled ? '布局已稳定' : layoutPaused ? '继续布局' : '暂停布局'
+        }}</el-button>
       </div>
+    </div>
+    <div class="graph-visual-controls">
+      <div
+        ><label for="graph-preset">星系风格</label
+        ><el-select id="graph-preset" v-model="presetId" aria-label="星系风格"
+          ><el-option
+            v-for="preset in STYLE_PRESETS"
+            :key="preset.id"
+            :label="preset.name"
+            :value="preset.id" /></el-select
+      ></div>
+      <div
+        ><label id="graph-nebula-label">星云浓度</label
+        ><el-slider
+          v-model="nebula"
+          :min="0"
+          :max="1"
+          :step="0.05"
+          aria-labelledby="graph-nebula-label"
+      /></div>
+      <div
+        ><label id="graph-bloom-label">辉光强度</label
+        ><el-slider
+          v-model="bloom"
+          :min="0"
+          :max="1.5"
+          :step="0.05"
+          aria-labelledby="graph-bloom-label"
+      /></div>
+      <el-button @click="restorePreset">恢复预设</el-button>
     </div>
     <div class="graph-layout">
       <div class="graph-viewport" :aria-busy="loading"
@@ -185,13 +252,18 @@ onBeforeUnmount(() => {
           :graph="graph"
           :selected="selectedId"
           :rotating="rotating"
+          :layout-paused="layoutPaused"
+          :preset-id="presetId"
+          :nebula="nebula"
+          :bloom="bloom"
+          @layout-settled="layoutSettled = $event"
           @select="selectLocal($event)"
         />
         <div v-else class="graph-placeholder" role="status">{{
           loading
-            ? '正在连接图谱…'
+            ? loadProgress
             : error
-              ? '图谱未加载，请检查服务连接后点击刷新图谱。'
+              ? '图谱未加载，请检查服务连接后点击加载全部图谱。'
               : '当前账号暂无图谱数据'
         }}</div>
       </div>
@@ -216,7 +288,7 @@ onBeforeUnmount(() => {
             @click="choose(node.id)"
           >
             <span>{{ node.name }}</span
-            ><small :style="{ color: kindColors[node.kind] }">{{ node.kind }}</small>
+            ><small :style="{ color: palette[node.kind] }">{{ node.kind }}</small>
           </button>
           <p v-if="searching" class="empty-state" role="status">正在搜索…</p>
           <p v-else-if="!filtered.length" class="empty-state">{{
@@ -277,6 +349,32 @@ onBeforeUnmount(() => {
   </section>
 </template>
 <style scoped>
+.graph-visual-controls {
+  display: grid;
+  padding: 16px 20px;
+  margin-bottom: 18px;
+  background: #111d32;
+  border: 1px solid var(--graph-border);
+  border-radius: 10px;
+  grid-template-columns: minmax(130px, 1fr) minmax(140px, 1fr) minmax(140px, 1fr) auto;
+  gap: 24px;
+  align-items: center;
+}
+
+.graph-visual-controls label {
+  display: block;
+  margin-bottom: 8px;
+  font-size: 13px;
+  color: var(--graph-muted);
+}
+
+@media (width <= 900px) {
+  .graph-visual-controls {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 12px 24px;
+  }
+}
+
 .graph-placeholder {
   display: grid;
   min-height: 430px;

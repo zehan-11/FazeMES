@@ -1,7 +1,7 @@
 #requires -Version 7.0
 [CmdletBinding()]
 param(
-    [string]$MysqlClient = 'C:\Program Files\MySQL\MySQL Server 8.0\bin\mysql.exe',
+    [string]$MysqlClient = 'D:\MySQL\MySQL Server 8.0\bin\mysql.exe',
     [string]$ClientOptions
 )
 $ErrorActionPreference = 'Stop'

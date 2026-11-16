@@ -25,7 +25,7 @@ from testdata_backups import finalize_backups, register_backup
 ROOT = Path(__file__).resolve().parents[2]
 RUNTIME = ROOT / '.runtime'
 STATE = RUNTIME / 'testdata-state.json'
-MYSQL = Path(r'C:\Program Files\MySQL\MySQL Server 8.0\bin\mysql.exe')
+MYSQL = Path(r'D:\MySQL\MySQL Server 8.0\bin\mysql.exe')
 DUMP = MYSQL.with_name('mysqldump.exe')
 MARKER = 'fazemes-test-suite-v1'
 TZ = timezone(timedelta(hours=8))
