@@ -41,15 +41,17 @@ public class MesDocumentGraphService {
             try{facts=extractor.extract(number(doc,"knowledge_base_id"),documentId,version,doc.get("title").toString(),jdbc.queryForObject("SELECT content_text FROM mes_assistant_document WHERE tenant_id=? AND id=? FOR UPDATE",String.class,tenant,documentId),chunks);}
             catch(IllegalArgumentException e){failure=e.getMessage();}
         }
+        String method = facts.stream().map(MesDocumentRelationExtractor.Fact::extractionMethod).distinct()
+                .reduce((first, second) -> "mixed_v1").orElse(MesDocumentRelationExtractor.METHOD);
         int entityCount=(int)facts.stream().flatMap(f->java.util.stream.Stream.of(f.sourceId(),f.targetId())).distinct().count();
         String payload;try{payload=json.writeValueAsString(facts);}catch(Exception e){throw new IllegalStateException("Graph payload serialization failed");}
         var previous=jdbc.queryForList("SELECT generation FROM mes_assistant_graph_state WHERE tenant_id=? AND document_id=? FOR UPDATE",tenant,documentId);
         if(!failure.isBlank()&&desired.equals("PUBLISHED"))throw MesAssistantErrors.invalid("文档关系格式不正确，请更新文件后再发布："+failure);
         String status=desired.equals("DRAFT")&&previous.isEmpty()?(!failure.isBlank()?"INVALID":facts.isEmpty()?"EMPTY":"READY"):"PENDING";
         if(previous.isEmpty()){
-            jdbc.update("INSERT INTO mes_assistant_graph_state(tenant_id,document_id,owner_id,document_version,generation,desired_state,status,extraction_method,entity_count,relation_count,payload_json,error_message,validation_error,next_attempt_at) VALUES(?,?,?,?,1,?,?,?,?,?,?,?,?,CURRENT_TIMESTAMP)",tenant,documentId,owner,version,desired,status,MesDocumentRelationExtractor.METHOD,entityCount,facts.size(),payload,failure,failure);
+            jdbc.update("INSERT INTO mes_assistant_graph_state(tenant_id,document_id,owner_id,document_version,generation,desired_state,status,extraction_method,entity_count,relation_count,payload_json,error_message,validation_error,next_attempt_at) VALUES(?,?,?,?,1,?,?,?,?,?,?,?,?,CURRENT_TIMESTAMP)",tenant,documentId,owner,version,desired,status,method,entityCount,facts.size(),payload,failure,failure);
         }else{
-            jdbc.update("UPDATE mes_assistant_graph_state SET owner_id=?,document_version=?,generation=generation+1,desired_state=?,status=?,extraction_method=?,entity_count=?,relation_count=?,payload_json=?,attempts=0,error_message=?,validation_error=?,next_attempt_at=CURRENT_TIMESTAMP,update_time=CURRENT_TIMESTAMP,synced_at=NULL WHERE tenant_id=? AND document_id=?",owner,version,desired,status,MesDocumentRelationExtractor.METHOD,entityCount,facts.size(),payload,failure,failure,tenant,documentId);
+            jdbc.update("UPDATE mes_assistant_graph_state SET owner_id=?,document_version=?,generation=generation+1,desired_state=?,status=?,extraction_method=?,entity_count=?,relation_count=?,payload_json=?,attempts=0,error_message=?,validation_error=?,next_attempt_at=CURRENT_TIMESTAMP,update_time=CURRENT_TIMESTAMP,synced_at=NULL WHERE tenant_id=? AND document_id=?",owner,version,desired,status,method,entityCount,facts.size(),payload,failure,failure,tenant,documentId);
         }
     }
     /** Only durable committed rows are visible to the scheduler; upload rollback cannot leak a graph. */

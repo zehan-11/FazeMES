@@ -330,16 +330,18 @@
                 :closable="false"
               />
               <el-collapse class="mt-12px">
-                <el-collapse-item title="文件建图的关系格式" name="graph-format">
+                <el-collapse-item title="普通手册与关系文件如何建图" name="graph-format">
                   <p
-                    >当前识别文档中明确写出的关系，不调用模型推断。每条关系独占一行，类型可省略：</p
+                    >上传普通中文设备手册并发布后，会自动识别常见的部件组成、故障原因和处理措施。</p
                   >
                   <pre>
-[设备]风扇 —包含部件→ [部件]电机
-[部件]电机 —包含部件→ [部件]轴承</pre
+这台电风扇配有一台电机。
+电机由轴承和转子组成。
+轴承异响可能由润滑不足引起。</pre
                   >
                   <p
-                    >也支持三列表格／CSV：源实体、关系、目标实体。没有识别到关系时会显示“未识别关系”，不会生成猜测结果。</p
+                    >建图抽取在本地执行。系统也支持箭头关系和“源实体、关系、目标实体”三列表格或
+                    CSV。未匹配到支持的句式或格式时，文档会显示“未识别关系”。</p
                   >
                   <a href="/templates/knowledge-relations.md" download>下载关系文档模板</a>
                 </el-collapse-item>

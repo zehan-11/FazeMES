@@ -7,7 +7,7 @@ import java.nio.charset.StandardCharsets;
 import java.util.*;
 import java.util.regex.*;
 
-/** Only explicitly authored triples; does not infer semantics or call a model. */
+/** Extracts written triples and supported manual prose with source spans. */
 @Component
 public class MesDocumentRelationExtractor {
     public static final String METHOD="explicit_v1";
@@ -40,7 +40,11 @@ public class MesDocumentRelationExtractor {
                 if(cells.equals(List.of("源实体","关系","目标实体"))||cells.equals(List.of("source","relation","target"))){table=true;delimiter=nextDelimiter;continue;}
                 if(table&&nextDelimiter==delimiter&&cells.size()==3&&!cells.get(0).matches(":?-+:?")){
                     source=cells.get(0);relation=cells.get(1);target=cells.get(2);
-                }else{if(!content.matches("^[| :\\-]+$"))table=false;continue;}
+                }else{
+                    if(!content.matches("^[| :\\-]+$"))table=false;
+                    if(!content.startsWith("|"))appendManual(result,baseId,docId,version,title,text,chunks,line,lineStart+raw.indexOf(line));
+                    continue;
+                }
             }
             relation=normalized(relation);
             if(relation.isBlank()||relation.length()>60||relation.contains("|")||relation.contains("→"))throw new IllegalArgumentException("关系类型无效");
@@ -49,13 +53,32 @@ public class MesDocumentRelationExtractor {
             Chunk chunk=chunks.stream().filter(c->c.start()<=start&&c.end()>=end).findFirst().orElse(null);
             if(chunk==null)throw new IllegalArgumentException("关系行跨越分块边界，请缩短关系行后重试");
             if(start<0||end>text.length()||!text.substring(start,end).equals(line))throw new IllegalArgumentException("关系来源位置无效");
-            String section=chunk.heading()+(chunk.page()==null?"":" · 第"+chunk.page()+"页")+" · 第"+(chunk.id())+"片段";
-            result.add(new Fact(from.id(),from.name(),from.kind(),to.id(),to.name(),to.kind(),relation,
-                "doc-rel:"+docId+":"+hash(version+"\n"+start+"\n"+end+"\n"+from.id()+relation+to.id()),
-                baseId,docId,version,chunk.id(),chunk.hash(),chunk.page(),start,end,title,section,line,METHOD));
-            if(result.size()>1000)throw new IllegalArgumentException("单文档最多建立1000条关系，请拆分文档");
+            addFact(result,baseId,docId,version,title,chunk,start,end,line,from,to,relation,METHOD);
         }
         return List.copyOf(result);
+    }
+    private void appendManual(List<Fact> facts,long base,long document,int version,String title,String text,
+                              List<Chunk> chunks,String line,int lineStart) {
+        for (var match : MesManualRelationRules.extract(line)) {
+            int start = lineStart + match.start(), end = lineStart + match.end();
+            String excerpt = text.substring(start, end);
+            if (!excerpt.contains(match.source()) || !excerpt.contains(match.target())) continue;
+            var chunk = chunks.stream().filter(c -> c.start() <= start && c.end() >= end
+                    && c.text().regionMatches(start-c.start(),excerpt,0,excerpt.length())).findFirst();
+            if (chunk.isEmpty()) continue;
+            addFact(facts,base,document,version,title,chunk.get(),start,end,excerpt,
+                    entity("["+match.sourceKind()+"]"+match.source()),entity("["+match.targetKind()+"]"+match.target()),
+                    match.relation(),MesManualRelationRules.METHOD);
+        }
+    }
+
+    private void addFact(List<Fact> facts,long base,long document,int version,String title,Chunk chunk,int start,int end,
+                         String excerpt,Entity from,Entity to,String relation,String method) {
+        String section=chunk.heading()+(chunk.page()==null?"":" · 第"+chunk.page()+"页")+" · 第"+chunk.id()+"片段";
+        String id="doc-rel:"+document+":"+hash(version+"\n"+start+"\n"+end+"\n"+from.id()+relation+to.id());
+        facts.add(new Fact(from.id(),from.name(),from.kind(),to.id(),to.name(),to.kind(),relation,id,
+                base,document,version,chunk.id(),chunk.hash(),chunk.page(),start,end,title,section,excerpt,method));
+        if(facts.size()>1000)throw new IllegalArgumentException("单文档最多建立1000条关系，请拆分文档");
     }
     /** Three-column CSV (quoted fields supported) or Markdown relationship table. */
     static List<String> cells(String line,char delimiter){

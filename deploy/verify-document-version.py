@@ -5,7 +5,7 @@ from urllib.parse import urlencode
 from neo4j import GraphDatabase
 import argparse,json,time,uuid,subprocess,shutil,hashlib
 root=Path(__file__).resolve().parents[1]
-parser=argparse.ArgumentParser();parser.add_argument('--exercise-retry',action='store_true');args=parser.parse_args()
+parser=argparse.ArgumentParser();parser.add_argument('--exercise-retry',action='store_true');parser.add_argument('--manual',action='store_true');args=parser.parse_args()
 secrets=json.loads((root/'.runtime/secrets.local.json').read_text(encoding='utf-8-sig'))
 connection=json.loads((root/'.runtime/neo4j/connection.local.json').read_text(encoding='utf-8-sig'))
 http=build_opener(ProxyHandler({}));headers={'Content-Type':'application/json','tenant-id':'1'};base='http://127.0.0.1:48080/admin-api'
@@ -53,11 +53,12 @@ driver=GraphDatabase.driver(connection['uri'],auth=(connection['username'],conne
 base_id=None;created=[];deleted=set();stopped=False;initial=graph()
 try:
     marker='版本同步-'+uuid.uuid4().hex[:10];base_id=api('/mes/assistant/base',{'name':marker,'description':''})
-    old_text=f'[部件]电机 —包含部件→ [部件]{marker}旧部件'
+    old_text=f'{marker}风扇配备电机。' if args.manual else f'[部件]电机 —包含部件→ [部件]{marker}旧部件'
     first=upload(marker,old_text);created.append(first);publish(first);until(lambda:state(first)['graphStatus']=='SYNCED','v1 sync')
     original=api('/mes/assistant/document?'+urlencode({'id':first}));old_chunks=original['chunks'];assert len(edges_from(first))==1
-    second=upload(marker+'共同来源',f'[部件]{marker}旧部件 —关联现象→ [故障]{marker}异响');created.append(second);publish(second);until(lambda:state(second)['graphStatus']=='SYNCED','second file sync')
-    new_text=f'[部件]电机 —包含部件→ [部件]{marker}新部件';result=replace(first,1,new_text);assert int(result['id'])==first and int(result['version'])==2
+    if args.manual: assert edges_from(first)[0]['p']['extractionMethod']=='manual_rules_v1'
+    second=upload(marker+'共同来源','电机由轴承组成。' if args.manual else f'[部件]{marker}旧部件 —关联现象→ [故障]{marker}异响');created.append(second);publish(second);until(lambda:state(second)['graphStatus']=='SYNCED','second file sync')
+    new_text=f'{marker}风扇配备叶轮。' if args.manual else f'[部件]电机 —包含部件→ [部件]{marker}新部件';result=replace(first,1,new_text);assert int(result['id'])==first and int(result['version'])==2
     assert state(first)['status']=='DRAFT';until(lambda:state(first)['graphStatus']=='READY','v2 draft cleanup');assert not edges_from(first) and len(edges_from(second))==1
     assert download(first,1)==old_text.encode() and download(first,2)==new_text.encode()
     archived=api('/mes/assistant/document?'+urlencode({'id':first,'version':1}));assert archived['contentText']==old_text and archived['chunks']==old_chunks
@@ -65,13 +66,14 @@ try:
     assert archived['fileSha256']==hashlib.sha256(old_text.encode()).hexdigest()
     assert replace(first,1,'过时的替换内容',True)['code']!=0
     publish(first);until(lambda:state(first)['graphStatus']=='SYNCED','v2 publication');evidence=edges_from(first)[0]['p'];assert int(evidence['documentVersion'])==2 and evidence['chunkId']!=old_chunks[0]['chunkId'];assert new_text[evidence['startOffset']:evidence['endOffset']]==evidence['sourceExcerpt']
+    if args.manual: assert evidence['extractionMethod']=='manual_rules_v1' and evidence['targetOriginalName']=='叶轮'
     replace(first,2,'第三版保养记录，暂无明确关系。');until(lambda:state(first)['graphStatus']=='EMPTY','v3 empty cleanup');publish(first);until(lambda:state(first)['graphStatus']=='EMPTY','empty publication');assert not edges_from(first) and len(edges_from(second))==1
     assert len(api('/mes/assistant/document/versions?'+urlencode({'id':first})))==3
     if args.exercise_retry:
         stopped=True;neo('Stop');api('/mes/assistant/document/graph/rebuild?'+urlencode({'id':second}),method='POST');until(lambda:state(second)['graphStatus']=='ERROR','outage error persisted');remove(second);neo('Start');stopped=False
         until(lambda:not edges_from(second),'offline deletion recovery')
     else:remove(second);until(lambda:not edges_from(second),'deletion cleanup')
-    summary={'fileUpdate':'v1/v2/v3 passed','historicalBytesAndChunks':'verified','staleVersionRejected':True,'sharedSources':'preserved','emptyVersionClearsOldGraph':True,'deleteRecovery':'outage passed' if args.exercise_retry else 'passed'}
+    summary={'inputFormat':'manual prose' if args.manual else 'explicit triples','fileUpdate':'v1/v2/v3 passed','historicalBytesAndChunks':'verified','staleVersionRejected':True,'sharedSources':'preserved','emptyVersionClearsOldGraph':True,'deleteRecovery':'outage passed' if args.exercise_retry else 'passed'}
 finally:
     if stopped:neo('Start')
     for doc in created:

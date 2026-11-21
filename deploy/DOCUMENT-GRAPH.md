@@ -3,9 +3,20 @@
 ## 当前范围
 
 入口：AI助手与知识库 → RAG知识库 → 上传文档。
-本轮不接入模型、不发送文档到模型平台。支持提取文档中明确编写的三元关系，
-不对普通自然语言推断实体和关系。TXT、Markdown、CSV、DOCX 和文本 PDF 复用
-原有解析器。扫描 PDF 仍需先 OCR。
+普通中文设备手册可直接上传。系统在本地识别部件配置与组成、驱动关系、故障现象、
+故障原因和处理措施。审核原文并发布后，识别出的关系通过既有队列写入 Neo4j。
+支持 TXT、Markdown、CSV、DOCX 和文本型 PDF，扫描 PDF 需先 OCR。
+
+可识别的手册句式示例：
+
+- 这台电风扇配有一台电机和防护罩。
+- 电机由轴承、转子组成，电机负责驱动叶片。
+- 轴承异响可能由润滑不足引起。
+- 轴承异响时，应检查轴承。
+
+本地规则按句式和设备术语识别原文中直接陈述的关系。关系保留原句、位置和版本。
+不支持的句式、跨句指代及跨分块关系可能被跳过，全部未识别时显示「未识别关系」。
+同一文件内可同时使用手册句子与显式关系格式。现有文件可在文档列表点击「重新建图」。
 
 支持的箭头格式（每行一条）：
 
@@ -46,7 +57,7 @@ ID 幂等；若 Neo4j 已提交而 MySQL 状态提交失败，下次重试仍得
 
 保存字段：knowledgeBaseId、documentId、documentVersion、chunkId、chunkHash、
 pageNumber（PDF）、startOffset/endOffset（规范化原文中的 UTF-16 位置）、
-sourceTitle、sourceSection、sourceExcerpt、extractionMethod=explicit_v1。
+sourceTitle、sourceSection、sourceExcerpt、extractionMethod（显式关系为 explicit_v1，手册句式为 manual_rules_v1）。
 关系原文必须与对应位置的子串一致，且整个关系行必须位于一个可核对的片段中。
 实体 ID 根据类型和规范化名称计算；关系 ID 包含文档、版本和原文位置。
 已提交同步任务保存不可变来源快照。更新文件自动递增版本；历史文件与分块快照保存在 mes_assistant_document_revision，当前检索仅使用最新、已发布版本。
@@ -56,7 +67,7 @@ sourceTitle、sourceSection、sourceExcerpt、extractionMethod=explicit_v1。
 文档列表中选择「更新文件」，上传替换文件，保存时需要携带列表中的 expectedVersion。
 同一文档 ID 和原上传者保持不变，成功后版本递增，新版回到草稿；旧版立即退出新检索，
 其图谱关系进入异步清理队列。审核并重新发布后，后台替换该文档贡献的关系，
-来源字段使用新版版本号、片段 ID、哈希和原文位置。新版本没有明确关系时显示 EMPTY，
+来源字段使用新版版本号、片段 ID、哈希和原文位置。新版本没有可识别关系时显示 EMPTY，
 不会保留旧关系来代替新版结果。
 
 更新前在同一 MySQL 事务中归档旧文件字节、解析全文、元数据和包含旧片段 ID 的分块快照，
@@ -104,16 +115,16 @@ sourceTitle、sourceSection、sourceExcerpt、extractionMethod=explicit_v1。
   没有共同实体的资料保留独立连通分量，不创建人为的连接关系。
 
 实体目录上限10000，超过时同步失败并保留旧图谱，不以截断目录决定融合。
-实体类型识别与自然语言关系抽取是不同步骤；本轮仍不从任意自然语言自动生成关系。
+手册关系先按本地规则提取，再进入相同的实体类型规范化和对齐流程。
 
 ## 运维与验证
 
 - 迁移：database/migrations/20261115_document_graph_ingestion.sql、20261115_document_version_sync.sql。
 - 建图状态：mes_assistant_graph_state；查看 status/attempts/error_message 即可定位失败。
 - 手动重建：POST /admin-api/mes/assistant/document/graph/rebuild?id=...，要求
-  mes:assistant:manage 权限，并校验当前租户内文档可见性。
+  知识库功能权限，并校验当前用户有该来源库的维护权限。
 - 原有上传、发布、撤回、删除接口不变；文档列表增加建图状态、数量与错误信息。
-- 模型语义抽取和 GraphRAG 问答仍未包含在本轮实现中。
+- 图谱关系可用于[图谱问答](GRAPH-ANSWER.md)。
 
 测试：MesDocumentVersionSyncTest、MesEntityAlignmentTest、MesDocumentRelationExtractorTest、MesDocumentGraphPipelineTest、
 MesDocumentGraphLiveTest（设置 FAZEMES_GRAPH_TEST_CONFIG 后连接本机 Neo4j）。
@@ -123,8 +134,10 @@ MesDocumentGraphLiveTest（设置 FAZEMES_GRAPH_TEST_CONFIG 后连接本机 Neo4
 
 ```powershell
 python -X utf8 deploy/verify-document-graph.py
+python -X utf8 deploy/verify-document-version.py --manual
 # 含数据库停机与恢复重试，会短暂停止本项目 Neo4j：
-python -X utf8 deploy/verify-document-graph.py --exercise-retry
+python -X utf8 deploy/verify-document-graph.py
+python -X utf8 deploy/verify-document-version.py --manual --exercise-retry
 ```
 
 脚本使用本机管理员凭据；当前验收要求图谱未超过 overview 接口的容量。
