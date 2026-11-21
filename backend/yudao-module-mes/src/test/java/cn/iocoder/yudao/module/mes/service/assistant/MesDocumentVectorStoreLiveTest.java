@@ -6,6 +6,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
 import org.neo4j.driver.*;
+import org.neo4j.driver.exceptions.DatabaseException;
 import java.nio.file.*;
 import java.util.*;
 import static org.junit.jupiter.api.Assertions.*;
@@ -35,6 +36,24 @@ class MesDocumentVectorStoreLiveTest {
                 var scoped=store.searchVectorChunks(tenant,space,List.of(1L),List.of(1.0,0.0,0.0),1);
                 assertEquals(1,scoped.size());assertEquals(1L,((Number)((Map<?,?>)scoped.get(0).get("chunk")).get("documentId")).longValue());
                 assertEquals(1,store.vectorSources(tenant,space,List.of(1L),List.of(100L)).size());
+                try (var recovering = new MesGraphStore(true, uri, user, password, database) {
+                    @Override
+                    public List<Map<String, Object>> read(MesKnowledgeGraphService.Scope requestedScope,
+                            String query, Map<String, Object> parameters) {
+                        if (query.contains("VECTOR INDEX")) {
+                            throw new DatabaseException("Neo.DatabaseError.Statement.ExecutionFailed", "simulated index failure");
+                        }
+                        return super.read(requestedScope, query, parameters);
+                    }
+                }) {
+                    var exact = recovering.searchVectorChunks(tenant, space, List.of(1L), List.of(1.0, 0.0, 0.0), 1);
+                    assertEquals(1, exact.size());
+                    var candidate = (Map<?, ?>) exact.get(0).get("chunk");
+                    assertEquals(1L, candidate.get("documentId"));
+                    assertEquals(100L, candidate.get("chunkId"));
+                    assertTrue(((Number) exact.get(0).get("score")).doubleValue() > 0.9);
+                    assertEquals(true, ((Map<?, ?>) exact.get(0).get("checkpoint")).get("active"));
+                }
 
                 assertTrue(store.replaceVectorDocument(scope,1,2,2,10,"新版来源",space,"test-model",3,List.of(chunk),true));
                 assertFalse(store.replaceVectorDocument(scope,1,1,1,10,"旧任务",space,"test-model",3,List.of(chunk),true));

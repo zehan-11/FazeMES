@@ -291,8 +291,40 @@
                   ><el-button type="primary" @click="openUpload()">上传文档</el-button></div
                 ></div
               >
+              <div class="assistant-index-overview" aria-label="文档向量覆盖">
+                <div>
+                  <strong>文档向量覆盖</strong>
+                  <p role="status" aria-atomic="true">
+                    {{ indexSummary.ready }} /
+                    {{ indexSummary.published }} 份已发布文档可用于语义检索
+                    <template v-if="indexSummary.pending">
+                      · {{ indexSummary.pending }} 份正在处理</template
+                    >
+                    <template v-if="indexSummary.needsAttention">
+                      · {{ indexSummary.needsAttention }} 份待建立或重试</template
+                    >
+                    <template v-if="indexSummary.removing">
+                      · {{ indexSummary.removing }} 份旧向量待清理</template
+                    >
+                  </p>
+                </div>
+                <div class="assistant-index-actions">
+                  <el-button :loading="documentsLoading" @click="loadDocuments()"
+                    >刷新状态</el-button
+                  >
+                  <el-button
+                    v-if="canKnowledge"
+                    type="primary"
+                    plain
+                    :disabled="sending || !indexSummary.ready"
+                    @click="searchCurrentBase"
+                  >
+                    在此库语义检索
+                  </el-button>
+                </div>
+              </div>
               <el-alert
-                title="支持 TXT / MD / CSV、DOCX 和文本型 PDF（最多 5MB）。草稿先解析关系，发布后按知识库权限展示图谱；撤回后移除对应关系。扫描 PDF 需先 OCR。"
+                title="支持 TXT / MD / CSV、DOCX 和文本型 PDF（最多 5MB）。上传后请审核并发布。发布后自动处理向量，入库完成即可语义检索。扫描 PDF 需先 OCR。"
                 type="info"
                 show-icon
                 :closable="false"
@@ -376,6 +408,17 @@
                     <div v-if="row.vectorChunkCount"
                       >{{ row.vectorCompletedChunks }} / {{ row.vectorChunkCount }} 个片段</div
                     >
+                    <el-progress
+                      v-if="row.vectorAction === 'INDEX' && row.vectorChunkCount > 0"
+                      :percentage="
+                        Math.min(
+                          100,
+                          Math.round((row.vectorCompletedChunks / row.vectorChunkCount) * 100)
+                        )
+                      "
+                      :show-text="false"
+                      :aria-label="`${row.title}向量处理进度`"
+                    />
                     <small v-if="row.vectorModel"
                       >{{ row.vectorModel }} · {{ row.vectorDimensions }} 维</small
                     >
@@ -1101,10 +1144,32 @@ async function search() {
   }
 }
 async function selectBase(id: number) {
+  if (knowledgeBaseId.value !== id) documents.value = []
   knowledgeBaseId.value = id
   await loadDocuments()
 }
-let graphPoll: ReturnType<typeof setTimeout> | undefined
+const indexSummary = computed(() => {
+  const published = documents.value.filter((doc) => doc.status === 'PUBLISHED')
+  const ready = published.filter((doc) => doc.vectorUsable).length
+  const pending = published.filter((doc) =>
+    ['PENDING', 'PROCESSING'].includes(doc.vectorStatus)
+  ).length
+  return {
+    published: published.length,
+    ready,
+    pending,
+    needsAttention: published.length - ready - pending,
+    removing: documents.value.filter((doc) => doc.vectorAction === 'REMOVE').length
+  }
+})
+function searchCurrentBase() {
+  if (!currentBase.value || sending.value) return
+  selectedBases.value = [currentBase.value.id]
+  retrievalMode.value = 'DOCUMENT'
+  documentStrategy.value = 'SEMANTIC'
+  tab.value = 'chat'
+}
+let documentPoll: ReturnType<typeof setTimeout> | undefined
 let documentRequest = 0
 let assistantDisposed = false
 const vectorSubmitting = reactive(new Set<number>())
@@ -1154,15 +1219,16 @@ const graphStatusText = (status: string) =>
     INVALID: '关系格式待检查',
     REMOVED: '已移除'
   })[status] || '尚未建图'
-async function loadDocuments() {
-  clearTimeout(graphPoll)
+async function loadDocuments(background = false) {
+  clearTimeout(documentPoll)
   const request = ++documentRequest,
     base = knowledgeBaseId.value
   if (!base) {
     documents.value = []
+    documentsLoading.value = false
     return
   }
-  documentsLoading.value = true
+  if (!background) documentsLoading.value = true
   try {
     const result = await AssistantApi.documents(base)
     if (assistantDisposed || request !== documentRequest || base !== knowledgeBaseId.value) return
@@ -1177,7 +1243,7 @@ async function loadDocuments() {
           (d.graphStatus === 'ERROR' && (d.graphAttempts < 10 || d.status === 'DRAFT'))
       )
     ) {
-      graphPoll = setTimeout(() => void loadDocuments(), 3000)
+      documentPoll = setTimeout(() => void loadDocuments(true), 3000)
     }
   } catch (exception) {
     if (request === documentRequest) failure(exception, '文档加载失败')
@@ -1195,14 +1261,14 @@ async function rebuildDocumentGraph(document: KnowledgeDocument) {
   }
 }
 watch(tab, (value) => {
-  clearTimeout(graphPoll)
+  clearTimeout(documentPoll)
   if (value === 'knowledge') void loadDocuments()
 })
 onBeforeUnmount(() => {
   ++evidenceRequest
   assistantDisposed = true
   ++documentRequest
-  clearTimeout(graphPoll)
+  clearTimeout(documentPoll)
 })
 
 function editBase(base?: KnowledgeBase) {
@@ -1302,7 +1368,7 @@ async function uploadDocument() {
       : await AssistantApi.upload(knowledgeBaseId.value, uploadTitle.value, uploadFile.value)
     ElMessage.success(
       target
-        ? '新版本已保存为草稿，旧版图谱进入清理队列，请审核后重新发布'
+        ? '新版本已保存为草稿，旧版向量和图谱进入清理队列。请审核后重新发布。'
         : `解析完成，生成${result.chunkCount}个片段，请审核后发布`
     )
     uploadVisible.value = false
@@ -1724,6 +1790,34 @@ onMounted(async () => {
 .assistant-document-heading {
   margin-bottom: 16px;
   flex-wrap: wrap;
+}
+
+.assistant-index-overview {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px 20px;
+  margin-bottom: 12px;
+  padding: 14px 16px;
+  border: 1px solid var(--el-border-color-light);
+  border-radius: 8px;
+}
+
+.assistant-index-overview p {
+  margin: 6px 0 0;
+  color: var(--el-text-color-regular);
+}
+
+.assistant-index-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.assistant-index-actions :deep(.el-button) {
+  min-height: 44px;
+  margin: 0;
 }
 
 .assistant-document-table {

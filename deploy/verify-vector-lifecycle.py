@@ -1,12 +1,15 @@
 """Fixture-only OpenAI/Neo4j verification of update, withdrawal, republish and deletion."""
+from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
+from threading import Barrier
 from urllib.request import Request, build_opener, ProxyHandler
 from urllib.parse import urlencode
 from neo4j import GraphDatabase
-import argparse, json, time, uuid
+import argparse, json, time, uuid, shutil, subprocess
 
 parser=argparse.ArgumentParser()
 parser.add_argument('--model',action='store_true',help='Generate real vectors for two new fixture documents and their test versions')
+parser.add_argument('--exercise-recovery',action='store_true',help='Temporarily stop and restart the local Neo4j service')
 args=parser.parse_args()
 if not args.model:parser.error('--model is required for external Embedding calls')
 root=Path(__file__).resolve().parents[1]
@@ -41,13 +44,23 @@ login=api('/system/auth/login',{'username':secrets['AdminUsername'],'password':s
 headers['Authorization']='Bearer '+login['accessToken']
 kb=None
 owned={}
+
+def set_neo4j(action):
+    shell=shutil.which('pwsh')
+    if shell is None:raise RuntimeError('PowerShell 7 is required for the Neo4j recovery test')
+    subprocess.run([shell,'-NoProfile','-File',str(root/'deploy/neo4j-local.ps1'),'-Action',action],cwd=root,check=True,timeout=120)
+
 with GraphDatabase.driver(connection['uri'],auth=(connection['username'],connection['password'])) as driver:
     with driver.session(database=connection['database']) as graph:
         def stored(doc):
-            return graph.run('MATCH (n:FazeVectorChunk {tenantId:1,documentId:$doc}) RETURN n.chunkId AS id,n.chunkHash AS hash,n.documentVersion AS version,n.text AS text,n.startOffset AS start,n.endOffset AS end,n.knowledgeBaseId AS base,size(n.embedding) AS dimensions ORDER BY n.chunkId',doc=doc).data()
+            return graph.execute_read(lambda tx:tx.run('MATCH (n:FazeVectorChunk {tenantId:1,documentId:$doc}) RETURN n.chunkId AS id,n.chunkHash AS hash,n.documentVersion AS version,n.text AS text,n.startOffset AS start,n.endOffset AS end,n.knowledgeBaseId AS base,size(n.embedding) AS dimensions ORDER BY n.chunkId',doc=doc).data())
         def cleared(doc):
-            checkpoint=graph.run('MATCH (n:FazeVectorDocument {tenantId:1,documentId:$doc}) RETURN n.active AS active',doc=doc).single()
-            return checkpoint is not None and checkpoint['active'] is False and not stored(doc)
+            # Managed reads reconnect pooled Bolt sockets invalidated by the deliberate restart.
+            def check(tx):
+                checkpoint=tx.run('MATCH (n:FazeVectorDocument {tenantId:1,documentId:$doc}) RETURN n.active AS active',doc=doc).single()
+                count=tx.run('MATCH (n:FazeVectorChunk {tenantId:1,documentId:$doc}) RETURN count(n) AS n',doc=doc).single()['n']
+                return checkpoint is not None and checkpoint['active'] is False and count==0
+            return graph.execute_read(check)
         def row(doc):return next(r for r in api('/mes/assistant/documents?knowledgeBaseId='+str(kb)) if int(r['id'])==doc)
         def indexed(doc,version):
             def check():
@@ -76,7 +89,19 @@ with GraphDatabase.driver(connection['uri'],auth=(connection['username'],connect
             assert row(first)['vectorUsable'] and row(first)['vectorStatus']=='INDEXED' and row(first)['vectorSyncedAt']==initial['vectorSyncedAt']
             multipart('/mes/assistant/document/update',{'id':first,'expectedVersion':0},new,denied=True)
             assert row(first)['version']==1 and row(first)['vectorUsable']
-            replacement=multipart('/mes/assistant/document/update',{'id':first,'expectedVersion':1},new)
+            barrier=Barrier(2,timeout=10)
+            def replace_from_v1(text):
+                barrier.wait()
+                try:
+                    return multipart('/mes/assistant/document/update',{'id':first,'expectedVersion':1},text),text
+                except RuntimeError as error:
+                    if '文档版本已变更' not in str(error):raise
+                    return None,text
+            with ThreadPoolExecutor(max_workers=2) as executor:
+                outcomes=list(executor.map(replace_from_v1,[new,new+' 补充：保留复核记录。']))
+            winners=[(result,text) for result,text in outcomes if result is not None]
+            assert len(winners)==1,'Exactly one replacement of version 1 must succeed'
+            replacement,new=winners[0]
             assert replacement['version']==2
             draft=row(first);assert draft['status']=='DRAFT' and not draft['vectorUsable'] and draft['vectorIndexedVersion'] is None
             not_retrieved(first,'OLDLIFECYCLE'+marker)
@@ -99,13 +124,33 @@ with GraphDatabase.driver(connection['uri'],auth=(connection['username'],connect
             wait(lambda:cleared(first),'withdrawn document cleanup');assert stored(other)==preserved
             publish(first,2,False);assert row(first)['vectorStatus']=='READY'
             publish(first,2);indexed(first,2)
+            if args.exercise_recovery:
+                try:
+                    set_neo4j('Stop')
+                    publish(first,2,False)
+                    assert not row(first)['vectorUsable']
+                    wait(lambda:row(first)['vectorStatus']=='ERROR' and row(first)['vectorAction']=='REMOVE','durable cleanup failure')
+                    assert not row(first)['vectorUsable']
+                    payload={'query':'OLDLIFECYCLE'+marker,'knowledgeBaseIds':[kb],'limit':5}
+                    fallback=api('/mes/assistant/search',payload|{'documentStrategy':'COMBINED'})
+                    assert fallback['documentRetrieval']['degraded'] and fallback['documentRetrieval']['effectiveStrategy']=='LEXICAL'
+                    assert {int(item['documentId']) for item in fallback['items']}=={other}
+                    api('/mes/assistant/search',payload|{'documentStrategy':'SEMANTIC'},denied=True)
+                finally:
+                    set_neo4j('Start')
+                wait(lambda:row(first)['vectorStatus']=='READY','cleanup retry after Neo4j starts')
+                wait(lambda:cleared(first),'physical cleanup after Neo4j starts')
+                assert stored(other)==preserved
+                recovered=api('/mes/assistant/search',payload|{'documentStrategy':'SEMANTIC'})
+                assert {int(item['documentId']) for item in recovered['items']}=={other}
+                publish(first,2);indexed(first,2)
             api('/mes/assistant/document?id='+str(first),method='DELETE');owned[first]=True
             api('/mes/assistant/document?id='+str(first),denied=True)
             assert all(int(r['id'])!=first for r in api('/mes/assistant/documents?knowledgeBaseId='+str(kb)))
             not_retrieved(first,'NEWLIFECYCLE'+marker)
             wait(lambda:cleared(first),'deleted document cleanup');assert stored(other)==preserved
             assert api('/mes/assistant/embedding-config')==config and api('/mes/assistant/model-config')==chat
-            print(json.dumps({'duplicatePublishIdempotent':True,'updateInvalidatedImmediately':True,'version2Provenance':True,'withdrawAndRepublish':True,'otherDocumentPreserved':True,'deleteCleanup':True,'dimensions':config['dimensions']},ensure_ascii=False))
+            print(json.dumps({'duplicatePublishIdempotent':True,'updateInvalidatedImmediately':True,'concurrentVersionConflict':True,'version2Provenance':True,'withdrawAndRepublish':True,'otherDocumentPreserved':True,'deleteCleanup':True,'neo4jRecovery':args.exercise_recovery,'dimensions':config['dimensions']},ensure_ascii=False))
         finally:
             for doc,deleted in owned.items():
                 if not deleted:api('/mes/assistant/document?id='+str(doc),method='DELETE')

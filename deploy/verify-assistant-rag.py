@@ -1,7 +1,8 @@
 #!/usr/bin/env python3
 """Exercise native assistant HTTP APIs with synthetic documents and a local protocol stub.
 
-Never calls a paid/external model. Existing model configuration is preserved. A
+No prompts are sent to a configured answer model. Publishing fixtures can queue
+Embedding if enabled. Existing model configuration is preserved. A
 temporary OpenAI-compatible HTTP fixture is used only if configuration is pristine;
 its fake key is cleared with DELETE /model-config in finally. Documents, knowledge
 base and user-owned sessions created by this run are soft-deleted in finally.
@@ -151,6 +152,7 @@ def main():
         fixtures = {
             'fixture.txt':(keyword+' 点检异常必须停机并登记；仅为合成验收资料。').encode(),
             'fixture.md':('# Inspection\n'+keyword+' inspection approval is required.\n# Release\n'+keyword+' release follows inspection.').encode(),
+            'fixture.csv':('item,procedure\n'+keyword+',inspect before use\n').encode(),
             'fixture.docx':docx(keyword+' DOCX inspection anomalies must be recorded.'),
             'fixture.pdf':pdf([keyword+' PDF inspection must finish before release.',keyword+' PDF alarms require stopping the equipment.'])}
         total_chunks = 0
@@ -167,7 +169,7 @@ def main():
         check('draft_documents_never_enter_retrieval',not draft['items'] and draft['eligibleChunkCount']==0)
         for document_id in documents: request('PUT','/mes/assistant/document/publish',id=document_id,published='true')
         result = request('POST','/mes/assistant/search',{'query':keyword,'knowledgeBaseIds':[base_id],'limit':10})
-        check('all_four_published_formats_are_retrievable',{item['documentId'] for item in result['items']}==set(documents))
+        check('all_five_published_formats_are_retrievable',{item['documentId'] for item in result['items']}==set(documents))
         check('retrieval_uses_all_actual_published_chunks',result['eligibleChunkCount']==total_chunks)
         check('retrieval_citations_are_source_grounded',all(item['score']>0 and item['contentHash']==hashlib.sha256(item['content'].encode()).hexdigest() and item['version']==1 for item in result['items']))
         no_match = request('POST','/mes/assistant/search',{'query':'unrelated'+uuid4().hex,'knowledgeBaseIds':[base_id],'limit':5})
@@ -245,7 +247,7 @@ def main():
         check('all_created_knowledge_base_fixtures_cleaned',counts['basesCleaned']==len(bases))
         evidence={'result':'passed' if not issues else 'failed','generatedAt':datetime.now().astimezone().isoformat(),
             'mode':'synthetic_knowledge_and_session_fixtures','businessDocumentMutationCount':0,
-            'documentFormats':['txt','md','docx','pdf'],'counts':dict(counts),'checksPassed':sum(item['passed'] for item in checks),
+            'documentFormats':['txt','md','csv','docx','pdf'],'counts':dict(counts),'checksPassed':sum(item['passed'] for item in checks),
             'checksFailed':sum(not item['passed'] for item in checks),'checks':checks,'issues':issues,
             'localProtocolStubUsed':model_changed,'modelConfigurationRestored':model_restored,
             'secretHandling':'Credentials, token and fake key were used only in process and are not recorded.',

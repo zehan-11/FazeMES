@@ -2,6 +2,7 @@ package cn.iocoder.yudao.module.mes.service.graph;
 
 import jakarta.annotation.PreDestroy;
 import org.neo4j.driver.*;
+import org.neo4j.driver.exceptions.DatabaseException;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 import java.time.Duration;
@@ -25,6 +26,8 @@ public class MesGraphStore implements AutoCloseable {
         if(driver==null) driver=GraphDatabase.driver(uri,AuthTokens.basic(username,password),Config.builder()
             .withConnectionTimeout(3,java.util.concurrent.TimeUnit.SECONDS)
             .withConnectionAcquisitionTimeout(3,java.util.concurrent.TimeUnit.SECONDS)
+            // Discard idle Bolt connections left behind by a local Neo4j restart.
+            .withConnectionLivenessCheckTimeout(1,java.util.concurrent.TimeUnit.SECONDS)
             .withMaxTransactionRetryTime(0,java.util.concurrent.TimeUnit.SECONDS).withMaxConnectionPoolSize(8).build());
         return driver;
     }
@@ -144,7 +147,25 @@ public class MesGraphStore implements AutoCloseable {
                 +"WHERE n.tenantId=$tenant AND n.documentId IN $documents LIMIT $limit) SCORE AS score "
                 +"WITH n,score OPTIONAL MATCH (d:FazeVectorDocument {tenantId:$tenant,documentId:n.documentId}) "
                 +"RETURN "+VECTOR_SOURCE+" AS chunk,"+VECTOR_CHECKPOINT+" AS checkpoint,score ORDER BY score DESC,n.chunkId LIMIT $limit";
-        return read(new MesKnowledgeGraphService.Scope(tenant,0),query,Map.of("documents",documents,"vector",vector,"limit",limit));
+        var scope = new MesKnowledgeGraphService.Scope(tenant, 0);
+        Map<String,Object> parameters = Map.of("documents", documents, "vector", vector,
+                "limit", limit, "space", spaceId);
+        try {
+            return read(scope, query, parameters);
+        } catch (DatabaseException failure) {
+            if (!"Neo.DatabaseError.Statement.ExecutionFailed".equals(failure.code())) throw failure;
+            // A filtered ANN query can fail inside Neo4j during index recovery. Reuse the same query vector.
+            return read(scope, """
+                    MATCH (d:FazeVectorDocument {tenantId:$tenant, active:true, spaceId:$space})
+                    WHERE d.documentId IN $documents
+                    MATCH (n:FazeVectorChunk {tenantId:$tenant, documentId:d.documentId, spaceId:$space})
+                    WHERE n.generation=d.generation AND n.documentVersion=d.documentVersion
+                      AND n.embedding IS NOT NULL AND size(n.embedding)=size($vector)
+                    WITH n,d LIMIT 20000
+                    WITH n,d,vector.similarity.cosine(n.embedding,$vector) AS score
+                    RETURN %s AS chunk,%s AS checkpoint,score ORDER BY score DESC,n.chunkId LIMIT $limit
+                    """.formatted(VECTOR_SOURCE, VECTOR_CHECKPOINT), parameters);
+        }
     }
     /** Revalidates selected vector sources without embedding the question or repeating an ANN search. */
     public List<Map<String,Object>> vectorSources(long tenant,String spaceId,List<Long> documents,List<Long> chunks) {

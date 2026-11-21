@@ -9,7 +9,10 @@ AI助手与知识库 → 模型配置 → 文档向量模型（Embedding）。�
 加密API Key，默认text-embedding-3-small、1536维，独立于回答模型。连接测试只发送固定测试文字。
 
 上传文档先保存草稿，不调用外部模型。发布后登记后台任务，分批将文档片段发送给所配置的API平台，
-成功后写入Neo4j。在RAG知识库文件列表查看“文档向量”的状态、完成片段数、模型和维度。
+成功后写入Neo4j。“RAG知识库”上方显示已发布文件的向量覆盖、待处理和待清理数量，
+文件列表显示分块进度、模型、维度及重试入口。任务处理期间状态自动更新，也可手动刷新。
+点击“在此库语义检索”进入知识助手，自动选中当前库与语义策略。输入问题后可先检索证据，
+也可发送提问并点击引用核对原文。
 失败可点击“重试向量入库”；已入库的文件可明确选择“重新建立索引”。重建操作携带expectedVersion，
 文件版本变化时需刷新。维护权限沿用原个人库所有权与企业规则库授权，普通读取成员不能重建。
 
@@ -57,6 +60,8 @@ MySQL会短暂保留文件分块快照与向量批次，成功或新代次登记
 先从认证上下文取得当前可访问的已发布分块，再用MySQL向量状态限制当前版本、上传者、知识库、
 片段数量、模型空间及INDEXED状态。只有这些文件ID被传入Neo4j SEARCH的索引内过滤条件，
 租户与文件过滤发生在ANN的top-k之前，不依靠全库top-k后隐藏未授权结果。
+若Neo4j在索引恢复期间执行ANN查询报错，服务会使用同一问题向量，在授权文件的当前有效片段中按余弦相似度排序。
+备用查询最多比较20,000个片段，事务超时为5秒。Neo4j无法访问时，语义模式报告错误，综合模式标明关键词降级。
 
 问题Embedding返回后、ANN执行后都重新检查权限和当前来源。候选同时核对文件检查点active、
 版本、任务代次、模型/维度、分块ID、哈希、原文、页码及字符位置；返回文本以当前授权MySQL原文为准。
@@ -121,32 +126,63 @@ Embedding输入沿用最多16段、单段UTF-8最多8192字节、总计64KiB的�
 - GET /admin-api/mes/assistant/documents：增加vectorStatus、vectorChunkCount、vectorCompletedChunks、
   vectorAttempts、vectorError、vectorModel、vectorDimensions、vectorIndexName，以及上文的有效性与清理状态字段。
 
-应用20261115_embedding_configuration.sql、20261115_vector_document_ingestion.sql和20261115_document_retrieval_strategy.sql后构建重启后端。
-使用现有deploy/apply-migrations.ps1，不修改已经应用的迁移文件。
+已有本地环境先启动 Neo4j，再用项目现有启动脚本恢复服务。使用 PowerShell 7，在仓库根目录执行：
 
-## 验证
+```powershell
+pwsh -File deploy/neo4j-local.ps1
+pwsh -File deploy/resume-local.ps1 -Build
+```
 
-MesDocumentVectorPipelineTest覆盖草稿、回滚、分批、故障恢复、租约、文件变更、配置变化与维护权限；
-MesDocumentVectorStoreLiveTest在隔离测试租户中验证真实Neo4j索引、来源、独立文件、旧代次屏障和图谱保持，
-需要FAZEMES_GRAPH_TEST_CONFIG指向本机私有Neo4j配置，测试结束仅清理自身节点和临时索引。
+`resume-local.ps1` 调用迁移脚本，按记录补齐 `20261115_embedding_configuration.sql`、
+`20261115_vector_document_ingestion.sql` 和 `20261115_document_retrieval_strategy.sql` 等迁移。
+前端入口为 `http://127.0.0.1:5173/mes/assistant`。使用电脑已有的运行配置和模型凭据。
+
+## 任务二验收口径
+
+| 必做内容 | 核对方式 |
+| --- | --- |
+| 大模型接入 | 使用已配置的 OpenAI 接口执行实际 Embedding 和带引用问答。课件允许选用本地模型或 API。 |
+| 本地隐私知识库与用户隔离 | MySQL 和 Neo4j 在本地存储。双账号检查个人库、管理员边界和企业库角色授权、撤权。启用 OpenAI 时，平台会收到向量化所需的发布片段和检索问题，以及生成答复所需的问题和引用。 |
+| 多格式文件管理 | TXT、Markdown、CSV、DOCX、文本型 PDF，核对上传后分块、原文件下载与发布检索。更新、历史版本、撤回和删除另走生命周期验收。单文件上限 5 MB，扫描 PDF 需先 OCR。 |
+| 向量数据库与更新 | 发布和替换后的重新发布触发后台向量化。更新、撤回和删除提交后旧内容立即退出检索，Neo4j 的物理清理异步完成。验证并发版本冲突、恢复重试和其他文件保留。 |
+| 私有 RAG 问答 | 检查关键词、语义、综合策略，核对真实答复、可点击引用、会话策略和来源权限。 |
+
+Dify 工作流及编排是课件加分项，本次交付范围为上述五项必做要求。
+
+## 本地实测记录
+
+- 五种文件格式的接口验收通过 36 项检查，包括原文件字节、分块哈希、字符位置和 PDF 页码。
+- 双账号验收通过个人库隔离、企业库角色授权与撤销，以及向量检索来源隔离。
+- 使用同一组临时中文资料时，验收用英文问题的关键词检索返回 0 条，语义检索返回 2 条。
+  文档语义问答有 2 条引用，文档和图谱混合问答有 4 条引用，两次会话均保留实际检索策略。
+- 实际发起两个持有同一文件版本号的更新请求，只有一个成功。更新、撤回和删除均验证了旧向量立即退出检索，
+  后台清理完成后其他文档向量仍保持完整。
+- 实际停启Neo4j。停机时清理进入重试，严格语义检索报错，综合检索明确降级为关键词。恢复后清理自动重试，
+  语义检索恢复，临时文件随后清理完成。使用真实Neo4j另外验证了索引报错时的备用查询及授权范围。
+- 浏览器已核对知识库覆盖总览和“在此库语义检索”入口。点击后选中原知识库和语义策略。
+
+## 复现验收
+
+本地服务启动后，使用项目配置的 OpenAI 接口运行：
+
+```powershell
+python -X utf8 deploy/verify-assistant-rag.py
+python -X utf8 deploy/verify-knowledge-access.py --semantic
+python -X utf8 deploy/verify-semantic-rag.py --model
+python -X utf8 deploy/verify-vector-lifecycle.py --model --exercise-recovery
+```
+
+这些脚本使用新建的合成资料和问题，并清理自身创建的资料、账号和会话。最后一条会短时停启本机
+Neo4j，核对断线时关键词降级和恢复后的清理任务。系统正在演示时，可省略 `--exercise-recovery`
+完成文件与索引生命周期核对。额外的 Embedding 连接测试和单文档入库测试可单独复现：
 
 ```powershell
 python -X utf8 deploy/verify-embedding.py --model
 python -X utf8 deploy/verify-document-vectors.py --model
-python -X utf8 deploy/verify-vector-lifecycle.py --model
-python -X utf8 deploy/verify-semantic-rag.py --model
 ```
 
-第二个脚本只使用新建的验收资料，经正常上传、发布、等待入库后逐片核对Neo4j来源和维度，最后删除并
-验证本次文件的向量清理。不发送原有私人文件，不输出密钥或完整向量。
+后端 `MesDocumentVectorPipelineTest` 覆盖已完成批次的断点恢复和过期任务。`MesDocumentVectorStoreLiveTest`
+使用真实 Neo4j 检查索引过滤和数据隔离，运行时把 `FAZEMES_GRAPH_TEST_CONFIG` 指向本机 Neo4j 配置文件。
 
-参考：[OpenAI Embeddings API](https://developers.openai.com/api/reference/resources/embeddings/methods/create)、
-[Neo4j向量索引](https://neo4j.com/docs/cypher-manual/current/indexes/search-indexes/vector-indexes/)。
-
-第三个脚本使用两份新建资料验证：同内容的独立文件、重复发布、版本冲突拒绝、更新后立即失效、
-旧向量物理清理、新版来源、历史原文、撤回后重发、删除清理，以及其他文件保持完整。
-脚本经正常API操作，调用已配置Embedding平台，不改动原有文件或模型配置，结束后清理自身资料。
-
-第四个脚本使用两份新资料，核对构造的英文问题在关键词模式无匹配而语义模式有真实候选，
-以及综合排名、文档与图谱混合、两种真实带引用答复、历史策略和撤回即时过滤。
-只发送新建资料与本次测试问题，结束后清理自身文件、会话、向量和图谱关系；不修改模型配置。
+参考 [OpenAI Embeddings API](https://developers.openai.com/api/reference/resources/embeddings/methods/create) 和
+[Neo4j 向量索引](https://neo4j.com/docs/cypher-manual/current/indexes/search-indexes/vector-indexes/)。

@@ -4,7 +4,10 @@ from urllib.request import Request,build_opener,ProxyHandler
 from urllib.error import HTTPError
 from urllib.parse import urlencode
 from neo4j import GraphDatabase
-import json,time,uuid
+import argparse,json,time,uuid
+parser=argparse.ArgumentParser(description=__doc__)
+parser.add_argument('--semantic',action='store_true',help='Use configured Embedding with fixture documents and questions')
+args=parser.parse_args()
 root=Path(__file__).resolve().parents[1]
 secrets=json.loads((root/'.runtime/secrets.local.json').read_text(encoding='utf-8-sig'))
 connection=json.loads((root/'.runtime/neo4j/connection.local.json').read_text(encoding='utf-8-sig'))
@@ -55,6 +58,7 @@ def evidence(client,kb):return client.call('/mes/assistant/evidence/search',{'qu
 admin=Client();admin.login(secrets['AdminUsername'],secrets['AdminPassword']);roles=[];users=[];clients=[];libraries=[];documents=[]
 initial=graph(admin)
 try:
+ if args.semantic:assert admin.call('/mes/assistant/embedding-config')['configured'],'Configure Embedding before semantic ACL verification'
  menus=admin.call('/system/menu/list');menu_ids=[m['id'] for m in menus if m.get('permission') in ('mes:assistant:knowledge','mes:assistant:query')];assert any(m.get('permission')=='mes:assistant:knowledge' for m in menus)
  for suffix in ('A','B'):
   role=int(admin.call('/system/role/create',{'name':'知识权限验证'+suffix+marker,'code':'kgacl'+suffix+marker,'sort':900,'status':0}));roles.append(role);admin.call('/system/permission/assign-role-menu',{'roleId':role,'menuIds':menu_ids})
@@ -78,11 +82,23 @@ try:
  result=evidence(a,corp);assert {e['sourceType'] for e in result}=={'DOCUMENT','GRAPH'};assert all(int(e['documentId'])==dc and e['libraryType']=='RULES' for e in result)
  ga,gb,gm=graph(a),graph(b),graph(admin);assert all(int(r['sourceEvidence'].get('documentId') or 0)!=db for r in ga['relations'].values());assert all(int(r['sourceEvidence'].get('documentId') or 0) not in (da,dc,draft) for r in gb['relations'].values());assert all(int(r['sourceEvidence'].get('documentId') or 0) not in (da,db) for r in gm['relations'].values())
  private_node=next(n for n in ga['nodes'].values() if '保密设备A' in n['name']);b.call('/mes/knowledge-graph/node?'+urlencode({'id':private_node['id']}),denied=True);admin.call('/mes/knowledge-graph/neighbors?'+urlencode({'id':private_node['id']}),denied=True)
+ if args.semantic:
+  for owner,library,document in [(a,pa,da),(b,pb,db),(admin,corp,dc)]:
+   until(lambda:next(row for row in owner.call('/mes/assistant/documents?knowledgeBaseId='+str(library)) if int(row['id'])==document)['vectorUsable'],'fixture vector index')
+  def semantic(client,library,document=None,denied=False):
+   result=client.call('/mes/assistant/evidence/search',{'query':'电机检查','knowledgeBaseIds':[library],'documentStrategy':'SEMANTIC'},denied=denied)
+   if not denied:
+    assert result['documentRetrieval']['effectiveStrategy']=='SEMANTIC' and result['items']
+    assert all(row['retrievalMethod']=='vector_cosine' and int(row['documentId'])==document for row in result['items'])
+  semantic(a,pa,da);semantic(b,pb,db);semantic(a,corp,dc)
+  semantic(admin,pa,denied=True);semantic(b,pa,denied=True);semantic(b,corp,denied=True)
  admin.call('/mes/assistant/base',{'id':corp,'name':'企业规则'+marker,'description':'','libraryType':'RULES','readerRoleIds':[]})
+ if args.semantic:semantic(a,corp,denied=True)
  assert not any(int(r['sourceEvidence'].get('documentId') or 0)==dc for r in graph(a)['relations'].values());a.call('/mes/assistant/evidence/search',{'query':'电机','knowledgeBaseIds':[corp]},denied=True)
  admin.call('/mes/assistant/base',{'id':corp,'name':'企业规则'+marker,'description':'','libraryType':'RULES','readerRoleIds':[roles[1]]});assert {e['sourceType'] for e in evidence(b,corp)}=={'DOCUMENT','GRAPH'}
+ if args.semantic:semantic(b,corp,dc)
  a.call('/mes/assistant/base',{'id':pa,'name':'错误共享','description':'','libraryType':'RULES','readerRoleIds':[roles[0]]},denied=True)
- summary={'personalIsolation':'two users and administrator passed','roleGrantAndRevocation':'passed','graphEvidenceVisibility':'passed','unifiedEvidenceContract':'DOCUMENT/GRAPH verified','draftAndHistoryProtection':'passed'}
+ summary={'personalIsolation':'two users and administrator passed','roleGrantAndRevocation':'passed','graphEvidenceVisibility':'passed','unifiedEvidenceContract':'DOCUMENT/GRAPH verified','draftAndHistoryProtection':'passed','semanticIsolationAndRevocation':'passed' if args.semantic else 'not exercised'}
 finally:
  for client,kb in reversed(libraries):
   for doc in client.call('/mes/assistant/documents?knowledgeBaseId='+str(kb)):
@@ -90,7 +106,10 @@ finally:
   client.call('/mes/assistant/base?id='+str(kb),method='DELETE')
  with GraphDatabase.driver(connection['uri'],auth=(connection['username'],connection['password'])) as driver:
   def cleared():
-   with driver.session(database=connection['database']) as session:return session.execute_read(lambda tx:tx.run('MATCH ()-[r:FazeRelation]->() WHERE r.tenantId=1 AND r.documentId IN $docs RETURN count(r) AS n',docs=documents).single()['n'])==0
+   with driver.session(database=connection['database']) as session:
+    graph_count=session.run('MATCH ()-[r:FazeRelation]->() WHERE r.tenantId=1 AND r.documentId IN $docs RETURN count(r) AS n',docs=documents).single()['n']
+    vector_count=session.run('MATCH (n:FazeVectorChunk {tenantId:1}) WHERE n.documentId IN $docs RETURN count(n) AS n',docs=documents).single()['n']
+    return graph_count==0 and vector_count==0
   until(cleared,'physical fixture graph cleanup')
  assert graph(admin)==initial,'Existing authorized graph changed'
  for client in clients:client.logout()
