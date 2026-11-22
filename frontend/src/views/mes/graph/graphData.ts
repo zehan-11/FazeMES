@@ -71,6 +71,57 @@ export function toGalaxyData(graph: KnowledgeGraph): GraphData {
   }
 }
 
+/** Sample real one-hop relationships while keeping device entries and their sources intact. */
+export function buildDeviceOverview(
+  entries: GraphEntity[],
+  neighborhoods: KnowledgeGraph[],
+  maxNeighbors = 8
+): KnowledgeGraph {
+  const nodes = new Map(entries.map((node) => [node.id, node]))
+  const relations = new Map<string, GraphRelation>()
+
+  const frequency = new Map<string, number>()
+  const pools = entries.map((entry, i) => {
+    const neighborhood = neighborhoods[i]
+    if (!neighborhood) return []
+    const related = new Map(neighborhood.nodes.map((node) => [node.id, node]))
+    const candidates = new Map<string, { node: GraphEntity; relation: GraphRelation }>()
+    for (const relation of neighborhood.relations) {
+      const other =
+        relation.source === entry.id
+          ? relation.target
+          : relation.target === entry.id
+            ? relation.source
+            : undefined
+      if (!other || other === entry.id || candidates.has(other)) continue
+      const node = related.get(other)
+      if (!node) continue
+      candidates.set(other, { node, relation })
+      frequency.set(other, (frequency.get(other) ?? 0) + 1)
+    }
+
+    return [...candidates.values()]
+  })
+
+  for (const pool of pools) {
+    // Prefer device-specific satellites so shared maintenance concepts do not dominate the overview.
+    const local = pool.filter(({ node }) => frequency.get(node.id) === 1 && !nodes.has(node.id))
+    const byType = new Map<string, (typeof pool)[number]>()
+    for (const item of local) {
+      if (!byType.has(item.relation.type)) byType.set(item.relation.type, item)
+    }
+    const shared = [...pool].sort(
+      (a, b) => (frequency.get(a.node.id) ?? 0) - (frequency.get(b.node.id) ?? 0)
+    )
+    const chosen = new Set([...byType.values(), ...local, ...shared])
+    for (const { node, relation } of [...chosen].slice(0, maxNeighbors)) {
+      nodes.set(node.id, node)
+      relations.set(relation.id, relation)
+    }
+  }
+  return { nodes: [...nodes.values()], relations: [...relations.values()] }
+}
+
 export const kindColors: Record<string, string> = {
   设备: '#f6ce78',
   部件: '#79bbff',

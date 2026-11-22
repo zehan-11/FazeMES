@@ -1,17 +1,23 @@
 <template>
+  <!-- 每次进入 AI 助手与知识库页面自动播放启动动画 -->
+  <KnowledgeLaunchOverlay ref="launchOverlay" :ready="assistantReady" />
+
   <ContentWrap>
     <div class="assistant-heading">
       <div
         ><h2>AI助手与知识库</h2
         ><p>查询真实业务、生成报表、确认执行业务操作，也可基于已发布文档问答</p></div
       >
-      <el-tag :type="modelStatus?.configured ? 'success' : 'info'">
-        {{
-          modelStatus?.configured
-            ? `${modelStatus.provider} · ${modelStatus.model}（凭据已配置）`
-            : '模型尚未配置'
-        }}
-      </el-tag>
+      <div class="assistant-heading-right">
+        <el-button size="small" plain @click="launchOverlay?.replay()">重播启动动画</el-button>
+        <el-tag :type="modelStatus?.configured ? 'success' : 'info'">
+          {{
+            modelStatus?.configured
+              ? `${modelStatus.provider} · ${modelStatus.model}（凭据已配置）`
+              : '模型尚未配置'
+          }}
+        </el-tag>
+      </div>
     </div>
     <el-button
       v-hasPermi="['mes:insight:query', 'mes:insight:chat']"
@@ -836,6 +842,8 @@ import {
   computed,
   defineAsyncComponent,
   nextTick,
+  onActivated,
+  onDeactivated,
   onMounted,
   onBeforeUnmount,
   reactive,
@@ -857,6 +865,7 @@ import {
 } from '@/api/mes/assistant'
 import EvidenceResults from './EvidenceResults.vue'
 import AnswerText from './AnswerText.vue'
+import KnowledgeLaunchOverlay from './KnowledgeLaunchOverlay.vue'
 import {
   searchEvidence,
   type EvidenceSearchResult,
@@ -870,6 +879,22 @@ import BusinessAssistant from '@/views/mes/insight/BusinessAssistant.vue'
 const KnowledgeGraph = defineAsyncComponent(() => import('@/views/mes/graph/KnowledgeGraph.vue'))
 
 defineOptions({ name: 'MesAssistant' })
+
+const launchOverlay = ref<InstanceType<typeof KnowledgeLaunchOverlay>>()
+const assistantReady = ref(false)
+let wasDeactivated = false
+
+// 兼容 yudao-ui-admin-vue3 的 <KeepAlive> 路由缓存：离开后再切回此页每次都重播，首次挂载不重复触发
+onDeactivated(() => {
+  wasDeactivated = true
+})
+onActivated(() => {
+  if (wasDeactivated) {
+    wasDeactivated = false
+    launchOverlay.value?.replay()
+  }
+})
+
 const canChat = checkPermi(['mes:assistant:chat'])
 const canKnowledge = checkPermi(['mes:assistant:knowledge'])
 const canManage = checkPermi(['mes:assistant:manage'])
@@ -1571,6 +1596,7 @@ onMounted(async () => {
     failure(exception, '助手初始化失败')
   } finally {
     configLoading.value = false
+    assistantReady.value = true
   }
 })
 </script>
@@ -1584,6 +1610,13 @@ onMounted(async () => {
   align-items: center;
   justify-content: space-between;
   gap: 12px;
+}
+
+.assistant-heading-right {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
 }
 
 .assistant-heading h2,
