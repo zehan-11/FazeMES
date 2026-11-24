@@ -3,41 +3,40 @@ import { seed, type Point } from './starScene'
 export const NIGHT = '#020518'
 
 type Tone = readonly [number, number, number, number]
-type Ramp = readonly [Tone, Tone, Tone]
+type RayRamp = readonly [root: Tone, middle: Tone, tip: Tone, crest: Tone]
 
-const trunkBlue: Tone = [58, 98, 212, 0.18]
+const trunkRoot: Tone = [54, 102, 230, 0.36]
+const trunkTip: Tone = [76, 138, 255, 0.62]
 const relationBlue: Tone = [98, 134, 218, 0.1]
-const green: Ramp = [
-  [34, 198, 138, 0.45],
-  [55, 226.5, 165, 0.705],
-  [76, 255, 192, 0.96]
+const silver: Tone = [208, 224, 248, 0.56]
+const green: RayRamp = [
+  [56, 248, 174, 0.9],
+  [47, 220, 155, 0.72],
+  [38, 190, 134, 0.52],
+  [83, 249, 181, 0.92]
 ]
-const white: Ramp = [
-  [242, 247, 255, 0.88],
-  [248, 251, 255, 0.94],
-  [255, 255, 255, 1]
-]
-
 export interface ClusterInk {
   hub: string
   dot: string
-  wave: Ramp
+  wave: RayRamp
 }
-const blue = { hub: '#4372FF', dot: '#3E72F2' }
+const blue = { hub: '#4372FF', dot: '#4D86FF' }
 const jade: ClusterInk = {
   ...blue,
   wave: [
-    [22, 108, 148, 0.34],
-    [30, 173, 166, 0.61],
-    [38, 238, 184, 0.88]
+    [28, 218, 178, 0.84],
+    [28, 154, 190, 0.56],
+    [50, 96, 220, 0.38],
+    [70, 245, 202, 0.84]
   ]
 }
 const sky: ClusterInk = {
   ...blue,
   wave: [
-    [40, 84, 206, 0.34],
-    [56, 131, 230.5, 0.62],
-    [72, 178, 255, 0.9]
+    [46, 158, 255, 0.86],
+    [44, 110, 240, 0.58],
+    [52, 86, 212, 0.38],
+    [106, 198, 255, 0.88]
   ]
 }
 const themes = new Map([
@@ -66,18 +65,8 @@ export function blendInk(from: string, to: string, weight: number) {
   return '#' + ((channel(16) << 16) | (channel(8) << 8) | channel(0)).toString(16).padStart(6, '0')
 }
 
-export function makeFlow(id: string, relation = false) {
-  const outward = seed(id + '/out')
-  const offset = seed(id + '/in')
-  return {
-    outward,
-    inward: relation ? 1 - offset : (outward + 0.35 + 0.3 * offset) % 1,
-    outSpeed: relation ? 0.065 + 0.03 * seed(id + '/speed') : 0.18 + 0.06 * seed(id + '/speed'),
-    inSpeed: relation
-      ? 0.065 + 0.03 * seed(id + '/return-speed')
-      : 0.14 + 0.05 * seed(id + '/return-speed'),
-    span: relation ? 0.6 + 0.1 * seed(id + '/span') : 0.32 + 0.08 * seed(id + '/span')
-  }
+export function makeFlow(id: string) {
+  return { phase: seed(id + '/travel'), speed: 0.12 + 0.04 * seed(id + '/speed') }
 }
 
 export type LineFlow = ReturnType<typeof makeFlow>
@@ -93,24 +82,12 @@ function mixTone(a: Tone, b: Tone, t: number): Tone {
   ]
 }
 
-function toneAt(ramp: Ramp, w: number): Tone {
-  return w < 0.5 ? mixTone(ramp[0], ramp[1], w * 2) : mixTone(ramp[1], ramp[2], w * 2 - 1)
-}
-
 function color(t: Tone) {
   return (
     'rgba(' +
     [Math.round(t[0]), Math.round(t[1]), Math.round(t[2]), t[3].toFixed(3)].join(',') +
     ')'
   )
-}
-
-// Wrapped cosine lobes cross both endpoints continuously. Their bounded union lets waves
-// pass through one another without an additive flash where their crests coincide.
-function lobe(at: number, phase: number, span: number) {
-  const d = Math.abs(at - phase)
-  const t = (Math.min(d, 1 - d) * 2) / span
-  return t >= 1 ? 0 : Math.cos((Math.PI / 2) * t) ** 2
 }
 
 export function waveInk(
@@ -125,33 +102,46 @@ export function waveInk(
   leafFocus: number,
   still: boolean
 ) {
-  if (kind === 'trunk' && hubFocus === 0) return color(trunkBlue)
-  if (kind === 'relation' && leafFocus === 0) return color(relationBlue)
-  if (!still) {
-    const outward = flow.outSpeed + (0.26 - flow.outSpeed) * hubFocus
-    const inward = flow.inSpeed + (0.26 - flow.inSpeed) * hubFocus
-    flow.outward = (flow.outward + seconds * outward) % 1
-    flow.inward = (1 + flow.inward - seconds * inward) % 1
-  }
+  if (kind === 'relation') return color(mixTone(relationBlue, silver, leafFocus))
+  if (leafFocus === 1) return color(silver)
   const ink = ctx.createLinearGradient(from.x, from.y, to.x, to.y)
-  const segments = kind === 'relation' ? 6 : 10
-  for (let i = 0; i <= segments; i++) {
-    const x = i / segments
-    const a = lobe(x, flow.outward, flow.span)
-    const b = lobe(x, flow.inward, flow.span)
-    const w = 1 - (1 - a) * (1 - b)
-    let tone: Tone
-    if (kind === 'trunk') tone = trunkBlue
-    else if (kind === 'relation') tone = relationBlue
-    else tone = still ? theme.wave[0] : toneAt(theme.wave, w)
-    if (hubFocus > 0) tone = mixTone(tone, toneAt(green, w), hubFocus)
-    if (leafFocus > 0) tone = mixTone(tone, toneAt(white, w), leafFocus)
-    ink.addColorStop(x, color(tone))
+  if (kind === 'trunk' && hubFocus === 0) {
+    ink.addColorStop(0, color(trunkRoot))
+    ink.addColorStop(1, color(trunkTip))
+    return ink
+  }
+
+  const root = mixTone(kind === 'trunk' ? trunkRoot : theme.wave[0], green[0], hubFocus)
+  const tip = mixTone(kind === 'trunk' ? trunkTip : theme.wave[2], green[2], hubFocus)
+  const middle =
+    kind === 'trunk' ? mixTone(root, tip, 0.48) : mixTone(theme.wave[1], green[1], hubFocus)
+  const crest = mixTone(theme.wave[3], green[3], hubFocus)
+  const center = (1 - Math.cos(2 * Math.PI * (flow.phase + seconds * flow.speed))) / 2
+  const halfWidth = 0.22
+  const strength = still ? 0 : kind === 'trunk' ? hubFocus : 1
+
+  function stop(t: number) {
+    const base =
+      t < 0.48 ? mixTone(root, middle, t / 0.48) : mixTone(middle, tip, (t - 0.48) / 0.52)
+    const distance = Math.abs(t - center) / halfWidth
+    const weight = distance < 1 ? strength * Math.cos((Math.PI / 2) * distance) ** 2 : 0
+    ink.addColorStop(t, color(mixTone(mixTone(base, crest, weight), silver, leafFocus)))
+  }
+
+  stop(0)
+  stop(0.48)
+  stop(1)
+  // Canvas sorts stops by offset. Sampling relative to the crest keeps its peak sharp
+  // in time while the cosine-squared shoulders blend into the underlying radial tint.
+  if (strength > 0.001) {
+    for (let i = -4; i <= 4; i++) {
+      const t = center + (halfWidth * i) / 4
+      if (t > 0 && t < 1) stop(t)
+    }
   }
   return ink
 }
 
-/** A live dot keeps its cluster tint until the pointer approaches; rings mask their spoke. */
 export function paintWaterDot(
   ctx: CanvasRenderingContext2D,
   at: Point,
@@ -160,21 +150,19 @@ export function paintWaterDot(
   family: number,
   single: number
 ) {
-  const familyRadius = 2 + 1.5 * family
+  const familyRadius = 2.1 + 1.2 * family
   const radius = familyRadius + (3.8 - familyRadius) * single
   const focus = Math.max(family, single)
-  const alpha = ctx.globalAlpha
-  const body = blendInk(dotInk, '#FFFFFF', whiteT)
   ctx.beginPath()
   ctx.arc(at.x, at.y, radius, 0, Math.PI * 2)
-  ctx.globalAlpha = Math.min(alpha, 0.88 + 0.12 * Math.max(whiteT, focus))
-  ctx.fillStyle = blendInk(body, NIGHT, focus)
+  ctx.fillStyle = blendInk(blendInk(dotInk, '#FFFFFF', whiteT), NIGHT, focus)
   ctx.fill()
   if (focus > 0.002) {
+    const alpha = ctx.globalAlpha
     ctx.globalAlpha = alpha * focus
-    ctx.strokeStyle = blendInk('#CEF4E6', '#FFFFFF', single)
-    ctx.lineWidth = 1 + 0.1 * single
+    ctx.strokeStyle = 'rgba(196, 224, 236, 0.72)'
+    ctx.lineWidth = 0.9
     ctx.stroke()
+    ctx.globalAlpha = alpha
   }
-  ctx.globalAlpha = alpha
 }

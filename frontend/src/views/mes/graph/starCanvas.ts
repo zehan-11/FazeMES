@@ -1,5 +1,5 @@
-import { BlueParticles } from './blueParticles'
-import { paintThumbnail, StarThumbnails, type StarThumbnail } from './starThumbnails'
+import { BlueParticles, Starfield } from './blueParticles'
+import { paintThumbnail, StarThumbnails, thumbnailSize, type StarThumbnail } from './starThumbnails'
 import {
   bloomEnd,
   clamp,
@@ -34,6 +34,7 @@ import {
 
 import {
   cacheCanopies,
+  centerClearRadius,
   overviewBounds,
   relaxLaunch,
   stepBloomCurrent,
@@ -161,8 +162,9 @@ export function fitOverview(
       const right = glow + labelEnd <= width * 0.9 ? Math.max(glow, labelEnd) : glow
       return { x: m.x, y: m.y, left: glow, right, top: glow, bottom: glow }
     }
-    if (m.seed >= 0.75) {
-      const [w, h] = cardSize(m.entity.id)
+    const url = 'thumbnailUrl' in m.entity ? m.entity.thumbnailUrl : undefined
+    if (m.seed >= 0.75 || (typeof url === 'string' && url.trim())) {
+      const [w, h] = thumbnailSize(m.entity.id)
       return {
         x: m.x,
         y: m.y,
@@ -172,7 +174,7 @@ export function fitOverview(
         bottom: h / 2 + 0.45
       }
     }
-    const radius = 2.2
+    const radius = 2.1
     return { x: m.x, y: m.y, left: radius, right: radius, top: radius, bottom: radius }
   })
   function axis(key: 'x' | 'y', span: number) {
@@ -231,6 +233,7 @@ export class StarCanvas {
   hover: string | null = null
   external: string | null = null
   private particles = new BlueParticles()
+  private stars = new Starfield()
   private thumbnails = new StarThumbnails()
   kind: string | null = null
   filter: string | null = null
@@ -250,7 +253,7 @@ export class StarCanvas {
   private mouseFlow = { x: 0, y: 0 }
   private overviewPositions = new Map<string, { position: Point; parent: string }>()
   private cameraVelocity = { x: 0, y: 0 }
-  private parallax = { x: 0, y: 0 }
+  private waveSeconds = 0
   private targets: Target[] = []
   private lineTargets: { wire: Stroke; a: Point; b: Point }[] = []
   private hoveredLine: string | null = null
@@ -271,12 +274,18 @@ export class StarCanvas {
   private chosenKey: string | null = null
   private neighborKeys = new Map<string, Set<string>>()
 
-  private cacheOrbits(marks: Map<string, Moving>, viewWidth: number, baseZoom: number) {
+  private cacheOrbits(
+    marks: Map<string, Moving>,
+    viewWidth: number,
+    baseZoom: number,
+    fresh?: Set<string>
+  ) {
     this.launchViewWidth = viewWidth
     this.canopies = cacheCanopies(marks)
     const bounds = overviewBounds(viewWidth, this.height, baseZoom)
     const landingPad = Math.min(24, Math.min(viewWidth, this.height) * 0.065) / baseZoom
-    const settled = relaxLaunch(this.canopies, bounds, landingPad)
+    const radius = centerClearRadius(viewWidth, this.height, baseZoom)
+    const settled = relaxLaunch(this.canopies, bounds, landingPad, baseZoom, radius)
     const hubs = this.canopies.map(({ hub }) => hub)
     const angleOf = (m: Moving) => {
       const p = settled.get(m.key) ?? m
@@ -310,12 +319,12 @@ export class StarCanvas {
         x: (parentLanding?.x ?? parent?.x ?? 0) + relX,
         y: (parentLanding?.y ?? parent?.y ?? 0) + relY
       }
-      if (this.started !== null) {
-        const prior = previous.get(m.key)
+      if (this.started !== null || fresh?.has(m.key)) {
+        const prior = this.started !== null ? previous.get(m.key) : undefined
         m.position.x = landing.x + (prior ? m.position.x - prior.x : 0)
         m.position.y = landing.y + (prior ? m.position.y - prior.y : 0)
       }
-      this.introLandings.set(m.key, landing)
+      this.introLandings.set(m.key, { x: landing.x, y: landing.y })
       m.orbitAngle = Math.atan2(parent ? relY : landing.y, parent ? relX : landing.x)
       m.orbitRadius = Math.hypot(parent ? relX : landing.x, parent ? relY : landing.y)
     }
@@ -361,6 +370,7 @@ export class StarCanvas {
     }
     const old = this.marks,
       next = new Map<string, Moving>()
+    const fresh = new Set<string>()
     const cards = scene.overview ? this.thumbnails.prepare(scene.marks.values()) : undefined
     const origin = scene.marks.values().next().value as Mark | undefined
     const anchor = origin && (old.get(this.chosenKey ?? '') ?? old.get(origin.key))
@@ -379,6 +389,7 @@ export class StarCanvas {
         : saved?.parent === n.parent
           ? saved.position
           : n
+      if (scene.overview && !continuing && saved?.parent !== n.parent) fresh.add(key)
       const alpha = source?.alpha ?? (this.initial ? 1 : 0)
       const theme = liveTheme(scene.marks.get(n.parent)?.entity.kind ?? n.entity.kind)
       next.set(key, {
@@ -423,7 +434,7 @@ export class StarCanvas {
       const a = this.wires.get(key)?.alpha ?? (this.initial ? 1 : 0)
       edges.set(key, {
         ...w,
-        flow: this.wires.get(key)?.flow ?? makeFlow(key, w.kind === 'relation'),
+        flow: this.wires.get(key)?.flow ?? makeFlow(key),
         fromAlpha: a,
         alpha: a,
         live: true,
@@ -473,7 +484,7 @@ export class StarCanvas {
         })
       }
     }
-    if (scene.overview) this.cacheOrbits(next, viewWidth, baseZoom)
+    if (scene.overview) this.cacheOrbits(next, viewWidth, baseZoom, fresh)
     else {
       this.canopies = []
       this.introLandings.clear()
@@ -519,6 +530,7 @@ export class StarCanvas {
       m.position.x = landing.x
       m.position.y = landing.y
       m.velocity.x = m.velocity.y = 0
+      m.wasHeld = false
     }
   }
   finishIntro() {
@@ -617,6 +629,7 @@ export class StarCanvas {
         this.height,
         this.baseZoom
       ),
+      viewport: { width: viewWidth, height: this.height },
       mouse: pointer ? { x: (pointer.x - ox) / zoom, y: (pointer.y - oy) / zoom } : null,
       pointerFlow: this.mouseFlow,
       warmup: this.physicsWarmup,
@@ -734,7 +747,7 @@ export class StarCanvas {
     const w = this.width,
       h = this.height
     // Flow uses wall time even on a 30 Hz display; don't jump a lap when returning from a hidden tab.
-    const flowSeconds = clamp((now - (this.last || now)) / 1000, 0, 0.25)
+    if (!this.still) this.waveSeconds += clamp((now - (this.last || now)) / 1000, 0, 0.25)
     const frameSeconds = Math.max(0, now - (this.last || now - 16.67)) / 1000
     const dt = Math.min(32, frameSeconds * 1000) / 16.67
     this.last = now
@@ -793,14 +806,9 @@ export class StarCanvas {
     ctx.globalAlpha = 1
     ctx.fillStyle = NIGHT
     ctx.fillRect(0, 0, w, h)
-    const par =
-      this.pointer && !this.still
-        ? { x: (this.pointer.x - w / 2) * -0.015, y: (this.pointer.y - h / 2) * -0.015 }
-        : { x: 0, y: 0 }
-    this.parallax.x = mix(this.parallax.x, par.x, lerp * 0.55)
-    this.parallax.y = mix(this.parallax.y, par.y, lerp * 0.55)
     const snap = (x: number) => Math.round(x * dpr) / dpr
-    this.particles.draw(ctx, now, w, h, this.parallax, this.pose, this.still, this.overview)
+    this.stars.draw(ctx, now, w, h, viewWidth, this.still)
+    this.particles.draw(ctx, now, w, h, this.still, viewWidth)
     const directory =
       this.overview && this.kind
         ? [...this.marks.values()].find((m) => m.role === 'hub' && m.entity.kind === this.kind)?.key
@@ -816,14 +824,18 @@ export class StarCanvas {
     const hovered =
       this.overview || now - this.candidateSince >= 55 ? this.marks.get(candidate ?? '') : undefined
     const preview = hovered ? this.previews.get(hovered.key) : undefined
-    const neighbors = preview?.ids ?? (hovered ? this.neighborKeys.get(hovered.key) : undefined)
+    const directNeighbors = hovered ? this.neighborKeys.get(hovered.key) : undefined
+    const neighbors = preview?.ids ?? directNeighbors
     const mouse =
       this.pointer && !this.down
         ? { x: (this.pointer.x - ox) / zoom, y: (this.pointer.y - oy) / zoom }
         : null
-    const windX = mouse && this.lastMouse ? clamp(mouse.x - this.lastMouse.x, -35, 35) : 0
-    const windY = mouse && this.lastMouse ? clamp(mouse.y - this.lastMouse.y, -35, 35) : 0
-    this.lastMouse = mouse
+    const cursor = mouse ? this.pointer : null
+    const windX =
+      cursor && this.lastMouse ? clamp((cursor.x - this.lastMouse.x) / zoom, -35, 35) : 0
+    const windY =
+      cursor && this.lastMouse ? clamp((cursor.y - this.lastMouse.y) / zoom, -35, 35) : 0
+    this.lastMouse = cursor
     const activeHub = hovered?.role === 'hub' && this.explore
     const miniGroup = hovered?.role === 'upstream'
     const projected = new Map<string, ReturnType<typeof shot> & Point>()
@@ -844,7 +856,7 @@ export class StarCanvas {
       const step = handedOff ? Math.min(dt, Math.max(0, now - cutoff) / 16.67) : dt
       this.advanceOverview(now, step, zoom, ox, oy, viewWidth, candidate, pointerHeld)
     }
-    const ringRadius = 2 + 4 * easeBloom(phase(ms, 0, 240))
+    const ringRadius = 2 + 3.5 * easeBloom(phase(ms, 0, 240))
     for (const [key, m] of this.marks) {
       const alpha = mix(m.fromAlpha, m.live ? 1 : 0, flight)
       if (!m.live && flight === 1) {
@@ -860,7 +872,8 @@ export class StarCanvas {
           ? m.parent === hovered.key
           : miniGroup
             ? m.role === 'mini' || m.role === 'center'
-            : neighbors?.has(key))
+            : neighbors?.has(key) ||
+              (hovered.role === 'leaf' && m.thumbnail && directNeighbors?.has(key)))
       const filtered = !hovered && this.overview && this.filter && this.filter !== m.entity.kind
       let bodyLight = 1
       let titleLight = 1
@@ -882,7 +895,6 @@ export class StarCanvas {
       m.emphasis = mix(m.emphasis, over ? 1 : 0, hoverLerp)
       m.hubFocusT = mix(m.hubFocusT, over && activeHub ? 1 : 0, hoverLerp)
       m.leafFocusT = mix(m.leafFocusT, over && m.role === 'leaf' ? 1 : 0, hoverLerp)
-      const parent = this.marks.get(m.parent)
       const hub = m.role === 'hub',
         leaf = m.role === 'leaf'
       const simulated = this.overview && (hub || leaf)
@@ -905,46 +917,26 @@ export class StarCanvas {
         m.position = { x: m.x, y: m.y }
         m.velocity = { x: 0, y: 0 }
       } else if (!simulated && (!this.down || this.hover !== key)) {
-        const t = now / 1000,
-          phaseAngle = m.seed * TAU
-        let goalX = m.x,
-          goalY = m.y
-        const radialX = m.x - (parent?.x ?? 0),
-          radialY = m.y - (parent?.y ?? 0)
-        const length = Math.hypot(radialX, radialY) || 1
-        const ux = radialX / length,
-          uy = radialY / length
-        if (hub) {
-          const tide = Math.sin(t * 0.42 + phaseAngle) * 16
-          const swim =
-            Math.cos(t * 0.27 + phaseAngle * 1.7) * 12 + Math.sin(t * 0.19 + phaseAngle * 0.6) * 7
-          goalX += ux * tide - uy * swim
-          goalY += uy * tide + ux * swim
-        } else if (leaf && parent) {
-          goalX = parent.position.x + radialX + Math.sin(t * 0.65 + m.seed * 25) * 7.5
-          goalY = parent.position.y + radialY + Math.cos(t * 0.55 + m.seed * 19) * 7.5
-        } else if (m.role === 'neighbor') {
-          const breath = Math.sin(t * 0.43 + phaseAngle) * 3.5
-          goalX += ux * breath
-          goalY += uy * breath
+        // Ease directly into the radial layout. Only new pointer travel displaces a resting mark.
+        const dx = m.x - m.position.x
+        const dy = m.y - m.position.y
+        if (Math.hypot(dx, dy) < 0.025) {
+          m.position.x = m.x
+          m.position.y = m.y
+        } else {
+          m.position.x += dx * lerp
+          m.position.y += dy * lerp
         }
-        if (mouse && m.live && !launching && candidate !== key && m.role !== 'center') {
-          const dx = m.position.x - mouse.x,
-            dy = m.position.y - mouse.y
-          const dist = Math.hypot(dx, dy),
-            radius = 135 / zoom
-          if (dist < radius && dist > 0.01) {
-            const falloff = (1 - dist / radius) ** 2
-            m.velocity.x += ((dx / dist) * 0.55 * dt + windX * 0.055) * falloff
-            m.velocity.y += ((dy / dist) * 0.55 * dt + windY * 0.055) * falloff
+        m.velocity.x = m.velocity.y = 0
+        if (mouse && (windX || windY) && m.live && candidate !== key && m.role !== 'center') {
+          const dist = Math.hypot(m.position.x - mouse.x, m.position.y - mouse.y)
+          const radius = 155 / zoom
+          if (dist < radius) {
+            const falloff = (1 - dist / radius) ** 3
+            m.position.x += windX * 0.12 * falloff
+            m.position.y += windY * 0.12 * falloff
           }
         }
-        const stiffness = hub ? 0.022 : this.overview ? 0.045 : 0.068
-        const damping = (hub ? 0.88 : this.overview ? 0.84 : 0.81) ** dt
-        m.velocity.x = (m.velocity.x + (goalX - m.position.x) * stiffness * dt) * damping
-        m.velocity.y = (m.velocity.y + (goalY - m.position.y) * stiffness * dt) * damping
-        m.position.x += m.velocity.x * dt
-        m.position.y += m.velocity.y * dt
       }
       const painted = orbit ?? m.position
       m.screen = { x: ox + painted.x * zoom, y: oy + painted.y * zoom }
@@ -1009,22 +1001,22 @@ export class StarCanvas {
           dy = m.screen.y - ring.y
         const len = Math.hypot(dx, dy) || 1
         const rim = { x: ring.x + (ringRadius * dx) / len, y: ring.y + (ringRadius * dy) / len }
-        const focus = m.hubFocusT
+        const focus = m.focusT
         ringFocus = Math.max(ringFocus, focus)
         if (m.trunkFlow) {
           const ink = waveInk(
             ctx,
             m.trunkFlow,
-            rim,
+            ring,
             m.screen,
-            flowSeconds,
+            this.waveSeconds,
             m.theme,
             'trunk',
             focus,
             0,
             this.still
           )
-          line(rim, m.screen, ink, mix(0.85, 0.95, focus), m.trunkLight * m.alpha)
+          line(rim, m.screen, ink, 0.95, m.trunkLight * m.alpha)
         }
       }
       ctx.globalAlpha = launching ? 0.24 + 0.76 * easeBloom(phase(ms, 0, 240)) : 1
@@ -1032,8 +1024,8 @@ export class StarCanvas {
         ring,
         ringRadius,
         ringFocus === 0
-          ? 'rgba(110, 146, 228, 0.34)'
-          : rgba(blendInk('#6E92E4', '#AAFFE1', ringFocus), 0.34 + 0.32 * ringFocus),
+          ? 'rgba(112, 148, 228, 0.36)'
+          : rgba(blendInk('#7094E4', '#6ED7B9', ringFocus), 0.36 + 0.16 * ringFocus),
         true,
         0.9
       )
@@ -1115,15 +1107,15 @@ export class StarCanvas {
       const dim = wire.light
       let style: string | CanvasGradient
       const owner = a.role === 'hub' ? a : b
-      const hubFocus = wire.kind === 'spoke' ? owner.hubFocusT : 0
+      const hubFocus = wire.kind === 'spoke' && this.explore ? owner.focusT : 0
       const leafFocus = wire.leafWeight
       if (wire.kind === 'spoke' && water > 0) {
         style = waveInk(
           ctx,
           wire.flow,
-          a.screen,
-          b.screen,
-          flowSeconds,
+          owner.screen,
+          (owner === a ? b : a).screen,
+          this.waveSeconds,
           owner.theme,
           'spoke',
           hubFocus,
@@ -1153,7 +1145,7 @@ export class StarCanvas {
           wire.flow,
           a.screen,
           b.screen,
-          flowSeconds,
+          this.waveSeconds,
           owner.theme,
           'relation',
           0,
@@ -1161,7 +1153,9 @@ export class StarCanvas {
           this.still
         )
       } else style = 'rgba(98,134,218,.10)'
-      const width = wire.kind === 'mini' ? 0.8 : mix(0.9, 0.95, water)
+      let width = wire.kind === 'mini' ? 0.8 : mix(0.9, 0.95, water)
+      if (this.overview && wire.kind === 'relation') width = 0.85
+      else if (this.overview && wire.kind === 'spoke') width = mix(0.95, 0.85, leafFocus)
       const inkAlpha =
         this.overview && this.explore && wire.kind === 'relation' && launching
           ? 0
@@ -1194,6 +1188,7 @@ export class StarCanvas {
     }
     this.targets = []
     const occupied: Box[] = []
+    const cardBoxes: Box[] = []
     type Label = {
       m: Moving
       text: string
@@ -1202,7 +1197,7 @@ export class StarCanvas {
       alpha: number
       pill: number
       main: boolean
-      title: boolean
+      relatedName: boolean
       count: boolean
       box: Box
       lines: string[]
@@ -1228,17 +1223,20 @@ export class StarCanvas {
         upstream = m.role === 'upstream',
         center = m.role === 'center'
       const state = launching && hub ? projected.get(m.key) : undefined
-      const family = m.role === 'leaf' ? (this.marks.get(m.parent)?.hubFocusT ?? 0) : 0
+      const family = m.role === 'leaf' && this.explore ? (this.marks.get(m.parent)?.focusT ?? 0) : 0
       const thumb = water > 0 && m.role === 'leaf' ? m.thumbnail : undefined
       let labelGap = 10
       if (hub) {
         const mass = Math.sqrt(m.count / this.largestHub)
         const shrink = state?.shrink ?? 1
         const side = mix(24 + 18 * mass, hubSide(mass), shrink) * (1 + 0.12 * e)
-        const color = state ? blendInk(INTRO_COLOR, m.theme.hub, shrink) : m.theme.hub
-        const radius = 1.9 * side
+        const focus = this.explore && !state ? m.focusT : 0
+        const color = state
+          ? blendInk(INTRO_COLOR, m.theme.hub, shrink)
+          : blendInk(m.theme.hub, '#34F5A4', focus)
+        const radius = side * mix(1.9, 2.6, focus)
         const glow = ctx.createRadialGradient(p.x, p.y, 0, p.x, p.y, radius)
-        glow.addColorStop(0, rgba(color, 0.22))
+        glow.addColorStop(0, rgba(color, mix(0.22, 0.52, focus)))
         glow.addColorStop(1, rgba(color, 0))
         ctx.fillStyle = glow
         ctx.fillRect(p.x - radius, p.y - radius, radius * 2, radius * 2)
@@ -1260,9 +1258,12 @@ export class StarCanvas {
         const x = snap(p.x),
           y = snap(p.y)
         const { width, height } = thumb
-        const linked = hovered?.role === 'leaf' && (m === hovered || neighbors?.has(m.key))
+        labelGap = width / 2 + 5
+        if (hovered?.role === 'leaf')
+          cardBoxes.push({ x: x - width / 2, y: y - height / 2, w: width, h: height })
+        const linked = hovered?.role === 'leaf' && directNeighbors?.has(m.key)
         m.whiteT = mix(m.whiteT, linked ? 1 : 0, hoverLerp)
-        paintThumbnail(ctx, thumb, x, y, width, height, family, m.whiteT)
+        paintThumbnail(ctx, thumb, x, y, width, height, family, m.whiteT, dpr)
       } else if (water > 0 && m.role === 'leaf' && m.seed < 0.75) {
         // Screen pixels correspond to 110 / zoom in the world.
         const nearby =
@@ -1309,8 +1310,9 @@ export class StarCanvas {
       if (alpha < 0.015) continue
       const pill =
         center || upstream ? 1 : hub ? 0 : water > 0 && m.role === 'leaf' ? m.leafFocusT : e
-      const size = hub ? 13 + (water > 0 ? 8 * m.hubFocusT : 8 * e) : 12
-      const weight = hub ? Math.round(mix(650, 500, water)) : main ? 650 : 450
+      const relatedName = this.overview && m.role === 'leaf' && !!neighborName && m !== hovered
+      const size = hub ? 13 + (water > 0 ? 8 * m.hubFocusT : 8 * e) : relatedName ? 11 : 12
+      const weight = hub ? Math.round(mix(650, 500, water)) : main ? 650 : relatedName ? 400 : 450
       ctx.font = font(size, weight)
       const title = m.entity.name + (m === hovered && preview?.extra ? '  +' + preview.extra : '')
       const text = upstream ? title + '  ' + m.count + (m === hovered ? ' · 点击返回' : '') : title
@@ -1356,7 +1358,7 @@ export class StarCanvas {
         alpha,
         pill,
         main,
-        title: upstream,
+        relatedName,
         count,
         box: { x, y, w: bw, h: bh },
         lines
@@ -1376,29 +1378,44 @@ export class StarCanvas {
     const placed: Label[] = []
     for (const label of labels) {
       const b = label.box
-      const padded = { x: b.x - 10, y: b.y - 6, w: b.w + 20, h: b.h + 12 }
-      let crowded = occupied.some((box) => intersects(box, padded))
-      if (
-        crowded &&
-        this.overview &&
-        hovered &&
-        (label.m.role === 'hub' ||
-          (hovered.role === 'leaf' && neighbors?.has(label.m.key) && label.m.role === 'leaf'))
-      ) {
-        const p = label.m.screen
-        // Keep category landmarks and direct names visible when the default label positions collide.
+      const p = label.m.screen
+      const crowdedAt = (box: Box) =>
+        occupied.some((other) => intersects(other, box)) ||
+        (hovered?.role === 'leaf' && cardBoxes.some((card) => intersects(card, box)))
+      const preferredX = b.x
+      const preferredY = b.y
+      let crowded = crowdedAt(b)
+      if (crowded && this.overview && hovered) {
+        const dx = (label.m.thumbnail?.width ?? 12) / 2 + 5
+        const dy = (label.m.thumbnail?.height ?? 12) / 2 + 4
         for (const [x, y] of [
-          [p.x - 9 - b.w, p.y - b.h / 2],
-          [p.x - b.w / 2, p.y - 8 - b.h],
-          [p.x - b.w / 2, p.y + 8]
+          [p.x - dx - b.w, p.y - b.h / 2],
+          [p.x - b.w / 2, p.y - dy - b.h],
+          [p.x - b.w / 2, p.y + dy],
+          [p.x + dx, p.y - dy - b.h],
+          [p.x + dx, p.y + dy],
+          [p.x - dx - b.w, p.y - dy - b.h],
+          [p.x - dx - b.w, p.y + dy]
         ]) {
           b.x = clamp(x, 4, Math.max(4, viewWidth - b.w - 4))
           b.y = clamp(y, 4, Math.max(4, h - b.h - 4))
-          padded.x = b.x - 10
-          padded.y = b.y - 6
-          crowded = occupied.some((box) => intersects(box, padded))
+          crowded = crowdedAt(b)
           if (!crowded) break
         }
+      }
+      if (crowded && this.overview && hovered?.role === 'leaf' && label.m === hovered) {
+        // Keep the captured pill pickable in a dense cluster. Try the closest clear
+        // row above or below the cards in its column before using the foreground.
+        b.x = preferredX
+        const maxY = Math.max(4, h - b.h - 4)
+        const rows = [4, maxY]
+        for (const card of cardBoxes) {
+          if (card.x + card.w + 3 <= b.x || card.x >= b.x + b.w + 3) continue
+          rows.push(card.y - b.h - 3, card.y + card.h + 3)
+        }
+        rows.sort((a, c) => Math.abs(a - preferredY) - Math.abs(c - preferredY))
+        b.y = rows.find((y) => y >= 4 && y <= maxY && !crowdedAt({ ...b, y })) ?? preferredY
+        crowded = false
       }
       if (crowded) {
         label.m.revealAlpha = 0
@@ -1406,7 +1423,7 @@ export class StarCanvas {
       }
       label.m.revealAlpha = mix(label.m.revealAlpha, 1, hoverLerp)
       label.alpha *= label.m.revealAlpha
-      occupied.push(padded)
+      occupied.push(b)
       placed.push(label)
     }
     ctx.font = font(10)
@@ -1423,13 +1440,13 @@ export class StarCanvas {
     }
     // Paint the hot label last. Picking uses these very same screen rectangles.
     placed.sort((a, b) => a.m.emphasis - b.m.emphasis)
-    for (const { m, box, size, weight, alpha, pill, count, lines } of placed) {
+    for (const { m, box, size, weight, alpha, pill, count, lines, relatedName } of placed) {
       ctx.globalAlpha = alpha
       if (pill > 0.005) {
         ctx.fillStyle = rgba('#0033FF', pill)
         ctx.fillRect(box.x, box.y, box.w, box.h)
       }
-      ctx.fillStyle = '#FFFFFF'
+      ctx.fillStyle = relatedName ? 'rgba(242, 247, 255, 0.92)' : '#FFFFFF'
       ctx.font = font(size, weight)
       ctx.textBaseline = 'middle'
       ctx.textAlign = 'left'

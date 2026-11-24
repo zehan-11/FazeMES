@@ -4,7 +4,6 @@ const stretchStiffness = 0.075
 const leafDrag = 0.76
 const hubDrag = 0.85
 const maxLeafSpeed = 26
-const centerStiffness = 0.0018
 
 export interface FluidMark extends Mark {
   live: boolean
@@ -17,6 +16,7 @@ export interface FluidMark extends Mark {
   avgLeafDist: number
   collideR: number
   phaseB: number
+  wasHeld?: boolean
 }
 
 interface Bounds {
@@ -31,6 +31,7 @@ export interface FluidFrame {
   step: number
   zoom: number
   bounds: Bounds
+  viewport?: { width: number; height: number }
   mouse: Point | null
   pointerFlow: Point
   intro?: boolean
@@ -140,12 +141,9 @@ function stepHub(hub: FluidMark, held: FluidMark | undefined, frame: FluidFrame,
   const { step, seconds, bounds, mouse, pointerFlow, zoom, still, intro } = frame
   const { position: p, velocity: v } = hub
   if (!still) {
-    const dx = (bounds.left + bounds.right) / 2 - p.x
-    const dy = (bounds.top + bounds.bottom) / 2 - p.y
-    const centering = centerStiffness / (1 + Math.hypot(dx, dy) / 540)
     const swim = hubCurrent(hub, seconds, intro)
-    v.x += (dx * centering + swim.x) * step
-    v.y += (dy * centering + swim.y) * step
+    v.x += swim.x * step
+    v.y += swim.y * step
     if (mouse) {
       const dx = p.x - mouse.x
       const dy = p.y - mouse.y
@@ -447,6 +445,59 @@ export function overviewBounds(viewWidth: number, height: number, baseZoom: numb
   return { left: -halfW, right: halfW, top: -halfH, bottom: halfH }
 }
 
+export function centerClearRadius(width: number, height: number, zoom: number) {
+  return Math.max(116, Math.min(width, height) * 0.19) / zoom
+}
+
+// A radial projection can hit a side wall on portrait screens. In that case choose the
+// nearest valid circle/wall intersection, or the furthest feasible corner of a tiny viewport.
+function clearCenter(hub: FluidMark, walls: Bounds, radius: number, blend: number, floor: number) {
+  const p = hub.position
+  const d = Math.hypot(p.x, p.y)
+  if (d >= radius) return
+  const r = Math.max(radius * floor, d + (radius - d) * blend)
+  if (r <= d) return
+  const angle = d > 1e-6 ? Math.atan2(p.y, p.x) : hub.phaseB
+  const tx = r * Math.cos(angle),
+    ty = r * Math.sin(angle)
+  let x = clamp(tx, walls.left, walls.right),
+    y = clamp(ty, walls.top, walls.bottom)
+  if (Math.hypot(x, y) < r - 1e-7) {
+    let best = Infinity,
+      extent = -1
+    const consider = (a: number, b: number) => {
+      if (a < walls.left || a > walls.right || b < walls.top || b > walls.bottom) return
+      const reach = Math.min(r, Math.hypot(a, b))
+      const cost = (a - tx) ** 2 + (b - ty) ** 2
+      if (reach > extent + 1e-7 || (reach >= extent - 1e-7 && cost < best)) {
+        extent = reach
+        best = cost
+        x = a
+        y = b
+      }
+    }
+    for (const edge of [walls.left, walls.right]) {
+      const along = Math.sqrt(Math.max(0, r * r - edge * edge))
+      consider(edge, along)
+      consider(edge, -along)
+      consider(edge, walls.top)
+      consider(edge, walls.bottom)
+    }
+    for (const edge of [walls.top, walls.bottom]) {
+      const along = Math.sqrt(Math.max(0, r * r - edge * edge))
+      consider(along, edge)
+      consider(-along, edge)
+    }
+  }
+  p.x = x
+  p.y = y
+  const n = Math.hypot(x, y) || 1
+  const inward = Math.min(0, (hub.velocity.x * x + hub.velocity.y * y) / n)
+  hub.velocity.x -= (inward * x) / n
+  hub.velocity.y -= (inward * y) / n
+  stayInView(hub, walls)
+}
+
 function contactScale(groups: readonly Canopy<FluidMark>[], bounds: Bounds) {
   const width = bounds.right - bounds.left,
     height = bounds.bottom - bounds.top
@@ -465,11 +516,38 @@ function contactScale(groups: readonly Canopy<FluidMark>[], bounds: Bounds) {
 }
 
 /** Solve the launch's hub contacts on copies of the fitted layout. */
-export function relaxLaunch(groups: readonly Canopy<FluidMark>[], bounds: Bounds, pad: number) {
+export function relaxLaunch(
+  groups: readonly Canopy<FluidMark>[],
+  bounds: Bounds,
+  pad: number,
+  zoom = 1,
+  radius = centerClearRadius(
+    (bounds.right - bounds.left) * zoom,
+    (bounds.bottom - bounds.top) * zoom,
+    zoom
+  )
+) {
+  const hw = Math.max(1, (bounds.right - bounds.left) / 2)
+  const hh = Math.max(1, (bounds.bottom - bounds.top) / 2)
   const copies = groups.map(({ hub }) => ({
     hub: { ...hub, position: { x: hub.x, y: hub.y }, velocity: { x: 0, y: 0 } },
     leaves: []
   }))
+  if (copies.length === 8) {
+    const ordered = copies
+      .map(({ hub }) => ({ hub, angle: Math.atan2(hub.y / hh, hub.x / hw) }))
+      .sort((a, b) => a.angle - b.angle)
+    const arc = TAU / ordered.length
+    const angle0 = Math.atan2(
+      ordered.reduce((sum, v, i) => sum + Math.sin(v.angle - i * arc), 0),
+      ordered.reduce((sum, v, i) => sum + Math.cos(v.angle - i * arc), 0)
+    )
+    ordered.forEach(({ hub }, i) => {
+      const orbit = clamp(Math.hypot(hub.x / hw, hub.y / hh), 0.58, 0.88)
+      hub.position.x = Math.cos(angle0 + arc * i) * hw * orbit
+      hub.position.y = Math.sin(angle0 + arc * i) * hh * orbit
+    })
+  }
   const frame: FluidFrame = {
     seconds: 0,
     step: 1,
@@ -503,12 +581,14 @@ export function relaxLaunch(groups: readonly Canopy<FluidMark>[], bounds: Bounds
     })
   }
   const scale = contactScale(copies, bounds)
-  for (let i = 0; i < 56; i++) {
+  for (let i = 0; i < 64; i++) {
     for (const { hub } of copies) {
       stepHub(hub, undefined, frame, scale)
       stayInView(hub, launchBounds.get(hub.key) ?? bounds)
     }
     separateHubs(copies, frame, scale, 1, launchBounds)
+    for (const { hub } of copies)
+      clearCenter(hub, launchBounds.get(hub.key) ?? bounds, radius, 1, 1)
   }
   return new Map(copies.map(({ hub }) => [hub.key, hub.position]))
 }
@@ -516,11 +596,17 @@ export function relaxLaunch(groups: readonly Canopy<FluidMark>[], bounds: Bounds
 export function stepOverview(groups: readonly Canopy<FluidMark>[], frame: FluidFrame) {
   const { held, dragGoal, step, bounds } = frame
   if (!groups.length || step <= 0) return
+  const width = frame.viewport?.width ?? (bounds.right - bounds.left) * frame.zoom
+  const height = frame.viewport?.height ?? (bounds.bottom - bounds.top) * frame.zoom
+  const radius = centerClearRadius(width, height, frame.zoom)
+  // Only the central opening stays constant in screen pixels as the camera zooms.
+  const centerBounds = frame.viewport ? overviewBounds(width, height, frame.zoom) : bounds
   const start = held && dragGoal ? { ...held.position } : null
   const dx = start && dragGoal ? dragGoal.x - start.x : 0
   const dy = start && dragGoal ? dragGoal.y - start.y : 0
   const moveLength = Math.hypot(dx, dy)
   for (const { hub, leaves } of groups) {
+    if (!held && hub.wasHeld) clearCenter(hub, centerBounds, radius, 1, 1)
     const focus = Number(frame.hotKey === hub.key || held === hub)
     const focusSpeed = frame.intro ? 6.5 : focus > hub.focusT ? 18 : 9.5
     const focusBlend = frame.still ? 1 : 1 - Math.exp((-focusSpeed * step) / 60)
@@ -562,6 +648,9 @@ export function stepOverview(groups: readonly Canopy<FluidMark>[], frame: FluidF
   }
 
   for (const group of groups) {
+    const { hub } = group
+    if (hub !== held) clearCenter(hub, centerBounds, radius, 1 - 0.88 ** step, 0.92)
+    hub.wasHeld = hub === held
     spreadLeaves(group, frame)
     for (const leaf of group.leaves) {
       if (leaf !== held) stepLeaf(leaf, group.hub, frame)

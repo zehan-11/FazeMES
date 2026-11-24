@@ -15,6 +15,8 @@ function brush() {
     measureText: (s) => ({ width: s.length * 8 }),
     createLinearGradient: () => ({ addColorStop() {} }),
     createRadialGradient: () => ({ addColorStop() {} }),
+    arc(...args) { records.push(['arc', ...args]) },
+    ellipse(...args) { records.push(['ellipse', ...args]) },
     fillRect(...args) {
       records.push(['rect', this.fillStyle, ...args])
     },
@@ -100,7 +102,7 @@ function mark(id, parent, x, y, seed, url) {
   }
 }
 
-test('thumbnail atlas bakes 20 balanced posters once, reuses a supplied photo and crops it to each 2x format', () => {
+test('twenty crisp paper, dark and color designs bake once at 2x and keep genuine photos unobscured', () => {
   const env = environment()
   const { StarThumbnails } = env.load('starThumbnails')
   const cache = new StarThumbnails()
@@ -114,28 +116,42 @@ test('thumbnail atlas bakes 20 balanced posters once, reuses a supplied photo an
   for (const [w, h] of [[44, 30], [30, 40], [36, 36]]) {
     assert.equal(env.tiles.filter(s => s.width === w && s.height === h).length, 20)
   }
-  const designs = new Set(), count = { paper: 0, solid: 0, night: 0, split: 0 }
-  const warm = new Set(['#B83227', '#B45309', '#E03E36', '#E89B2D', '#E46D36'])
-  const cool = new Set(['#123CC8', '#0D6E59', '#4C2898', '#2563EB', '#10B981', '#7C3AED'])
-  for (const cluster of ['A', 'B', 'C']) {
-    const hues = new Set()
-    for (const m of leaves.filter(item => item.parent === cluster)) {
-      const card = cards.get(m.key)
-      assert.equal(card.image.width, 2 * card.width)
-      assert.equal(card.image.height, 2 * card.height)
-      if (card.photo) continue
-      const [family, bg, body] = card.design
-      designs.add(card.design)
-      count[family]++
-      if (family === 'paper') { assert.ok(['#FFFFFF','#F5F7FB'].includes(bg)); hues.add('paper') }
-      if (family === 'night') assert.equal(bg, '#090D1A')
-      if (warm.has(bg) || warm.has(body)) hues.add('warm')
-      if (cool.has(bg) || cool.has(body)) hues.add('cool')
+  const designs = new Set(), count = { paper: 0, interface: 0, poster: 0 }
+  const pigments = new Set(['#1A46CC', '#9C3535', '#126B5D', '#A46224', '#4B2F8E'])
+  for (const card of cards.values()) {
+    assert.equal(card.image.width, 2 * card.width)
+    assert.equal(card.image.height, 2 * card.height)
+    const [family, background, layout, accent] = card.design
+    const ops = card.image.ctx.records
+    assert.deepEqual(ops[0], ['rect', background, 0, 0, 22, 20])
+    assert.ok(ops.slice(1).every(op => op[0] !== 'rect' || op[4] < 22 || op[5] < 20), 'no full-card wash')
+    assert.ok(ops.every(op => op[0] !== 'arc' && op[0] !== 'ellipse'), 'no rings or bullseyes')
+    if (family === 'paper') {
+      assert.ok(['#FFFFFF', '#F6F8FC'].includes(background))
+      assert.ok(['#2563EB', '#D9413A', '#0F9D8A'].includes(accent))
+      assert.ok(ops.some(op => op[1] === '#334155'))
+    } else if (family === 'interface') {
+      assert.equal(background, '#0B1020')
+      assert.ok(['#3B82F6', '#10B981', '#E59A38', '#D64545'].includes(accent))
+      assert.ok(ops.some(op => op[1] === '#EDF2FA'))
+    } else {
+      assert.ok(pigments.has(background))
+      assert.ok(ops.some(op => op[1] === '#FFFFFF'))
     }
-    assert.deepEqual([...hues].sort(), ['cool','paper','warm'])
+    assert.equal(ops.at(-1)[1], accent)
+    designs.add(layout)
+    count[family]++
   }
-  assert.deepEqual(count, { paper: 100, solid: 100, night: 120, split: 80 })
+  assert.deepEqual(count, { paper: 121, interface: 181, poster: 100 }) // 20 decks plus 2 cards
   assert.equal(designs.size, 20)
+  for (let n = 1; n <= 41; n++) {
+    const subset = [...leaves.slice(0, n), leaves.at(-1)]
+    const deal = [...cache.prepare(subset).values()]
+    for (const [family, share] of [['paper', 0.3], ['interface', 0.45], ['poster', 0.25]]) {
+      const total = deal.filter(c => c.design[0] === family).length
+      assert.ok(Math.abs(total - share * deal.length) < 1, family + ' share for a partial deck')
+    }
+  }
   assert.deepEqual([...new Set([...cards.values()].map((c) => c.width + 'x' + c.height))].sort(), [
     '15x20',
     '18x18',
@@ -160,6 +176,7 @@ test('thumbnail atlas bakes 20 balanced posters once, reuses a supplied photo an
     const imageOp = t.ctx.records.find(([op]) => op === 'image')
     assert.equal(imageOp[1], env.loads[0])
     assert.equal(t.ctx.filter, 'none')
+    assert.equal(t.ctx.records.length, 1, 'only the original cropped photo is drawn')
     assert.ok(Math.abs(imageOp[4] / imageOp[5] - t.width / t.height) < 1e-12)
   }
   const again = cache.prepare(leaves.toReversed())
@@ -169,7 +186,7 @@ test('thumbnail atlas bakes 20 balanced posters once, reuses a supplied photo an
   assert.equal(env.loads.length, 1)
 })
 
-test('live cards reuse identical pixels with green family borders and white direct-neighbor borders, and accept corner clicks', () => {
+test('live cards reuse identical pixels, highlight directly related thumbnails in green, and accept corner clicks', () => {
   const env = environment()
   const { StarCanvas } = env.load('starCanvas')
   const engine = new StarCanvas()
@@ -216,7 +233,8 @@ test('live cards reuse identical pixels with green family borders and white dire
   frame(1600)
   const original = stamp('one').body[1]
   const idle = stamp('one').rim
-  assert.deepEqual(idle.slice(1, 4), ['#CDDCF8', 0.85, 0.48])
+  assert.deepEqual(idle.slice(1, 4), engine.marks.get('one').thumbnail.design[0] === 'interface'
+    ? ['#B9CEF0', 0.85, 0.45] : ['#FFFFFF', 1, 1])
   assert.equal(stamp('one').body.at(-1), 1)
   const m = engine.marks.get('one')
   const corner = {
@@ -233,13 +251,12 @@ test('live cards reuse identical pixels with green family borders and white dire
   assert.equal(count[3], 'rgba(180,206,255,.72)')
   assert.ok(Math.abs(count[2] * 0.72 - 0.5904) < 1e-9)
   assert.equal(engine.marks.get('B').trunkLight, 1)
-  assert.deepEqual(stamp('one').rim.slice(1, 4), ['#2EE89A', 1.05, 1])
+  assert.deepEqual(stamp('one').rim.slice(1, 4), ['#2EE89A', 1, 1])
   assert.equal(stamp('one').body[1], original)
   engine.move({ ...m.screen })
   frame(1640)
-  for (const id of ['one', 'other']) {
-    assert.deepEqual(stamp(id).rim.slice(1, 4), ['#FFFFFF', 1.1, 1])
-  }
+  assert.deepEqual(stamp('other').rim.slice(1, 4), ['#2EE89A', 1, 1])
+  assert.equal(stamp('unrelated').rim[1], engine.marks.get('unrelated').thumbnail.design[0] === 'interface' ? '#B9CEF0' : '#FFFFFF')
   assert.equal(stamp('one').body[1], original)
   assert.ok(Math.abs(stamp('unrelated').body.at(-1) - 0.44) < 1e-9)
   assert.equal(textRecord('B')[2], 0.56)
@@ -306,4 +323,44 @@ test('hover retention and shape progress follow the same monotonic clock at 30 a
   const slow = timeline(30), fast = timeline(60)
   for (let i = 0; i < slow.length; i++) assert.ok(Math.abs(slow[i] - fast[i]) < 1e-9)
   assert.ok(Math.abs(slow[0] - (0.82 + 0.18 * Math.exp(-3))) < 1e-9)
+})
+
+test('white paper, posters and genuine photos are contained in a full white frame, including on high-DPI canvases', () => {
+  const env=environment()
+  const {StarThumbnails,paintThumbnail}=env.load('starThumbnails')
+  const cache=new StarThumbnails()
+  const leaves=Array.from({length:60},(_,i)=>mark('frame-'+i,'A',0,0,.9))
+  leaves.push(mark('framed-photo','A',0,0,.1,'/framed-photo.jpg'))
+  const cards=cache.prepare(leaves)
+  env.loads[0].onload()
+  const tested=new Set()
+  for(const card of cards.values()){
+    const family=card.photo?'photo':card.design[0]
+    tested.add(family)
+    for(const dpr of [1,2]){
+      const ctx=brush(), w=card.width,h=card.height
+      paintThumbnail(ctx,card,71.5,94,w,h,0,0,dpr)
+      const image=ctx.records.find(r=>r[0]==='image')
+      const rim=ctx.records.find(r=>r[0]==='border')
+      if(family==='interface'){
+        assert.deepEqual(rim.slice(1,4),['#B9CEF0',.85,.45])
+        assert.deepEqual(image.slice(4,6),[w,h])
+        continue
+      }
+      assert.deepEqual(rim.slice(1,4),['#FFFFFF',1,1])
+      const [,sprite,x,y,iw,ih]=image
+      assert.equal(sprite,card.photo?.tiles[card.format]??card.image)
+      assert.ok(Math.abs(iw/ih-w/h)<1e-9)
+      const [, , , ,rx,ry,rw,rh]=rim
+      assert.ok(x>=rx+1 && y>=ry+1 && x+iw<=rx+rw-1 && y+ih<=ry+rh-1)
+      assert.equal((rx-.5)*dpr,Math.round((rx-.5)*dpr))
+      assert.equal((ry-.5)*dpr,Math.round((ry-.5)*dpr))
+      for(const [familyFocus,leafFocus] of [[1,0],[0,1]]){
+        ctx.records.length=0
+        paintThumbnail(ctx,card,71.5,94,w,h,familyFocus,leafFocus,dpr)
+        assert.deepEqual(ctx.records.find(r=>r[0]==='border').slice(1,4),['#2EE89A',1,1])
+      }
+    }
+  }
+  assert.deepEqual(tested,new Set(['interface','paper','poster','photo']))
 })

@@ -527,7 +527,12 @@ test('opening landings use the final drawer bounds and avoid a catch-up frame on
     const maxOverlap = point => Math.max(0, ...hubs.flatMap((a, i) =>
       hubs.slice(i + 1).map(b => (a.collideR + b.collideR + 18) * scale - pointDistance(point(a), point(b)))))
     assert.ok(maxOverlap(m => m) > 30)
-    assert.ok(maxOverlap(m => engine.introLandings.get(m.key)) < 0.1)
+    const landed = hubs.map(m => engine.introLandings.get(m.key))
+    const radius = Math.max(116, Math.min(view, height) * 0.19)
+    assert.ok(landed.every(p => Math.hypot(p.x,p.y) * zoom >= radius - 0.001))
+    if (view >= 2 * radius + 30) assert.ok(maxOverlap(m => engine.introLandings.get(m.key)) < 0.1)
+    for (let i = 0; i < landed.length; i++)
+      for (const p of landed.slice(i + 1)) assert.ok(pointDistance(p,landed[i]) * zoom > 20)
     const cut = engine.bloomMs
     function draw(ms) {
       engine.sidebarInset = inset * easeBloom((ms - DOCK_MS) / DOCK_DURATION)
@@ -545,6 +550,10 @@ test('opening landings use the final drawer bounds and avoid a catch-up frame on
     }
     for (const m of marks.filter(m => m.role === 'leaf')) {
       const p = engine.introLandings.get(m.key)
+      const parent = scene.marks.get(m.parent), mark = scene.marks.get(m.key)
+      const anchor = engine.introLandings.get(m.parent)
+      assert.ok(Math.abs((p.x-anchor.x)-(mark.x-parent.x))<1e-7)
+      assert.ok(Math.abs((p.y-anchor.y)-(mark.y-parent.y))<1e-7)
       const halfWidth = m.thumbnail ? m.thumbnail.width / 2 + 0.5 : 2
       const halfHeight = m.thumbnail ? m.thumbnail.height / 2 + 0.5 : 2
       assert.ok(Math.abs(p.x * zoom) + halfWidth <= view / 2)
@@ -693,15 +702,16 @@ test('overview fits the visible region with fixed-size marks and measured text i
     engine.setScene(scene, 0, false, zoom)
     engine.draw(ctx, 1501, 1)
     const rects = [...engine.marks.values()].map(m => {
-      const r = m.role === 'hub' ? 2.4 * (7.5 + 3.5 * Math.sqrt(m.count / engine.largestHub)) : 4
-      return { x: m.screen.x - r, y: m.screen.y - r, w: 2 * r, h: 2 * r }
+      const w = m.thumbnail ? m.thumbnail.width + 1 : m.role === 'hub' ? 11 : 4.2
+      const h = m.thumbnail ? m.thumbnail.height + 1 : w
+      return { x: m.screen.x-w/2, y:m.screen.y-h/2, w, h }
     })
     rects.push(...engine.targets.filter(target => !target.dot).map(target => target.box))
     const left = Math.min(...rects.map(r => r.x)), right = Math.max(...rects.map(r => r.x + r.w))
     const top = Math.min(...rects.map(r => r.y)), bottom = Math.max(...rects.map(r => r.y + r.h))
     const x = (right-left)/avail, y = (bottom-top)/height
     assert.ok(left >= 0 && right <= avail && top >= 0 && bottom <= height)
-    assert.ok(x > 0.86 && x < 0.925 && y > 0.86 && y < 0.925)
+    assert.ok(x > 0.80 && x <= 1 && y > 0.80 && y <= 1)
     t.diagnostic(avail + 'x' + height + ' projected bounds: ' + (x*100).toFixed(1) + '% x ' + (y*100).toFixed(1) + '%')
   }
 })
@@ -731,61 +741,100 @@ test('a drawer refit retains the live particle, active hover and partially lit e
 })
 
 
-test('a 52px blue wake reveals dormant points on the fixed lattice, then expires after 550ms', () => {
+test('22px background grid pulses stay sparse at every drawer width', () => {
   const { BlueParticles, AMBIENT_BLUE } = load(path.join(root, 'views/mes/graph/blueParticles.ts'))
   const field = new BlueParticles(), control = new BlueParticles()
-  const origin = { x: 0, y: 0 }
-  function sample(renderer, time, overview = true, offset = origin, still = false) {
-    const dots = []
+  const w = 1396, h = 648
+  const coord = p => p.x + '/' + p.y
+  function sample(renderer, time, still = false, width = w, height = h, visibleWidth = width) {
+    const dots = new Map()
     const ctx = { fillRect(x, y, size) {
-      dots.push({ x: x + size / 2, y: y + size / 2, size, color: this.fillStyle, a: this.globalAlpha })
+      const dot = { x: x + size / 2, y: y + size / 2, size, color: this.fillStyle, a: this.globalAlpha }
+      assert.ok(dot.color === AMBIENT_BLUE && dot.size >= 1.4 && dot.size <= 1.8)
+      assert.ok(dot.x % 22 === 0 && dot.y % 22 === 0)
+      assert.ok(!dots.has(coord(dot)), 'one paint per lattice point')
+      dots.set(coord(dot), dot)
     } }
-    renderer.draw(ctx, time, 960, 600, offset, offset, still, overview)
+    renderer.draw(ctx, time, width, height, still, visibleWidth)
     return dots
   }
-  const geometry = dots => dots.map(({ a, ...fixed }) => fixed)
-  const idle = sample(field, 0)
+  assert.equal(AMBIENT_BLUE, '#4A80FF')
+  sample(field, 0)
   const grid = field.lattice
-  assert.ok(grid.dots.length >= 650 && grid.dots.length <= 800)
-  assert.ok(Math.abs(idle.length - grid.dots.length * 0.2) <= 1)
-  assert.ok(idle.every(p => p.color === AMBIENT_BLUE && p.color === '#5288FF' && p.size >= 1.4 && p.size <= 2.1))
-  assert.equal(idle.length, grid.dots.filter(p => p.isAmbientTwinkle).length)
-  const peaks = idle.map(() => 0)
-  for (let t = 0; t <= 7500; t += 80) {
-    const frame = sample(control, t, true, { x: 140, y: -83 })
-    assert.deepEqual(geometry(frame), geometry(idle))
-    frame.forEach((p,i) => { peaks[i] = Math.max(peaks[i], p.a) })
-  }
-  assert.ok(peaks.every(a => a >= 0.419 && a <= 0.52))
-
-  const target = grid.dots.find(p => !p.isAmbientTwinkle && p.x > 200 && p.y > 200)
-  const same = (a,b) => pointDistance(a,b) < 1e-7
-  field.trace(target, 8000)
-  const peakFrame = sample(field, 8024)
-  const lit = peakFrame.find(p => same(p, target))
-  assert.ok(lit && lit.a >= 0.78 && lit.a <= 0.88 && lit.size >= 2 && lit.size <= 2.4)
-  assert.ok(peakFrame.length > idle.length)
-  assert.ok(peakFrame.every(p => p.color === '#5288FF'))
-  for (const t of [8024, 8170, 8380, 8549, 8550]) {
-    const frame = sample(field, t), clean = sample(control, t)
-    for (const dot of frame) {
-      const outside = pointDistance(dot, target) >= 52
-      assert.ok(grid.dots.some(p => same(p, dot)))
-      if (outside || t >= 8550) assert.deepEqual(dot, clean.find(p => same(p, dot)))
+  assert.equal(grid.dots.length, Math.ceil(w / 22) * Math.ceil(h / 22))
+  const eligible = new Set(grid.bands.flatMap(band => band.members.map(i => coord(grid.dots[i]))))
+  assert.ok(eligible.size / grid.dots.length > 0.06 && eligible.size / grid.dots.length < 0.10)
+  assert.ok(grid.bands.every(band => band.period >= 6000 && band.period <= 13000))
+  const peaks = new Map()
+  for (let t = 0; t <= 13500; t += 50) {
+    const idle = sample(control, t)
+    assert.ok(idle.size >= 12 && idle.size <= 22, 'visible idle points: ' + idle.size)
+    for (const [key, p] of idle) {
+      assert.ok(eligible.has(key))
+      assert.ok(p.a > 0 && p.a <= 0.56)
+      peaks.set(key, Math.max(peaks.get(key) || 0, p.a))
     }
-    if (t >= 8550) assert.deepEqual(frame, clean)
   }
-  field.trace(null, 8600)
-  field.trace({ x: 100, y: 300 }, 9000)
-  for (const dx of [3, 6, 11, 80]) field.trace({ x: 100 + dx, y: 300 }, 9000 + dx)
-  assert.deepEqual(Array.from(field.trail, p => p.x), Array.from({ length: 11 }, (_,i) => 100 + 8*i))
-  assert.ok(field.trail.every((p,i) => p.born === 9000 + i * 8))
-  assert.deepEqual(sample(field, 9631), sample(control, 9631))
-  assert.deepEqual(sample(field, 9900, true, origin, true), sample(control, 9990, true, origin, true))
-  assert.equal(sample(field, 10000, false).length, 156)
+  assert.equal(peaks.size, eligible.size)
+  assert.ok([...peaks.values()].every(peak => peak > 0.41))
+
+  const wideIdle = sample(field, 53000, false, 2560, 1440)
+  assert.ok(wideIdle.size >= 12 && wideIdle.size <= 22)
+  const narrow = new BlueParticles()
+  for (let ms = 0; ms <= 13000; ms += 100) {
+    const frame = sample(narrow, ms, false, 561, 660, 304)
+    assert.ok(frame.size >= 12 && frame.size <= 22)
+    assert.ok([...frame.values()].every(dot => dot.x < 304))
+  }
+  const settledLattice = narrow.lattice
+  sample(narrow, 14000, false, 561, 660, 561)
+  assert.equal(narrow.lattice, settledLattice)
 })
 
-test('overview paints a thin ambient layer, reveals white leaf paths, and clears stale labels', () => {
+test('mouse travel leaves fixed microstars and sparse four-point glints that disappear in 520ms', () => {
+  const { BlueParticles, AMBIENT_BLUE } = load(path.join(root, 'views/mes/graph/blueParticles.ts'))
+  const field = new BlueParticles(), control = new BlueParticles()
+  function paint(renderer, now, still = false, visibleWidth = 680) {
+    const ambient = [], dots = [], arms = []
+    let arc = null
+    const grad = () => ({addColorStop(){}})
+    const ctx = new Proxy({
+      globalAlpha:1, createRadialGradient:grad,createLinearGradient:grad,
+      beginPath(){arc = null},
+      arc(x,y,r){arc={x,y,r}},
+      fill(){if(arc) dots.push({...arc,tint:this.fillStyle,alpha:this.globalAlpha}); else arms.push(this.globalAlpha)},
+      fillRect(x,y,w,h){if(this.fillStyle===AMBIENT_BLUE) ambient.push([x,y,w,h,this.globalAlpha])}
+    },{get:(o,k)=>o[k]??(()=>{})})
+    renderer.draw(ctx,now,680,390,still,visibleWidth)
+    return {ambient,dots,arms}
+  }
+  const start = 1000
+  for (const dx of [0,3,6,11,84]) field.trace({x:100+dx,y:120},start+dx)
+  assert.equal(field.trail.length,16)
+  for (let i=0;i<8;i++) {
+    for (const star of field.trail.slice(i*2,i*2+2)) {
+      assert.equal(star.born,start+i*12)
+      assert.ok(Math.hypot(star.x-(100+i*12),star.y-120)<17.01)
+    }
+  }
+  const a=paint(field,1110),b=paint(field,1280)
+  assert.deepEqual(a.ambient,paint(control,1110).ambient)
+  assert.deepEqual(a.dots.map(p=>[p.x,p.y]),b.dots.map(p=>[p.x,p.y]))
+  assert.equal(a.dots.filter(p=>p.tint==='#FFFFFF').length,2)
+  assert.equal(a.arms.length,8)
+  assert.ok(a.dots.every((p,i)=>p.alpha>b.dots[i].alpha && ['#EAF3FF','#9AC4FF','#FFF0D2','#FFFFFF'].includes(p.tint)))
+  assert.ok(paint(field,1200,false,150).dots.every(p=>p.x<150))
+  assert.deepEqual(paint(field,1250,true),paint(control,8500,true))
+  field.trace({x:184,y:120},1720)
+  assert.deepEqual(paint(field,1720),paint(control,1720))
+  field.trace(null,1800);field.trace({x:420,y:160},1820)
+  assert.equal(field.trail.length,2)
+  assert.ok(field.trail.every(s=>s.x>400))
+  field.trace({x:8000,y:160},1830)
+  assert.ok(field.trail.length<=160)
+})
+
+test('overview paints a thin ambient layer, reveals cool-grey leaf paths, and clears stale labels', () => {
   const { StarCanvas } = load(path.join(root, 'views/mes/graph/starCanvas.ts'))
   const { liveTheme } = load(path.join(root, 'views/mes/graph/starInk.ts'))
   const e = new StarCanvas()
@@ -814,22 +863,23 @@ test('overview paints a thin ambient layer, reveals white leaf paths, and clears
   e.setScene({ marks, wires, overview: true, ambientCrossEdges: [wires.get('one/three')] }, 0)
 
   const fills = [], strokes = [], captions = []
-  let arc, end, insideCard
+  let arc, start, end, insideCard
   function gradient(x, y, x2, y2) {
-    return { x, y, x2, y2, stops: [], addColorStop(i, color) { this.stops.push(color) } }
+    return { x, y, x2, y2, stops: [], addColorStop(i, color) { this.stops.push([i, color]) } }
   }
   const ctx = new Proxy({
     createLinearGradient: gradient, createRadialGradient: gradient,
     translate() { insideCard = true }, restore() { insideCard = false },
-    beginPath() { arc = null; end = null },
+    beginPath() { arc = null; start = null; end = null },
+    moveTo(x, y) { start = { x, y } },
     arc(x, y, r) { arc = { x, y, r } },
     lineTo(x, y) { end = { x, y } },
     fill() { if (arc) fills.push({ ...arc, color: this.fillStyle, alpha: this.globalAlpha }) },
     fillRect(x, y, w, h) { fills.push({ x: x + w / 2, y: y + h / 2, w, h, color: this.fillStyle, insideCard }) },
     strokeRect() { strokes.push({ border: !!insideCard, ink: this.strokeStyle, width: this.lineWidth }) },
-    stroke() { strokes.push({ end, arc, ink: this.strokeStyle, alpha: this.globalAlpha, width: this.lineWidth, insideCard }) },
+    stroke() { strokes.push({ start, end, arc, ink: this.strokeStyle, alpha: this.globalAlpha, width: this.lineWidth, insideCard }) },
     measureText: word => ({ width: word.length * 8 }),
-    fillText(word) { captions.push({ word, font: this.font }) }
+    fillText(word) { captions.push({ word, font: this.font, color: this.fillStyle }) }
   }, { get: (o, k) => o[k] ?? (() => {}) })
   function frame(time) {
     fills.length = strokes.length = captions.length = 0
@@ -843,24 +893,46 @@ test('overview paints a thin ambient layer, reveals white leaf paths, and clears
   const trunk = () => strokes.find(f => near(f.end, at('A')))
   const close = (a, b) => assert.ok(Math.abs(a - b) < 1e-6, a + ' vs ' + b)
 
+  const channels = css => {
+    if (css.startsWith('#')) {
+      const rgb = [1, 3, 5].map(i => parseInt(css.slice(i, i + 2), 16))
+      return [...rgb, css.length > 7 ? parseInt(css.slice(7, 9), 16) / 255 : 1]
+    }
+    return css.slice(5, -1).split(',').map(Number)
+  }
+  function tone(css, expected) {
+    const actual = channels(css)
+    assert.deepEqual(actual.slice(0, 3), expected.slice(0, 3))
+    assert.ok(Math.abs(actual[3] - expected[3]) <= 1 / 255)
+  }
+  const stop = (stroke, offset) => stroke.ink.stops.find(([t]) => t === offset)[1]
+  const ring = () => strokes.find(f => f.arc && Math.abs(f.arc.r - 5.5) < 1e-6)
+
   frame(1501)
   const styles = ['设备','部件','故障','工艺','措施','手册','原因','规则库'].map(liveTheme)
   assert.equal(new Set(styles.map(t => t.hub)).size, 1)
   assert.equal(new Set(styles.map(t => t.dot)).size, 1)
-  assert.equal(styles.filter(t => t.wave[2][1] === 238).length, 3)
-  assert.equal(styles.filter(t => t.wave[2][2] === 255).length, 5)
+  assert.equal(styles.filter(t => t.wave[0][1] === 218).length, 3)
+  assert.equal(styles.filter(t => t.wave[0][2] === 255).length, 5)
   assert.equal(hub('A').color, '#4372FF')
   assert.equal(hub('B').color, '#4372FF')
-  close(dot('one').r, 2)
-  assert.equal(dot('one').color, '#3E72F2')
-  close(dot('one').alpha, 0.88)
-  assert.deepEqual(spoke().ink.stops, Array(11).fill('rgba(22,108,148,0.340)'))
-  assert.equal(trunk().ink, 'rgba(58,98,212,0.180)')
-  close(spoke().width, 0.95)
-  close(trunk().width, 0.85)
-  const ring = strokes.find(f => f.ink === 'rgba(110, 146, 228, 0.34)')
-  close(ring.width, 0.9)
-  close(ring.arc.r, 6)
+  close(dot('one').r, 2.1)
+  assert.equal(dot('one').color, '#4D86FF')
+  close(dot('one').alpha, 1)
+  const blueSpoke = strokes.find(f => near(f.start, at('B')) && near(f.end, at('three')))
+  for (const [ray, colors] of [
+    [spoke(), [[28,218,178,.84], [28,154,190,.56], [50,96,220,.38]]],
+    [blueSpoke, [[46,158,255,.86], [44,110,240,.58], [52,86,212,.38]]]
+  ]) {
+    for (const [i, t] of [0, .48, 1].entries()) tone(stop(ray, t), colors[i])
+    close(ray.width, .95)
+    close(ray.alpha, 1)
+  }
+  tone(stop(trunk(), 0), [54,102,230,.36])
+  tone(stop(trunk(), 1), [76,138,255,.62])
+  close(trunk().width, .95)
+  tone(ring().ink, [112,148,228,.36])
+  close(ring().width, .9)
   const cross = e.wires.get('one/three')
   close(cross.alpha, 0)
   close(e.wires.get('A/B').alpha, 0)
@@ -872,15 +944,16 @@ test('overview paints a thin ambient layer, reveals white leaf paths, and clears
   assert.equal(strokes.filter(f => near(f.end, at('three'))).length, 2)
   e.still = false
   frame(1508)
-  const waves = strokes.filter(f => f.ink?.stops?.length === 11)
+  const waves = strokes.filter(f => f.ink?.stops?.length > 3)
   assert.equal(waves.length, 4, 'four visible spokes each submit exactly one full gradient stroke')
   assert.ok(waves.every(f => f.width === 0.95 && f.alpha === 1))
-  const channels = css => css.slice(5, -1).split(',').map(Number)
-  const stops = stroke => stroke.ink.stops.map(channels)
-  assert.ok(waves.filter(f => !near(f.end, at('three'))).every(f =>
-    stops(f).every(([r,g,b,a]) => r >= 22 && r <= 38 && g >= 108 && g <= 238 && b >= 148 && b <= 184 && a >= 0.34 && a <= 0.88)))
-  assert.ok(stops(waves.find(f => near(f.end, at('three')))).every(([r,g,b,a]) =>
-    r >= 40 && r <= 72 && g >= 84 && g <= 178 && b >= 206 && b <= 255 && a >= 0.34 && a <= 0.90))
+  for (const ray of waves) {
+    const blue = near(ray.end, at('three'))
+    const colors = ray.ink.stops.map(([, css]) => channels(css))
+    const peak = blue ? [106,198,255,.88] : [70,245,202,.84]
+    assert.ok(colors.some(color => color.every((value, i) => value === peak[i])))
+    assert.ok(colors.every(([r,g,b,a]) => r <= 106 && g <= 245 && b <= 255 && a >= .38 && a <= .88))
+  }
   e.still = true
   frame(1510)
 
@@ -888,12 +961,22 @@ test('overview paints a thin ambient layer, reveals white leaf paths, and clears
   frame(1520)
   const leaf = e.marks.get('one')
   close(leaf.targetDist / leaf.naturalDist, 1 - (0.24 + leaf.distNorm * 0.11))
-  close(dot('one').r, 3.5); close(dot('two').r, 3.5); close(dot('three').r, 2)
-  assert.equal(hub('A').color, '#4372FF')
+  close(dot('one').r, 3.3); close(dot('two').r, 3.3); close(dot('three').r, 2.1)
+  assert.equal(dot('one').color, '#020518')
+  assert.equal(hub('A').color, '#34F5A4')
+  const glow = fills.find(f => near(f, at('A')) && f.color?.stops)
+  close(glow.w / 2, 2.6 * hub('A').w)
+  tone(glow.color.stops[0][1], [52, 245, 164, .52])
+  tone(glow.color.stops.at(-1)[1], [52, 245, 164, 0])
+  tone(ring().ink, [110,215,185,.52])
+  close(ring().width, .9)
   for (const line of [spoke(), trunk()]) {
-    assert.equal(line.ink.stops.length, 11)
-    assert.ok(stops(line).every(([r,g,b,a]) => r <= 76 && g >= 198 && b <= 192 && a >= 0.45 && a <= 0.96))
+    tone(stop(line, 0), [56,248,174,.90])
+    tone(stop(line, 1), [38,190,134,.52])
   }
+  const familyRim = strokes.find(f => near(f.arc, at('one')))
+  close(familyRim.width, 0.9)
+  tone(familyRim.ink, [196,224,236,.72])
   close(spoke().width, 0.95); close(trunk().width, 0.95)
   close(cross.alpha, 0)
   close(e.marks.get('B').light, 0.64)
@@ -902,14 +985,19 @@ test('overview paints a thin ambient layer, reveals white leaf paths, and clears
   e.move({ ...at('one') })
   frame(1600)
   close(dot('one').r, 3.8)
-  close(dot('two').r, 2); close(dot('three').r, 2)
+  close(dot('two').r, 2.1); close(dot('three').r, 2.1)
   const rim = strokes.find(f => near(f.arc, at('one')))
-  close(rim.width, 1.1)
-  assert.equal(rim.ink.toUpperCase(), '#FFFFFF')
+  close(rim.width, 0.9)
+  tone(rim.ink, [196,224,236,.72])
   assert.equal(dot('three').color, '#FFFFFF')
-  assert.ok(stops(spoke()).every(([r,g,b,a]) => r >= 242 && g >= 247 && b === 255 && a >= 0.88))
-  const revealed = () => strokes.find(f => near(f.end, at('three')) && near(f.ink, at('one')))
-  assert.equal(revealed().width, 0.95)
+  tone(spoke().ink, [208,224,248,.56])
+  close(spoke().width, 0.85)
+  const revealed = () => strokes.find(f => f.ink !== 'rgba(66, 108, 218, 0.12)' && near(f.end, at('three')) && near(f.start, at('one')))
+  close(revealed().width, 0.85)
+  tone(revealed().ink, [208,224,248,.56])
+  const neighborCaption = captions.find(c => c.word === 'three')
+  assert.match(neighborCaption.font, /^400 11px /)
+  tone(neighborCaption.color, [242,247,255,.92])
   close(e.marks.get('three').nameAlpha, 1)
   close(cross.alpha, 1)
   close(e.marks.get('two').light, 0.44)
@@ -932,9 +1020,12 @@ test('overview paints a thin ambient layer, reveals white leaf paths, and clears
   frame(2190); close(cross.alpha, 0)
   assert.equal(revealed(), undefined)
   e.external = 'one'
-  leaf.position.x = -1200
+  assert.ok(e.beginNodeDrag({ key: 'one', role: 'leaf' }, at('one')))
+  e.moveNodeDrag({ x: -100, y: at('one').y })
   frame(2200)
+  assert.ok(at('one').x < 0, 'the captured leaf is outside the visible canvas')
   assert.ok(captions.every(c => c.word !== 'one'))
+  e.endNodeDrag(false)
 })
 
 test('the painted overview leaf pill receives the click when it covers a different hub', () => {
@@ -947,21 +1038,24 @@ test('the painted overview leaf pill receives the click when it covers a differe
     createLinearGradient: gradient, createRadialGradient: gradient
   }, { get: (o,k) => o[k] ?? (() => {}) })
   const marks = new Map()
-  for (const [key, x, parent] of [['A', -130, ''], ['item', -10, 'A'], ['B', 38, '']]) {
+  for (const [key, x, parent] of [['A', -200, ''], ['item', -85, 'A'], ['B', 155, '']]) {
     marks.set(key, {
-      key, role: parent ? 'leaf' : 'hub', x, y: 0, parent, count: 1, order: 0, seed: 0.21,
+      key, role: parent ? 'leaf' : 'hub', x, y: -172, parent, count: 1, order: 0, seed: 0.21,
       color: '#509AFF', entity: { id: key, name: parent ? 'part-123' : key, kind: '部件' }
     })
   }
   const wires = new Map([['A/item', { key: 'A/item', a: 'A', b: 'item', kind: 'spoke', label: '' }]])
   graph.setScene({ marks, wires, overview: true }, 0)
   graph.draw(ctx, 100, 1)
-  const under = { ...graph.marks.get('B').screen }
-  assert.equal(graph.hit(under).id, 'B')
+  const other = graph.marks.get('B')
+  assert.equal(graph.hit(other.screen).id, 'B')
   graph.move({ ...graph.marks.get('item').screen })
   graph.draw(ctx, 120, 1)
   const { box } = graph.targets.find(t => !t.dot && t.hit.id === 'item')
-  assert.ok(under.x > box.x && under.x < box.x + box.w && under.y > box.y && under.y < box.y + box.h)
+  const under = { x:box.x + box.w/2, y:box.y + box.h/2 }
+  other.position = { x:under.x-350, y:under.y-225 }
+  graph.draw(ctx, 130, 1)
+  assert.ok(pointDistance(other.screen,under)<1e-6)
   graph.move(under)
   assert.equal(graph.hover, 'item')
   assert.equal(graph.hit(under).id, 'item')
@@ -986,6 +1080,8 @@ test('a stationary pointer tracks the final painted hit as an unheld category dr
   const p = { ...engine.marks.get(hub.key).screen }
   engine.move(p)
   assert.equal(engine.hover, hub.key)
+  // Give the hub a repeatable outgoing velocity, independent of the center-clear layout.
+  engine.marks.get(hub.key).velocity.x = 12
   for (let i = 0; i < 200; i++) draw(true)
   assert.equal(engine.hover, hub.key, 'a pending physical press preserves the target until release')
   assert.equal(engine.hit(p), null, 'the painted hub has drifted beyond the cursor')
@@ -999,39 +1095,50 @@ test('a stationary pointer tracks the final painted hit as an unheld category dr
   assert.equal(changes, 1, 'stationary hover clears once as the hub leaves')
 })
 
-test('one 11-stop gradient carries two oppositely travelling cosine-squared lobes per spoke', () => {
+test('a 44% cosine-squared highlight travels smoothly in both directions over each radial gradient', () => {
   const { makeFlow, waveInk, liveTheme } = load(path.join(root, 'views/mes/graph/starInk.ts'))
   const from = { x: 0, y: 10 }, to = { x: 100, y: 10 }
   const ctx = { createLinearGradient(x, y, x2, y2) {
     assert.deepEqual([x, y, x2, y2], [0, 10, 100, 10])
-    return { stops: [], addColorStop(p, ink) { this.stops.push([p, ink]) } }
+    return { stops: [], addColorStop(t, ink) { this.stops.push([t, ink]) } }
   } }
-  for (const [kind, base, peak] of [
-    ['部件', 'rgba(22,108,148,0.340)', 'rgba(38,238,184,0.880)'],
-    ['设备', 'rgba(40,84,206,0.340)', 'rgba(72,178,255,0.900)']
+  const clock = { phase: 0, speed: .125 }
+  const close = (a,b) => assert.ok(Math.abs(a - b) < 1e-6, a + ' vs ' + b)
+  const channels = css => css.slice(5, -1).split(',').map(Number)
+  for (const [kind, rootTone, middle, tip, crest] of [
+    ['部件', [28,218,178,.84], [28,154,190,.56], [50,96,220,.38], [70,245,202,.84]],
+    ['故障', [46,158,255,.86], [44,110,240,.58], [52,86,212,.38], [106,198,255,.88]]
   ]) {
-    const theme = liveTheme(kind), flow = makeFlow(kind)
-    assert.ok(flow.span >= 0.32 && flow.span <= 0.40)
-    const initialOffset = (flow.inward - flow.outward + 1) % 1
-    assert.ok(initialOffset >= 0.35 && initialOffset <= 0.65)
-    flow.outward = 0; flow.inward = 0.5
-    const stops = waveInk(ctx, flow, from, to, 0, theme, 'spoke', 0, 0, false).stops
-    assert.deepEqual(stops.map(s => s[0]), Array.from({length: 11}, (_, i) => i / 10))
-    assert.equal(stops[0][1], peak)
-    assert.equal(stops[5][1], peak)
-    assert.equal(stops[2][1], base)
-    assert.equal(stops[10][1], stops[0][1])
-    assert.ok(![base, peak].includes(stops[1][1]), 'a soft shoulder joins the peak to the base')
-    waveInk(ctx, flow, from, to, 1, theme, 'spoke', 0, 0, false)
-    assert.ok(flow.outward >= 0.18 && flow.outward <= 0.24)
-    assert.ok(0.5-flow.inward >= 0.14 && 0.5-flow.inward <= 0.19)
-    flow.outward = 0; flow.inward = 0.5
-    const green = waveInk(ctx, flow, from, to, 0, theme, 'trunk', 1, 0, false).stops
-    assert.equal(green[0][1], 'rgba(76,255,192,0.960)')
-    assert.equal(green[2][1], 'rgba(34,198,138,0.450)')
-    waveInk(ctx, flow, from, to, 1, theme, 'trunk', 1, 0, false)
-    assert.ok(Math.abs(flow.outward - 0.26) < 1e-12 && Math.abs(flow.inward - 0.24) < 1e-12)
+    const brush = (time, layer = 'spoke', family = 0, single = 0, still = false) =>
+      waveInk(ctx, clock, from, to, time, liveTheme(kind), layer, family, single, still)
+    const sample = (gradient, t) => channels(gradient.stops.find(([p]) => Math.abs(p - t) < 1e-8)[1])
+    const midpoint = brush(2)
+    const blend = (a,b,w) => a.map((value,i) => value + w * (b[i] - value))
+    function base(t) {
+      return t < .48 ? blend(rootTone, middle, t / .48) : blend(middle, tip, (t - .48) / .52)
+    }
+    for (const t of [0, .28, .335, .39, .445, .48, .5, .555, .61, .665, .72, 1]) {
+      const distance = Math.abs(t - .5) / .22
+      const strength = distance < 1 ? Math.cos(Math.PI / 2 * distance) ** 2 : 0
+      const expected = blend(base(t), crest, strength)
+      for (const [i, channel] of sample(midpoint, t).entries()) {
+        assert.ok(Math.abs(channel - expected[i]) <= (i === 3 ? .00051 : .501))
+      }
+    }
+    for (const [i, t] of [0,2,4,6,8].entries()) {
+      const peak = brush(t).stops.find(([,ink]) => channels(ink).every((v,k) => v === crest[k]))
+      close(peak[0], [0,.5,1,.5,0][i])
+    }
+    assert.deepEqual(sample(brush(2, 'trunk', 1), .5), [83,249,181,.92])
+    assert.deepEqual(channels(brush(2, 'relation', 0, 1)), [208,224,248,.56])
+    for (const [i, t] of [0,.48,1].entries()) {
+      assert.deepEqual(sample(brush(2, 'spoke', 0, 0, true), t), [rootTone,middle,tip][i])
+    }
   }
+  const flows = Array.from({length: 100}, (_, i) => makeFlow('edge/' + i))
+  assert.ok(flows.every(f => f.speed >= .12 && f.speed <= .16))
+  assert.ok(new Set(flows.map(f => f.phase)).size > 90)
+  assert.deepEqual(makeFlow('edge/12'), flows[12])
 })
 
 function independentHubs(still = false) {
@@ -1062,7 +1169,7 @@ function independentHubs(still = false) {
 test('the 120ms ramp scales contacts alone while each free hub and leaf keeps swimming', () => {
   const { stepOverview } = load(path.join(root, 'views/mes/graph/starFluid.ts'))
   const { engine } = independentHubs()
-  const frame = { step: 1, seconds: 2.1, zoom: 1, bounds: { left: -169, right: 520, top: -320, bottom: 320 },
+  const frame = { step: 1, seconds: 2.1, zoom: 1, bounds: { left: -900, right: 900, top: -600, bottom: 600 },
     mouse: null, pointerFlow: { x: 0, y: 0 }, hotKey: null, dragGoal: null, still: false }
   const free = warmup => {
     const group = structuredClone(engine.canopies[0])
@@ -1262,42 +1369,31 @@ test('sparse pointer samples leave the short target unchanged while the hub stay
   assert.ok(Math.abs(leaf.targetDist / leaf.naturalDist - 0.65) < 1e-10)
 })
 
-test('a soft tether settles stretched leaves without ringing or resetting their bearing', () => {
-  const { cacheCanopies, stepOverview } = load(path.join(root, 'views/mes/graph/starFluid.ts'))
-  const view = independentHubs(true)
-  const hub = view.hub
-  const leaf = view.engine.marks.get('far')
-  hub.position = { x: 0, y: 0 }
-  const groups = cacheCanopies(new Map([[hub.key, hub], [leaf.key, leaf]]))
-  const frame = {
-    seconds: 0, step: 1, zoom: 1, mouse: null, pointerFlow: { x: 0, y: 0 }, hotKey: null,
-    dragGoal: null, still: true, bounds: { left: -900, right: 900, top: -900, bottom: 900 }
+test('a captured canopy follows the 07–12 tether on acceleration, a turn, and a sudden stop', () => {
+  const { cacheCanopies, stepOverview }=load(path.join(root,'views/mes/graph/starFluid.ts'))
+  const sample=independentHubs(true)
+  const hub={...structuredClone(sample.hub),x:-360,y:-140,position:{x:-360,y:-140},velocity:{x:0,y:0},focusT:1}
+  const leaf={...structuredClone(sample.engine.marks.get('far')),x:-280,y:-140,
+    position:{x:-299.2,y:-140},velocity:{x:0,y:0},bearing:0}
+  const groups=cacheCanopies(new Map([[hub.key,hub],[leaf.key,leaf]]))
+  const frame={step:1,seconds:0,zoom:1,mouse:null,pointerFlow:{x:0,y:0},hotKey:hub.key,
+    held:hub,dragGoal:{...hub.position},still:true,bounds:{left:-900,right:900,top:-600,bottom:600}}
+  // Recorded in the 07–12 version, away from a wall. Each sample includes both world coordinates.
+  const samples=[
+    [10,0,-293.8775510,-140],[10,0,-285.4577259,-140],
+    [0,9,-281.3174575,-139.6550635],[-7,4,-283.0207377,-138.4813369],
+    [0,0,-284.1926475,-137.6286640],[0,0,-284.9992655,-137.0079404]
+  ]
+  for(const [dx,dy,x,y] of samples){
+    frame.seconds+=1/60
+    frame.dragGoal={x:hub.position.x+dx,y:hub.position.y+dy}
+    stepOverview(groups,frame)
+    assert.ok(Math.hypot(leaf.position.x-x,leaf.position.y-y)<1e-6)
   }
-  for (const [ratio, speed] of [[1.9, 0], [1.06, -20], [0.97, 16]]) {
-    leaf.position = { x: leaf.naturalDist * ratio, y: 0 }
-    leaf.velocity = { x: speed, y: 0 }
-    for (let i = 0; i < 120; i++) {
-      const error = leaf.position.x - leaf.naturalDist
-      stepOverview(groups, { ...frame, step: [0.5, 1, 1.5][i % 3] })
-      const updated = leaf.position.x - leaf.naturalDist
-      assert.ok(Math.abs(updated) <= Math.abs(error) + 1e-9 && updated * error >= -1e-9)
-    }
-    assert.ok(Math.abs(leaf.position.x - leaf.naturalDist) < 1e-5)
-  }
-  const contracted = 0.76 * leaf.naturalDist
-  leaf.position = { x: contracted + 35, y: 0 }
-  leaf.velocity = { x: -22, y: 0 }
-  for (let i = 0; i < 45; i++) {
-    const before = leaf.position.x
-    stepOverview(groups, { ...frame, hotKey: hub.key })
-    assert.ok(leaf.position.x >= contracted - 1e-9 && leaf.position.x <= before + 1e-9)
-  }
-  assert.ok(Math.abs(leaf.position.x - contracted) < 0.01)
-  leaf.position = { x: 0, y: leaf.naturalDist }
-  leaf.velocity = { x: -3, y: 0 }
-  for (let i = 0; i < 160; i++) stepOverview(groups, frame)
-  assert.ok(bearing(leaf, hub) > Math.PI / 2 + 0.04)
-  assert.ok(bearing(leaf, hub) < Math.PI / 2 + 0.2)
+  const stopped={...leaf.position}
+  frame.seconds+=1/60
+  stepOverview(groups,{...frame,held:undefined,hotKey:null,dragGoal:null,still:false})
+  assert.ok(leaf.position.x<stopped.x && leaf.position.y>stopped.y,'release retains outgoing motion')
 })
 
 test('clusters make way across the real graph in both drawer sizes', (t) => {
@@ -1324,7 +1420,6 @@ test('clusters make way across the real graph in both drawer sizes', (t) => {
     assert.ok(movement > Math.min(65, viewWidth / 9))
     if (viewWidth === 900) {
       assert.ok(minimumClearance > -1, 'ordinary viewport keeps the raw envelopes clear')
-      assert.ok(hubs.filter(hub => hub !== a && pointDistance(hub.screen, initial.get(hub.key)) > 30).length >= 3)
     }
     engine.endNodeDrag()
     engine.move(null)
@@ -1332,10 +1427,24 @@ test('clusters make way across the real graph in both drawer sizes', (t) => {
     const gap = pointDistance(a.screen, b.screen)
     assert.ok(gap > Math.min(200, viewWidth / 3))
     const migrated = hubs.filter(hub => hub !== a && pointDistance(hub.screen, initial.get(hub.key)) > 30)
-    assert.ok(migrated.length >= 2, 'clusters settle into new placements after the drop')
+    assert.ok(migrated.includes(b), 'the impacted cluster keeps its new position after release')
     for (const hub of hubs) {
       assert.ok(hub.screen.x >= 0 && hub.screen.x <= viewWidth)
       assert.ok(hub.screen.y >= 0 && hub.screen.y <= height)
+    }
+    if (viewWidth === 900) {
+      // Follow a route through three known clusters instead of assuming the opening puts them on a line.
+      assert.ok(engine.beginNodeDrag(a, {...a.screen}))
+      for (const kind of ['process', 'equipment', 'manual']) {
+        const neighbor = engine.marks.get('category:' + kind)
+        const from = {...a.screen}, to = {...neighbor.screen}
+        for (let i=1; i<=45; i++) {
+          engine.moveNodeDrag({x:from.x+(to.x-from.x)*i/45, y:from.y+(to.y-from.y)*i/45})
+          frame(1,true)
+        }
+        assert.ok(pointDistance(neighbor.screen,to) > 30, kind + ' moves when crossed')
+      }
+      engine.endNodeDrag()
     }
     t.diagnostic(viewWidth + 'px usable width: fault moved ' + movement.toFixed(1) +
       'px on impact, final center spacing ' + gap.toFixed(1) + 'px')
@@ -1381,12 +1490,12 @@ test('hub and leaf mouse forces fall to exactly zero at their screen-space cutof
   const { cacheCanopies, stepOverview } = load(path.join(root, 'views/mes/graph/starFluid.ts'))
   const view = independentHubs(true)
   function velocity(zoom, mouse) {
-    const hub = { ...view.hub, x: 0, y: 0, position: { x: 0, y: 0 }, velocity: { x: 0, y: 0 } }
-    const leaf = { ...view.engine.marks.get('far'), x: 650, y: 0,
-      position: { x: 650, y: 0 }, velocity: { x: 0, y: 0 } }
+    const hub = { ...view.hub, x: -320, y: 360, position: { x: -320, y: 360 }, velocity: { x: 0, y: 0 } }
+    const leaf = { ...view.engine.marks.get('far'), x: 330, y: 360,
+      position: { x: 330, y: 360 }, velocity: { x: 0, y: 0 } }
     const groups = cacheCanopies(new Map([[hub.key, hub], [leaf.key, leaf]]))
     stepOverview(groups, {
-      seconds: 2, step: 1, zoom, mouse, pointerFlow: { x: 16, y: 4 }, hotKey: null,
+      seconds: 2, step: 1, zoom, mouse: mouse && { x: mouse.x - 320, y: mouse.y + 360 }, pointerFlow: { x: 16, y: 4 }, hotKey: null,
       dragGoal: null, still: false, bounds: { left: -900, right: 900, top: -900, bottom: 900 }
     })
     return [hub.velocity, leaf.velocity]
@@ -1425,11 +1534,11 @@ test('drilldown restores live overview positions and a refit retains the particl
   const { engine, frame, scene, hub } = independentHubs(true)
   const down = { ...hub.screen }
   engine.beginNodeDrag(hub, down)
-  engine.moveNodeDrag({ x: down.x + 120, y: down.y + 40 })
+  engine.moveNodeDrag({ x: down.x - 75, y: down.y + 40 })
   engine.endNodeDrag()
   frame()
   const saved = { ...hub.position }
-  assert.ok(pointDistance(saved, { x: hub.x + 120, y: hub.y + 40 }) < 1e-8)
+  assert.ok(pointDistance(saved, { x: down.x - (engine.width-engine.sidebarInset)/2 - 75, y: down.y - engine.height/2 + 40 }) < 1e-8)
   engine.setScene({ overview: false, marks: new Map(), wires: new Map() }, 100)
   engine.setScene(scene, 200)
   frame()
@@ -1441,4 +1550,127 @@ test('drilldown restores live overview positions and a refit retains the particl
   frame()
   assert.equal(engine.marks.get('hub'), restored)
   assert.deepEqual({ ...restored.position }, saved)
+})
+
+test('dragging to an edge keeps the same free leaf and card bearings as dragging in open space', () => {
+  const {cacheCanopies,stepOverview}=load(path.join(root,'views/mes/graph/starFluid.ts'))
+  const sample=independentHubs(true)
+  const directions=[[1,0],[0,1],[-1,0],[0,-1]]
+  function pose(x,y) {
+    const hub={...structuredClone(sample.hub),x,y,position:{x,y},velocity:{x:0,y:0},focusT:1}
+    const leaves=directions.map(([dx,dy],i)=>{
+      const lx=x+dx*60,ly=y+dy*60
+      return {...structuredClone(sample.engine.marks.get('far')),key:'node'+i,x:lx,y:ly,
+        role:'leaf',parent:hub.key,position:{x:lx,y:ly},velocity:{x:0,y:0},
+        thumbnail:i%2?undefined:{width:22,height:15}}
+    })
+    const groups=cacheCanopies(new Map([hub,...leaves].map(m=>[m.key,m])))
+    const f={step:1,zoom:1,mouse:null,pointerFlow:{x:0,y:0},held:hub,dragGoal:{x,y},still:true,
+      hotKey:hub.key,bounds:{left:-400,right:400,top:-300,bottom:300}}
+    for(let i=0;i<50;i++) stepOverview(groups,{...f,seconds:i/60})
+    assert.deepEqual(hub.position,{x,y})
+    return leaves.map(m=>[m.position.x-x,m.position.y-y])
+  }
+  const open=pose(160,0)
+  for(const [x,y] of [[-418,0],[418,0],[0,-318],[0,318]]) {
+    const atEdge=pose(x,y)
+    atEdge.forEach(([dx,dy],i)=>{
+      assert.ok(Math.hypot(dx-open[i][0],dy-open[i][1])<1e-7)
+      assert.ok(dx*directions[i][0]+dy*directions[i][1]>35)
+    })
+  }
+})
+
+test('a dragged hub can leave the visible canvas and release still clears the middle', () => {
+  const {engine,frame}=fittedOverview(920,620,260)
+  frame(30)
+  const hub=engine.marks.get('category:part')
+  engine.beginNodeDrag(hub,{...hub.screen})
+  for (const point of [{x:-50,y:280},{x:970,y:280},{x:535,y:-50},{x:535,y:680},{x:460,y:310}]) {
+    engine.moveNodeDrag(point)
+    frame(1,true)
+    assert.ok(pointDistance(hub.screen,point)<1e-6)
+    for(const m of engine.marks.values()) {
+      if (m.role==='hub' && m!==hub) assert.ok(Math.hypot(m.screen.x-460,m.screen.y-310)>=.92*620*.19-1e-6)
+    }
+  }
+  engine.endNodeDrag()
+  frame()
+  assert.ok(Math.hypot(hub.screen.x-460,hub.screen.y-310)>=.92*620*.19-1e-7)
+})
+
+test('zooming out on a narrow canvas keeps the central opening in screen pixels', () => {
+  for (const [width,height] of [[230,530],[450,240],[160,260]]) {
+    const {engine,frame}=fittedOverview(width,height,180)
+    engine.still=true
+    for (const zoom of [1,.55,.35,1]) {
+      engine.pose.zoom=engine.goal.zoom=zoom
+      frame(3)
+      for (const m of engine.marks.values()) {
+        if (m.live && m.role==='hub')
+          assert.ok(Math.hypot(m.screen.x-width/2,m.screen.y-height/2)>=.92*Math.max(116,Math.min(width,height)*.19)-1e-6)
+      }
+    }
+  }
+})
+
+test('leaf hover keeps the original outline on the live dot without pinning its family', () => {
+  const {engine, frame} = fittedOverview()
+  frame(40)
+  const leaf = [...engine.marks.values()].find(m => m.role === 'leaf' && !m.thumbnail && engine.hit(m.screen)?.key === m.key)
+  const hub = engine.marks.get(leaf.parent)
+  let arc, ring, clock = engine.last
+  const gradient = () => ({addColorStop(){}})
+  const ctx = new Proxy({
+    measureText:s=>({width:s.length*8}), createLinearGradient:gradient, createRadialGradient:gradient,
+    beginPath(){arc=null}, arc(x,y,r){arc={x,y,r}},
+    stroke(){if(arc && this.strokeStyle==='rgba(196, 224, 236, 0.72)' && pointDistance(arc,leaf.screen)<1e-5) ring=arc.r}
+  }, {get:(obj,key)=>obj[key]??(()=>{})})
+  for (let i=0; i<50; i++) {
+    engine.move({...leaf.screen})
+    assert.equal(engine.hover,leaf.key)
+    ring=undefined
+    engine.draw(ctx,clock+=1000/60,1)
+    assert.equal(leaf.pin,undefined)
+    assert.equal(hub.pin,undefined)
+    const familyRadius = 2.1 + 1.2 * hub.focusT
+    const expected = familyRadius + (3.8 - familyRadius) * leaf.leafFocusT
+    assert.ok(Math.abs(ring-expected)<1e-8)
+  }
+})
+
+test('fixed dust and four-point stars twinkle independently below the graph and freeze under reduced motion', () => {
+  const {Starfield}=load(path.join(root,'views/mes/graph/blueParticles.ts'))
+  const sky=new Starfield()
+  function render(t,visible=960,still=false) {
+    const dots=[],wings=[]
+    let arc=null
+    const gradient=()=>({addColorStop(){}})
+    const ctx=new Proxy({
+      createLinearGradient:gradient,createRadialGradient:gradient,
+      beginPath(){arc=null},arc(x,y,r){arc={x,y,r}},
+      fill(){if(arc)dots.push({...arc,ink:this.fillStyle,alpha:this.globalAlpha}); else wings.push(this.globalAlpha)}
+    },{get:(o,k)=>o[k]??(()=>{})})
+    sky.draw(ctx,t,1200,680,visible,still)
+    return {dust:dots.filter(p=>p.ink!=='#FFFFFF'),flares:dots.filter(p=>p.ink==='#FFFFFF'),wings}
+  }
+  const base=render(0), later=render(734), coord=p=>p.x+','+p.y
+  assert.equal(base.dust.length,100)
+  assert.equal(base.flares.length,20)
+  assert.deepEqual(base.dust.map(coord),later.dust.map(coord))
+  assert.deepEqual(base.flares.map(coord),later.flares.map(coord))
+  assert.ok(base.dust.every(p=>p.r*2>=.85&&p.r*2<=1.6&&p.alpha>=.08&&p.alpha<=.72))
+  assert.deepEqual(['#EAF3FF','#9AC4FF','#FFF0D2'].map(c=>base.dust.filter(p=>p.ink===c).length),[60,30,10])
+  assert.ok(base.dust.filter((p,i)=>Math.abs(p.alpha-later.dust[i].alpha)>.04).length>30)
+  const bright=[]
+  for(let s=0;s<60;s++) {
+    const {flares,wings}=render(s*1000)
+    bright.push(flares.filter(p=>p.alpha>.28).length)
+    assert.equal(wings.length%4,0)
+  }
+  assert.ok(bright.filter(n=>n>=3&&n<=6).length>=45)
+  assert.deepEqual(render(500,960,true),render(7500,960,true))
+  const narrow=render(900,220)
+  const present=new Set(narrow.dust.map(coord))
+  assert.ok(base.dust.filter(p=>p.x<220).every(p=>present.has(coord(p))))
 })
