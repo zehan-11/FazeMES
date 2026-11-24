@@ -1,107 +1,110 @@
 <script setup lang="ts">
-import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
+import {
+  computed,
+  nextTick,
+  onBeforeUnmount,
+  onMounted,
+  ref,
+  shallowRef,
+  onActivated,
+  onDeactivated,
+  watch
+} from 'vue'
+import { AssistantApi } from '@/api/mes/assistant'
+import { GraphApi } from '@/api/mes/graph'
 import GalaxyCanvas, { type CameraPose2D } from './GalaxyCanvas.vue'
 import {
-  buildDeviceOverview,
-  mergeKnowledgeGraph,
-  type KnowledgeGraph,
-  type GraphEntity,
-  type GraphRelation
-} from './graphData'
-import { GraphApi } from '@/api/mes/graph'
+  CATEGORY_SPECS,
+  buildCategoryGraph,
+  categoryScene,
+  type CategoryGraph
+} from './categoryGraph'
+import type { KnowledgeGraph, GraphRelation } from './graphData'
 import { loadCompleteGraph } from './loadCompleteGraph'
+import { useGraphLaunch } from './useGraphLaunch'
 
+const emit = defineEmits<{ openDocument: [id: number, version: number] }>()
 const emptyGraph: KnowledgeGraph = { nodes: [], relations: [] }
-const graph = ref<KnowledgeGraph>(emptyGraph)
-const overview = ref<KnowledgeGraph>(emptyGraph)
+const graph = shallowRef<KnowledgeGraph>(emptyGraph)
+const complete = shallowRef<KnowledgeGraph>(emptyGraph)
+const model = shallowRef<CategoryGraph>()
 const mode = ref<'overview' | 'full'>('overview')
-const overviewEntries = ref<string[]>([])
-
-const KIND_PALETTE: Record<string, string> = {
-  设备: '#5B8CFF',
-  部件: '#38BDF8',
-  工艺: '#818CF8',
-  故障: '#F472B6',
-  原因: '#FBBF24',
-  措施: '#34D399'
-}
-const colorOf = (kind: string) => KIND_PALETTE[kind] ?? '#7AA2FF'
-
 const query = ref('')
 const selectedId = ref<string | null>(null)
 const trail = ref<string[]>([])
 const loading = ref(false)
+const replaying = ref(false)
+const playingIntro = ref(false)
+const launchPending = ref(!window.matchMedia('(prefers-reduced-motion: reduce)').matches)
 const loadProgress = ref('')
-const searching = ref(false)
-const expanding = ref(false)
 const error = ref('')
-const searchResults = ref<GraphEntity[]>([])
-const searchMore = ref(false)
-const neighborMore = ref(false)
-const neighborLimit = ref(30)
-const selectedRelations = ref<GraphRelation[] | null>(null)
 
-// 右侧克莱因蓝信息栏交互状态
 const sidebarCollapsed = ref(false)
 const hoveredKind = ref<string | null>(null)
 const activeKindFilter = ref<string | null>(null)
 const sidebarHoverId = ref<string | null>(null)
 
 const canvas = ref<InstanceType<typeof GalaxyCanvas>>()
+const indexSurface = ref<HTMLElement>()
+const launchSkip = ref<HTMLElement>()
+const {
+  play: playLaunch,
+  finish: finishLaunch,
+  slide,
+  visibleFraction
+} = useGraphLaunch(indexSurface, !launchPending.value, launchSkip)
+watch(sidebarCollapsed, (closed) => {
+  if (!replaying.value && !launchPending.value) slide(!closed)
+})
 let viewRequest: AbortController | undefined
-let selectionRequest: AbortController | undefined
 let overviewPose: CameraPose2D | undefined
 let fullPose: CameraPose2D | undefined
 
+const kinds = new Map<string, string>(CATEGORY_SPECS.map(({ label, color }) => [label, color]))
+const colorOf = (kind: string) => kinds.get(kind) ?? '#7AA2FF'
 const byId = computed(() => new Map(graph.value.nodes.map((node) => [node.id, node])))
-const selected = computed(() => (selectedId.value ? byId.value.get(selectedId.value) : undefined))
+const inspectedId = computed(() => selectedId.value ?? '')
+const selectedCategory = computed(() => model.value?.categories.get(inspectedId.value))
+const selected = computed(
+  () => selectedCategory.value?.root ?? model.value?.items.get(inspectedId.value)
+)
+const selectedDocument = computed(() => model.value?.documents.get(inspectedId.value))
 
 const kindStats = computed(() => {
-  const counts = new Map<string, number>()
-  for (const node of graph.value.nodes) {
-    counts.set(node.kind, (counts.get(node.kind) ?? 0) + 1)
+  const current = model.value
+  if (!current) return []
+  if (mode.value === 'overview') {
+    return CATEGORY_SPECS.map(({ id, label, color }) => ({
+      id,
+      kind: label,
+      color,
+      count: current.categories.get(id)?.members.length ?? 0
+    }))
   }
-  const order = Object.keys(KIND_PALETTE)
-  return [...counts.entries()]
-    .sort((a, b) => {
-      const ia = order.indexOf(a[0])
-      const ib = order.indexOf(b[0])
-      return (ia === -1 ? 99 : ia) - (ib === -1 ? 99 : ib)
-    })
-    .map(([kind, count]) => ({ kind, count, color: colorOf(kind) }))
+  const counts = new Map<string, number>()
+  for (const node of complete.value.nodes) counts.set(node.kind, (counts.get(node.kind) ?? 0) + 1)
+  return [...counts].map(([kind, count]) => ({ id: kind, kind, count, color: colorOf(kind) }))
 })
 
 const filtered = computed(() => {
   const text = query.value.trim().toLowerCase()
-  let base: GraphEntity[]
-  if (!text) {
-    base =
-      mode.value === 'overview'
-        ? overviewEntries.value.flatMap((id) => {
-            const node = byId.value.get(id)
-            return node ? [node] : []
-          })
-        : graph.value.nodes
-  } else if (mode.value === 'overview') {
-    base = searchResults.value
-  } else {
-    base = graph.value.nodes.filter(
+  const current = model.value
+  if (!current) return []
+  if (text) {
+    const items = mode.value === 'full' ? complete.value.nodes : [...current.items.values()]
+    return items.filter(
       (node) => node.name.toLowerCase().includes(text) || node.kind.toLowerCase().includes(text)
     )
   }
-  if (!text && activeKindFilter.value) {
-    return graph.value.nodes.filter((n) => n.kind === activeKindFilter.value)
-  }
-  return base
+  if (mode.value === 'overview') return selectedCategory.value?.members ?? []
+  const kind = activeKindFilter.value
+  return kind ? complete.value.nodes.filter((node) => node.kind === kind) : complete.value.nodes
 })
 
 const groups = computed(() => {
   const grouped = new Map<string, GraphRelation[]>()
-  const id = selectedId.value
-  const relations =
-    selectedRelations.value ??
-    graph.value.relations.filter((edge) => edge.source === id || edge.target === id)
-  for (const relation of relations) {
+  if (!inspectedId.value || selectedCategory.value) return grouped
+  for (const relation of model.value?.neighbors.get(inspectedId.value) ?? []) {
     const group = grouped.get(relation.type) ?? []
     group.push(relation)
     grouped.set(relation.type, group)
@@ -109,49 +112,42 @@ const groups = computed(() => {
   return grouped
 })
 
-const nameOf = (id: string) => byId.value.get(id)?.name ?? id
-const messageOf = (value: unknown, fallback: string) =>
-  value instanceof Error ? value.message : fallback
+const nameOf = (id: string) => model.value?.items.get(id)?.name ?? byId.value.get(id)?.name ?? id
 
 function clearSelection() {
-  selectionRequest?.abort()
-  expanding.value = false
   trail.value = []
   selectedId.value = null
-  selectedRelations.value = null
-  neighborMore.value = false
-  neighborLimit.value = 30
   sidebarHoverId.value = null
+  hoveredKind.value = null
 }
 
-function toggleKindFilter(kind: string) {
-  activeKindFilter.value = activeKindFilter.value === kind ? null : kind
+function activateView(target: 'overview' | 'full') {
+  const current = model.value
+  if (!current) return
+  clearSelection()
+  activeKindFilter.value = null
+  query.value = ''
+  mode.value = target
+  overviewPose = undefined
+  fullPose = undefined
+  graph.value = target === 'overview' ? current.overview : complete.value
 }
 
 async function loadView(target: 'overview' | 'full') {
+  if (model.value) {
+    activateView(target)
+    return
+  }
   viewRequest?.abort()
-  selectionRequest?.abort()
-  expanding.value = false
   const request = new AbortController()
   viewRequest = request
   const { signal } = request
   loading.value = true
-  loadProgress.value = target === 'overview' ? '正在读取设备总览…' : '正在读取全量图谱…'
+  loadProgress.value = '正在读取知识图谱…'
   error.value = ''
   try {
-    let result: KnowledgeGraph
-    let entryIds: string[] = []
-    if (target === 'overview') {
-      const { items } = await GraphApi.search('设备', signal)
-      const devices = items.filter((node) => node.kind === '设备').slice(0, 6)
-      const entries = devices.length ? devices : (await GraphApi.overview(6, signal)).nodes
-      entryIds = entries.map((node) => node.id)
-      const neighborhoods = await Promise.all(
-        entryIds.map((id) => GraphApi.neighbors(id, 24, signal))
-      )
-      result = buildDeviceOverview(entries, neighborhoods)
-    } else {
-      result = await loadCompleteGraph(
+    const [full, documents] = await Promise.all([
+      loadCompleteGraph(
         {
           nodes: (cursor) => GraphApi.nodesPage(cursor, signal),
           relations: (cursor) => GraphApi.relationsPage(cursor, signal)
@@ -160,121 +156,75 @@ async function loadView(target: 'overview' | 'full') {
         (nodes, relations) => {
           if (!signal.aborted) loadProgress.value = `已读取 ${nodes} 个实体、${relations} 条关系`
         }
-      )
-    }
+      ),
+      AssistantApi.bases()
+        .then((bases) =>
+          Promise.all(
+            bases.map(async (base) =>
+              (await AssistantApi.documents(base.id)).map((doc) => ({
+                ...doc,
+                libraryType: base.libraryType
+              }))
+            )
+          )
+        )
+        .then((documents) => documents.flat())
+    ])
     if (signal.aborted) return
-    const merged = mergeKnowledgeGraph(emptyGraph, result)
-    clearSelection()
-    activeKindFilter.value = null
-    query.value = ''
-    mode.value = target
-    fullPose = undefined
-    if (target === 'overview') {
-      overview.value = merged
-      overviewEntries.value = entryIds
-      overviewPose = undefined
-    }
-    graph.value = merged
-  } catch (e) {
-    if (!signal.aborted) error.value = messageOf(e, '图谱加载失败，请重试。')
+    complete.value = full
+    model.value = buildCategoryGraph(full, documents)
+    activateView(target)
+  } catch (exception) {
+    if (!signal.aborted)
+      error.value = exception instanceof Error ? exception.message : '图谱加载失败，请重试。'
   } finally {
     if (viewRequest === request) loading.value = false
   }
 }
 
 async function showOverview() {
-  if (mode.value === 'full' || !overview.value.nodes.length) {
-    await loadView('overview')
-    return
-  }
-  clearSelection()
-  activeKindFilter.value = null
-  query.value = ''
-  error.value = ''
-  graph.value = overview.value
-  await nextTick()
-  if (overviewPose) canvas.value?.restorePose(overviewPose)
-  else canvas.value?.reset()
-  overviewPose = undefined
-}
-
-async function clearFullFocus() {
-  const saved = fullPose
-  fullPose = undefined
-  clearSelection()
-  query.value = ''
+  const saved = overviewPose
+  activateView('overview')
   await nextTick()
   if (saved) canvas.value?.restorePose(saved)
   else canvas.value?.reset()
 }
 
-async function choose(id: string, path = [...trail.value, id], limit = 30) {
-  if (loading.value || (id === selectedId.value && expanding.value)) return
-  sidebarCollapsed.value = false
-  sidebarHoverId.value = null
+async function clearFullFocus() {
+  const saved = fullPose
+  activateView('full')
+  await nextTick()
+  if (saved) canvas.value?.restorePose(saved)
+  else canvas.value?.reset()
+}
+
+function choose(id: string, path: string[]) {
+  const current = model.value
+  if (loading.value || replaying.value || !current) return
   if (mode.value === 'full') {
     if (!byId.value.has(id)) return
     if (!selectedId.value) fullPose = canvas.value?.getPose()
-    selectedId.value = id
-    trail.value = path
-    query.value = ''
-    return
+  } else {
+    if (!current.items.has(id) && !current.categories.has(id)) return
+    if (!selectedId.value) overviewPose = canvas.value?.getPose()
+    graph.value = categoryScene(current, id, path.at(-2))
   }
-  selectionRequest?.abort()
-  const request = new AbortController()
-  selectionRequest = request
-  const { signal } = request
-  if (mode.value === 'overview' && !trail.value.length) overviewPose = canvas.value?.getPose()
-  const sameNode = selectedId.value === id
-  if (!sameNode) {
-    selectedRelations.value = null
-    neighborMore.value = false
-    neighborLimit.value = 30
-  }
-  if (byId.value.has(id)) {
-    selectedId.value = id
-    trail.value = path
-  }
-  expanding.value = true
-  error.value = ''
-  try {
-    const result = await GraphApi.neighbors(id, limit, signal)
-    if (signal.aborted) return
-    const merged = mergeKnowledgeGraph(graph.value, result)
-    if (!merged.nodes.some((node) => node.id === id))
-      throw new Error('画布容量已满，请返回总览后继续探索。')
-    graph.value = merged
-    selectedId.value = id
-    trail.value = path
-    query.value = ''
-    const ids = new Set(merged.nodes.map((node) => node.id))
-    selectedRelations.value = result.relations.filter(
-      (edge) =>
-        (edge.source === id || edge.target === id) && ids.has(edge.source) && ids.has(edge.target)
-    )
-    neighborLimit.value = limit
-    neighborMore.value = result.hasMore || merged.hasMore
-  } catch (e) {
-    if (!signal.aborted) error.value = messageOf(e, '关系加载失败，点击节点可重试。')
-  } finally {
-    if (selectionRequest === request) expanding.value = false
-  }
+  selectedId.value = id
+  trail.value = path
+  sidebarCollapsed.value = false
+  sidebarHoverId.value = null
+  hoveredKind.value = null
+  query.value = ''
 }
 
 function pick(id: string) {
   const index = trail.value.lastIndexOf(id)
-  const path = index < 0 ? [...trail.value, id] : trail.value.slice(0, index + 1)
-  void choose(id, path)
+  choose(id, index < 0 ? [...trail.value, id] : trail.value.slice(0, index + 1))
 }
 
-function goBack() {
-  if (trail.value.length < 2) {
-    if (mode.value === 'full') void clearFullFocus()
-    else void showOverview()
-    return
-  }
-  const path = trail.value.slice(0, -1)
-  void choose(path[path.length - 1], path)
+function openKind(id: string) {
+  if (mode.value === 'overview') pick(id)
+  else activeKindFilter.value = activeKindFilter.value === id ? null : id
 }
 
 function onCanvasClear() {
@@ -282,124 +232,160 @@ function onCanvasClear() {
   else void showOverview()
 }
 
-function onKeyDown(e: KeyboardEvent) {
-  if (e.key === 'Escape' && selectedId.value) goBack()
+function goBack() {
+  if (trail.value.length < 2) {
+    onCanvasClear()
+    return
+  }
+  const path = trail.value.slice(0, -1)
+  choose(path[path.length - 1], path)
 }
 
-watch(query, (value, _, onCleanup) => {
-  const text = value.trim()
-  searchResults.value = []
-  searchMore.value = false
-  searching.value = Boolean(text) && mode.value === 'overview'
-  if (!searching.value) return
-  const request = new AbortController()
-  const { signal } = request
-  const timer = setTimeout(async () => {
-    try {
-      const result = await GraphApi.search(text, signal)
-      if (signal.aborted) return
-      searchResults.value = result.items
-      searchMore.value = result.hasMore
-    } catch (e) {
-      if (!signal.aborted) error.value = messageOf(e, '搜索失败，请重试。')
-    } finally {
-      if (!signal.aborted) searching.value = false
-    }
-  }, 300)
-  onCleanup(() => {
-    clearTimeout(timer)
-    request.abort()
-  })
-})
+async function replayLaunch() {
+  if (!model.value || loading.value || replaying.value) return
+  replaying.value = true
+  finishLaunch()
+  activateView('overview')
+  sidebarCollapsed.value = false
+  await nextTick()
+  if (replaying.value) await runIntro()
+}
 
-onMounted(() => {
-  void loadView('overview')
+let launchRun = 0
+async function runIntro() {
+  const run = ++launchRun
+  try {
+    await playLaunch((start) => {
+      playingIntro.value = true
+      canvas.value?.playIntro(start)
+    })
+  } finally {
+    if (run === launchRun) skipLaunch()
+  }
+}
+
+function endBloom() {
+  launchRun++
+  launchPending.value = false
+  replaying.value = false
+  playingIntro.value = false
+}
+
+function skipLaunch() {
+  endBloom()
+  finishLaunch(!sidebarCollapsed.value)
+  canvas.value?.finishIntro()
+}
+
+function onKeyDown(event: KeyboardEvent) {
+  if (event.key !== 'Escape') return
+  if (replaying.value || launchPending.value) skipLaunch()
+  else if (selectedId.value) goBack()
+}
+
+function showDetail() {
+  sidebarCollapsed.value = false
+  void nextTick(() => {
+    indexSurface.value?.querySelector<HTMLElement>('.sidebar-scroll')?.scrollTo({ top: 0 })
+    const evidence = indexSurface.value?.querySelector('details')
+    if (evidence) evidence.open = true
+    indexSurface.value
+      ?.querySelector<HTMLElement>('.sidebar-heading')
+      ?.focus({ preventScroll: true })
+  })
+}
+onMounted(async () => {
   window.addEventListener('keydown', onKeyDown)
+  await loadView('overview')
+  await nextTick()
+  if (launchPending.value && model.value) {
+    replaying.value = true
+    await runIntro()
+  } else {
+    skipLaunch()
+  }
+})
+onActivated(() => window.addEventListener('keydown', onKeyDown))
+onDeactivated(() => {
+  sidebarHoverId.value = null
+  hoveredKind.value = null
+  window.removeEventListener('keydown', onKeyDown)
+  skipLaunch()
 })
 onBeforeUnmount(() => {
+  skipLaunch()
   viewRequest?.abort()
-  selectionRequest?.abort()
   window.removeEventListener('keydown', onKeyDown)
 })
+defineExpose({ replayLaunch })
 </script>
 
 <template>
   <section class="knowledge-graph" aria-label="知识图谱">
     <header class="graph-topbar">
-      <div class="graph-brand">
-        <span class="brand-tag">KNOWLEDGE GRAPH</span>
-        <h3>设备知识图谱</h3>
-        <span v-if="mode === 'full' && graph.nodes.length" class="brand-summary">
-          全量图谱 · {{ graph.nodes.length }} 实体 · {{ graph.relations.length }} 关系
-        </span>
-        <span v-else-if="mode === 'overview' && overviewEntries.length" class="brand-summary">
-          <template v-if="selected">放射聚焦 · {{ selected.name }}</template>
-          <template v-else>
-            设备总览 · {{ overviewEntries.length }} 入口 · {{ overview.relations.length }} 关系
-          </template>
-        </span>
-      </div>
-
-      <div class="graph-actions">
-        <button type="button" class="top-btn" :disabled="loading" @click="canvas?.reset()">
-          重置视角
-        </button>
-        <button
-          v-if="mode === 'full' && selected"
-          type="button"
-          class="top-btn"
-          :disabled="loading"
-          @click="clearFullFocus"
-        >
-          返回全图
-        </button>
-        <button
-          v-else-if="mode === 'full'"
-          type="button"
-          class="top-btn"
-          :disabled="loading"
-          @click="loadView('overview')"
-        >
-          设备总览
-        </button>
-        <button
-          v-else-if="trail.length"
-          type="button"
-          class="top-btn"
-          :disabled="loading"
-          @click="showOverview"
-        >
-          返回设备总览
-        </button>
-        <button
-          v-if="mode === 'overview'"
-          type="button"
-          class="top-btn is-primary"
-          :disabled="loading"
-          @click="loadView('full')"
-        >
-          查看全量图谱
-        </button>
-      </div>
+      <button
+        v-if="sidebarCollapsed"
+        type="button"
+        class="top-btn"
+        @click="sidebarCollapsed = false"
+      >
+        展开索引
+      </button>
+      <button
+        type="button"
+        class="top-btn"
+        :disabled="loading || replaying"
+        @click="loadView(mode === 'overview' ? 'full' : 'overview')"
+      >
+        {{ mode === 'overview' ? '查看全量图谱' : '分类总览' }}
+      </button>
     </header>
 
-    <el-alert v-if="error" :title="error" type="error" :closable="false" show-icon class="mb-10px" />
+    <el-alert
+      v-if="error"
+      :title="error"
+      type="error"
+      :closable="false"
+      show-icon
+      class="mb-10px"
+    />
 
-    <div class="graph-shell">
-      <!-- 左侧 2D 极简星图主画布 -->
-      <div class="graph-viewport" :aria-busy="loading">
+    <div
+      class="graph-shell"
+      :class="{
+        'index-closed': sidebarCollapsed,
+        'intro-active': replaying || launchPending
+      }"
+    >
+      <button
+        v-if="replaying || launchPending"
+        ref="launchSkip"
+        type="button"
+        class="launch-skip"
+        @click="skipLaunch"
+      >
+        跳过
+      </button>
+
+      <div class="graph-viewport" :aria-busy="loading" :inert="replaying">
         <GalaxyCanvas
-          v-if="graph.nodes.length"
+          v-if="graph.nodes.length || launchPending"
           ref="canvas"
-          :graph="graph"
+          :index-panel="indexSurface"
+          :index-open="!sidebarCollapsed"
+          :index-reveal="visibleFraction"
+          :waiting-for-intro="launchPending && !playingIntro"
+          :full="complete"
+          :model="model"
           :selected="selectedId"
           :trail="trail"
           :explore="mode === 'overview'"
-          :entry-ids="overviewEntries"
           :highlight-kind="hoveredKind"
           :active-kind-filter="activeKindFilter"
           :external-hover-id="sidebarHoverId"
-          @select="(id) => id && pick(id)"
+          @intro-end="endBloom"
+          @select="pick"
+          @detail="showDetail"
           @back="goBack"
           @clear="onCanvasClear"
         />
@@ -412,29 +398,25 @@ onBeforeUnmount(() => {
           </button>
         </div>
 
-        <div v-if="loading && graph.nodes.length" class="graph-progress" role="status">
+        <div
+          v-if="loading && graph.nodes.length && !launchPending"
+          class="graph-progress"
+          role="status"
+        >
           {{ loadProgress }}
         </div>
-
-        <button
-          v-if="sidebarCollapsed"
-          type="button"
-          class="expand-inspector-btn"
-          @click="sidebarCollapsed = false"
-        >
-          展开节点面板
-        </button>
       </div>
 
-      <!-- 右侧克莱因蓝信息与节点详情面板 -->
-      <aside class="klein-sidebar" :class="{ 'is-collapsed': sidebarCollapsed }">
+      <aside
+        ref="indexSurface"
+        class="klein-sidebar"
+        :class="{ 'is-offscreen': sidebarCollapsed || (launchPending && !playingIntro) }"
+        :inert="sidebarCollapsed || replaying || launchPending"
+      >
         <div class="sidebar-head">
-          <div>
-            <span class="sidebar-eyebrow">{{ selected ? selected.kind : 'ENTITY INDEX' }}</span>
-            <h4 class="sidebar-heading">
-              {{ selected ? selected.name : '索引与节点信息' }}
-            </h4>
-          </div>
+          <h4 class="sidebar-heading" tabindex="-1" :title="selected?.name">
+            {{ selected ? selected.name : '索引与节点信息' }}
+          </h4>
           <button
             type="button"
             class="collapse-btn"
@@ -451,7 +433,7 @@ onBeforeUnmount(() => {
             v-model="query"
             type="text"
             class="klein-input"
-            placeholder="搜索设备、部件或故障名称..."
+            placeholder="搜索实体或资料名称"
             :disabled="loading"
             maxlength="100"
           />
@@ -460,19 +442,33 @@ onBeforeUnmount(() => {
           </button>
         </div>
 
-        <!-- 状态 A：搜索中或未选中节点 -> 编号分类目录 + 实体入口列表 + 统计卡片 -->
-        <div v-if="query.trim() || !selected" class="sidebar-scroll" aria-label="实体列表">
-          <div v-if="!query.trim() && kindStats.length" class="kind-directory">
-            <div class="sub-label">实体分类目录（悬停透视 / 点击筛选）</div>
+        <div
+          v-if="query.trim() || !selected || selectedCategory"
+          class="sidebar-scroll"
+          aria-label="实体列表"
+        >
+          <div v-if="selectedCategory && !query.trim()" class="detail-top">
+            <button type="button" class="back-link" @click="goBack">{{
+              trail.length > 1 ? '← 返回上一层' : '← 返回分类总览'
+            }}</button>
+            <p v-if="selectedCategory.root.description" class="detail-desc">{{
+              selectedCategory.root.description
+            }}</p>
+            <p v-if="!filtered.length" class="empty-tip">当前账号暂无可见内容。</p>
+          </div>
+          <div v-if="!selected && !query.trim() && kindStats.length" class="kind-directory">
+            <div class="sub-label">分类目录</div>
             <button
               v-for="(item, idx) in kindStats"
               :key="item.kind"
               type="button"
               class="kind-row"
               :class="{ 'is-active': activeKindFilter === item.kind }"
+              @focus="hoveredKind = item.kind"
+              @blur="hoveredKind = null"
               @mouseenter="hoveredKind = item.kind"
               @mouseleave="hoveredKind = null"
-              @click="toggleKindFilter(item.kind)"
+              @click="openKind(item.id)"
             >
               <span class="kind-num">{{ String(idx + 1).padStart(2, '0') }}</span>
               <i class="kind-dot" :style="{ background: item.color }"></i>
@@ -481,16 +477,12 @@ onBeforeUnmount(() => {
             </button>
           </div>
 
-          <div class="sub-label mt-14px">
-            <template v-if="query.trim()">
-              {{ searching ? '正在搜索…' : `匹配实体 (${filtered.length})` }}
-            </template>
-            <template v-else-if="activeKindFilter">
-              筛选：{{ activeKindFilter }}（{{ filtered.length }}）
-            </template>
-            <template v-else-if="mode === 'overview'">
-              {{ filtered.every((node) => node.kind === '设备') ? '设备入口' : '知识入口' }}
-            </template>
+          <div v-if="query.trim() || selectedCategory || mode === 'full'" class="sub-label mt-14px">
+            <template v-if="query.trim()">搜索结果（{{ filtered.length }}）</template>
+            <template v-else-if="selectedCategory">全部名称（{{ filtered.length }}）</template>
+            <template v-else-if="activeKindFilter"
+              >筛选：{{ activeKindFilter }}（{{ filtered.length }}）</template
+            >
             <template v-else>全部实体</template>
           </div>
 
@@ -511,18 +503,15 @@ onBeforeUnmount(() => {
             </button>
           </div>
 
-          <p v-if="!searching && query.trim() && !filtered.length" class="empty-tip">
-            没有匹配实体。
-          </p>
-          <p v-if="searchMore" class="empty-tip">结果较多，请缩小搜索范围。</p>
+          <p v-if="query.trim() && !filtered.length" class="empty-tip">没有匹配结果。</p>
 
-          <div v-if="!query.trim()" class="sidebar-metrics">
+          <div v-if="!query.trim() && !selected && model" class="sidebar-metrics">
             <div class="metric-box">
-              <strong>{{ graph.nodes.length }}</strong>
+              <strong>{{ complete.nodes.length }}</strong>
               <span>图谱实体数</span>
             </div>
             <div class="metric-box">
-              <strong>{{ graph.relations.length }}</strong>
+              <strong>{{ complete.relations.length }}</strong>
               <span>关系连线数</span>
             </div>
           </div>
@@ -533,7 +522,11 @@ onBeforeUnmount(() => {
           <div class="detail-top">
             <button type="button" class="back-link" @click="goBack">
               {{
-                trail.length > 1 ? '← 返回上一层' : mode === 'full' ? '← 返回全图' : '← 返回入口列表'
+                trail.length > 1
+                  ? '← 返回上一层'
+                  : mode === 'full'
+                    ? '← 返回全图'
+                    : '← 返回分类总览'
               }}
             </button>
             <div class="detail-chip-row">
@@ -544,17 +537,23 @@ onBeforeUnmount(() => {
               <span class="detail-count">{{ groups.size }} 类关系</span>
             </div>
             <p v-if="selected.description" class="detail-desc">{{ selected.description }}</p>
+            <button
+              v-if="selectedDocument"
+              type="button"
+              class="back-link"
+              @click="emit('openDocument', selectedDocument.id, selectedDocument.version)"
+              >查看原文</button
+            >
           </div>
 
-          <p v-if="expanding" class="empty-tip" role="status">正在展开关联…</p>
-          <p v-else-if="!groups.size" class="empty-tip">当前视图暂无关联关系。</p>
+          <p v-if="!groups.size" class="empty-tip">当前视图暂无关联关系。</p>
 
           <div v-for="[type, relations] in groups" :key="type" class="rel-group">
             <div class="sub-label">{{ type }}（{{ relations.length }}）</div>
             <article v-for="edge in relations" :key="edge.id" class="rel-card">
               <div class="rel-path">
                 <button
-                  v-if="edge.source !== selectedId"
+                  v-if="edge.source !== inspectedId"
                   type="button"
                   class="rel-node-btn"
                   @mouseenter="sidebarHoverId = edge.source"
@@ -568,7 +567,7 @@ onBeforeUnmount(() => {
                 <span class="rel-arrow" aria-label="指向">→</span>
 
                 <button
-                  v-if="edge.target !== selectedId"
+                  v-if="edge.target !== inspectedId"
                   type="button"
                   class="rel-node-btn"
                   @mouseenter="sidebarHoverId = edge.target"
@@ -601,19 +600,6 @@ onBeforeUnmount(() => {
               </details>
             </article>
           </div>
-
-          <button
-            v-if="neighborMore && neighborLimit < 100"
-            type="button"
-            class="load-more-btn"
-            :disabled="expanding"
-            @click="choose(selected.id, trail, 100)"
-          >
-            {{ expanding ? '加载中…' : '查看更多关联' }}
-          </button>
-          <p v-else-if="neighborMore" class="empty-tip">
-            已达到单次展开上限，可通过搜索继续查看。
-          </p>
         </div>
       </aside>
     </div>
@@ -622,97 +608,76 @@ onBeforeUnmount(() => {
 
 <style scoped>
 .knowledge-graph {
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  min-height: min(620px, 100%);
   background: #020618;
-  color: #ffffff;
-  border: 1px solid rgba(130, 168, 255, 0.22);
+  color: #fff;
+  border: 4px solid #0022cc;
   overflow: hidden;
 }
-
 .graph-topbar {
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-  flex-wrap: wrap;
-  padding: 12px 18px;
-  background: #050c26;
-  border-bottom: 1px solid rgba(130, 168, 255, 0.2);
-}
-
-.graph-brand {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  flex-wrap: wrap;
-}
-
-.brand-tag {
-  padding: 2px 7px;
-  font-size: 10px;
-  font-weight: 600;
-  letter-spacing: 0.14em;
-  color: #ffffff;
-  background: #0022cc;
-}
-
-.graph-brand h3 {
-  margin: 0;
-  font-size: 16px;
-  font-weight: 600;
-}
-
-.brand-summary {
-  font-size: 12px;
-  color: rgba(200, 218, 255, 0.72);
-}
-
-.graph-actions {
-  display: flex;
-  align-items: center;
+  justify-content: flex-end;
+  flex: 0 0 36px;
   gap: 8px;
-  flex-wrap: wrap;
-}
-
-.top-btn {
-  padding: 6px 12px;
-  font-size: 12px;
-  color: #e6efff;
-  cursor: pointer;
-  background: rgba(130, 168, 255, 0.1);
-  border: 1px solid rgba(130, 168, 255, 0.3);
-  transition: background-color 150ms ease, border-color 150ms ease;
-}
-
-.top-btn:hover:not(:disabled) {
-  background: rgba(0, 51, 255, 0.55);
-  border-color: #6ea0ff;
-}
-
-.top-btn.is-primary {
+  padding: 0 9px;
   background: #0022cc;
-  border-color: #3d64ff;
 }
-
+.top-btn,
+.top-btn.is-primary {
+  padding: 5px 13px;
+  color: #0022cc;
+  font-size: 12px;
+  font-weight: 650;
+  border: 0;
+  border-radius: 999px;
+  background: #fff;
+  cursor: pointer;
+  transition: opacity 150ms ease;
+}
+.top-btn:hover:not(:disabled) {
+  opacity: 0.9;
+}
 .top-btn:disabled {
   opacity: 0.5;
   cursor: not-allowed;
 }
 
 .graph-shell {
-  display: flex;
-  align-items: stretch;
-  min-height: 620px;
-}
-
-.graph-viewport {
+  --index-width: min(272px, 46%);
+  --hud-inset: var(--index-width);
   position: relative;
   flex: 1;
-  min-width: 0;
+  min-height: 0;
+  overflow: hidden;
+}
+.graph-shell.index-closed {
+  --hud-inset: 0px;
+}
+.graph-viewport {
+  position: absolute;
+  inset: 0;
+}
+.launch-skip {
+  position: absolute;
+  z-index: 3;
+  top: 16px;
+  right: 18px;
+  padding: 7px 13px;
+  color: #dce7ff;
+  cursor: pointer;
+  background: #0022cc;
+  border: 1px solid rgba(255, 255, 255, 0.35);
+  border-radius: 1px;
 }
 
 .graph-placeholder {
   display: grid;
-  height: 620px;
+  height: 100%;
   padding: 24px;
   color: rgba(200, 218, 255, 0.78);
   place-content: center;
@@ -730,39 +695,23 @@ onBeforeUnmount(() => {
   border: 1px solid rgba(255, 255, 255, 0.25);
 }
 
-.expand-inspector-btn {
-  position: absolute;
-  top: 14px;
-  right: 14px;
-  padding: 6px 12px;
-  font-size: 12px;
-  font-weight: 500;
-  color: #ffffff;
-  cursor: pointer;
-  background: #0022cc;
-  border: 1px solid rgba(255, 255, 255, 0.32);
-}
-
-/* 右侧克莱因蓝信息栏 */
 .klein-sidebar {
+  position: absolute;
+  z-index: 2;
+  inset: 0 0 0 auto;
+  box-sizing: border-box;
+  width: var(--index-width);
   display: flex;
   flex-direction: column;
-  width: 332px;
-  height: 620px;
-  flex-shrink: 0;
-  color: #ffffff;
-  background: #0022cc;
-  border-left: 1px solid rgba(255, 255, 255, 0.2);
-  transition: width 200ms ease, opacity 180ms ease;
   overflow: hidden;
+  color: #fff;
+  background: #0022cc;
+  border-left: 1px solid rgba(255, 255, 255, 0.18);
+  transform: translateX(0);
 }
-
-.klein-sidebar.is-collapsed {
-  width: 0;
-  border-left-width: 0;
-  opacity: 0;
+.klein-sidebar.is-offscreen {
+  transform: translateX(100%);
 }
-
 .sidebar-head {
   display: flex;
   align-items: flex-start;
@@ -772,20 +721,14 @@ onBeforeUnmount(() => {
   border-bottom: 1px solid rgba(255, 255, 255, 0.18);
 }
 
-.sidebar-eyebrow {
-  display: block;
-  margin-bottom: 3px;
-  font-size: 10px;
-  letter-spacing: 0.14em;
-  color: rgba(255, 255, 255, 0.72);
-}
-
 .sidebar-heading {
   margin: 0;
   font-size: 16px;
   font-weight: 600;
   line-height: 1.35;
-  word-break: break-word;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .collapse-btn {
@@ -815,7 +758,7 @@ onBeforeUnmount(() => {
   padding: 7px 10px;
   font-size: 12px;
   color: #ffffff;
-  background: rgba(2, 6, 24, 0.3);
+  background: transparent;
   border: 1px solid rgba(255, 255, 255, 0.28);
   outline: none;
 }
@@ -873,6 +816,7 @@ onBeforeUnmount(() => {
 }
 
 .kind-row {
+  white-space: nowrap;
   display: flex;
   width: 100%;
   align-items: center;
@@ -884,16 +828,19 @@ onBeforeUnmount(() => {
   background: transparent;
   border: none;
   border-top: 1px solid rgba(255, 255, 255, 0.14);
-  transition: background-color 140ms ease, padding-left 140ms ease;
+  transition:
+    background-color 140ms ease,
+    padding-left 140ms ease;
 }
 
 .kind-row:hover,
 .kind-row.is-active {
   padding-left: 10px;
-  background: rgba(255, 255, 255, 0.16);
+  background: rgba(255, 255, 255, 0.14);
 }
 
 .kind-num {
+  order: 2;
   font-size: 11px;
   font-variant-numeric: tabular-nums;
   color: rgba(255, 255, 255, 0.62);
@@ -905,6 +852,9 @@ onBeforeUnmount(() => {
 }
 
 .kind-count {
+  order: 3;
+  width: 2em;
+  text-align: right;
   font-size: 12px;
   font-variant-numeric: tabular-nums;
 }
@@ -925,9 +875,12 @@ onBeforeUnmount(() => {
   color: #ffffff;
   text-align: left;
   cursor: pointer;
-  background: rgba(2, 6, 24, 0.24);
-  border: 1px solid rgba(255, 255, 255, 0.14);
-  transition: background-color 140ms ease, border-color 140ms ease;
+  background: transparent;
+  border: 0;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.18);
+  transition:
+    background-color 140ms ease,
+    border-color 140ms ease;
 }
 
 .entity-row:hover:not(:disabled) {
@@ -948,6 +901,7 @@ onBeforeUnmount(() => {
 }
 
 .sidebar-metrics {
+  white-space: nowrap;
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: 8px;
@@ -960,16 +914,23 @@ onBeforeUnmount(() => {
   display: flex;
   flex-direction: column;
   gap: 3px;
-  padding: 10px 12px;
-  background: rgba(2, 6, 24, 0.24);
+  padding: 6px 0;
+  background: transparent;
 }
 
 .metric-box strong {
-  font-size: 20px;
+  font-size: 28px;
   font-weight: 600;
   font-variant-numeric: tabular-nums;
 }
 
+.metric-box::before {
+  content: '';
+  width: 27px;
+  height: 6px;
+  border-left: 1px solid rgba(255, 255, 255, 0.5);
+  border-top: 1px solid rgba(255, 255, 255, 0.5);
+}
 .metric-box span {
   font-size: 11px;
   color: rgba(255, 255, 255, 0.72);
@@ -1010,7 +971,7 @@ onBeforeUnmount(() => {
   gap: 6px;
   padding: 3px 9px;
   font-size: 12px;
-  background: rgba(2, 6, 24, 0.3);
+  background: transparent;
 }
 
 .detail-count {
@@ -1032,8 +993,9 @@ onBeforeUnmount(() => {
 .rel-card {
   padding: 9px 10px;
   margin-bottom: 6px;
-  background: rgba(2, 6, 24, 0.26);
-  border: 1px solid rgba(255, 255, 255, 0.14);
+  background: transparent;
+  border: 0;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.18);
 }
 
 .rel-path {
@@ -1050,7 +1012,7 @@ onBeforeUnmount(() => {
   color: #ffffff;
   text-align: left;
   cursor: pointer;
-  background: rgba(255, 255, 255, 0.12);
+  background: transparent;
   border: none;
 }
 
@@ -1119,17 +1081,23 @@ onBeforeUnmount(() => {
   color: rgba(255, 255, 255, 0.72);
 }
 
-@media (width <= 1000px) {
-  .graph-shell {
-    flex-direction: column;
+@media (max-width: 640px) {
+  .sidebar-head,
+  .sidebar-search,
+  .sidebar-scroll {
+    padding-inline: 8px;
   }
-
-  .klein-sidebar {
-    width: 100%;
-    height: auto;
-    max-height: 420px;
-    border-left: none;
-    border-top: 1px solid rgba(255, 255, 255, 0.2);
+  .sidebar-heading {
+    font-size: 14px;
+  }
+  .kind-row {
+    gap: 4px;
+  }
+  .metric-box strong {
+    font-size: 21px;
+  }
+  .metric-box span {
+    font-size: 10px;
   }
 }
 </style>

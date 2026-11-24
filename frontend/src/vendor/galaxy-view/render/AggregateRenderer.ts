@@ -109,6 +109,8 @@ export class AggregateRenderer {
 	private positions: Float32Array = new Float32Array(0);
 	/** CPU 拟合终点坐标；创世期间保持不变，浮层/拾取按需计算当前显示坐标 */
 	private renderPositions: Float32Array = new Float32Array(0);
+	private layoutPositions: Float32Array = new Float32Array(0);
+	private positionOffsets?: Float32Array;
 	/** GPU 节点目标坐标：正常态跟随 renderPositions；创世期间保持不可变终点 */
 	private nodeTargetPositions: Float32Array = new Float32Array(0);
 	/** fitGraphPositions 的加权用度数，随 setData 重建 */
@@ -124,8 +126,10 @@ export class AggregateRenderer {
 	private lastW = 2;
 	private lastH = 2;
 	private baseLinkOpacity = 0.16;
-	private focusActive = false;
+	private focusLinkScale = 1;
+	private targetFocusLinkScale = 1;
 	private graphRadiusEstimate: number;
+	private fitLayout = true;
 
 	private projVec = new Vector3();
 	private ghostSourceVec = new Vector3();
@@ -170,8 +174,9 @@ export class AggregateRenderer {
 		this.colorFn = fn;
 	}
 
-	setData(data: GraphData, positions: Float32Array): void {
+	setData(data: GraphData, positions: Float32Array, fitLayout = true): void {
 		this.resetRevealState();
+		this.fitLayout = fitLayout;
 		this.data = data;
 		this.positions = positions;
 		this.disposeGraphObjects();
@@ -180,6 +185,8 @@ export class AggregateRenderer {
 
 		// —— 节点 ——
 		this.renderPositions = new Float32Array(n * 3);
+		this.layoutPositions = new Float32Array(n * 3);
+		this.positionOffsets = undefined;
 		this.nodeTargetPositions = new Float32Array(n * 3);
 		this.fitWeights = new Float32Array(n);
 		const ghost = new Float32Array(n);
@@ -193,8 +200,6 @@ export class AggregateRenderer {
 			this.fitWeights[i] = node.degree;
 			this.sizes[i] = this.computeSize(node);
 		}
-		this.fitPositions();
-		this.nodeTargetPositions.set(this.renderPositions);
 		this.nodeGeometry = new BufferGeometry();
 		this.nodeGeometry.setAttribute(
 			'position',
@@ -542,20 +547,41 @@ export class AggregateRenderer {
 
 	/** 把力学坐标拟合为 CPU 显示坐标；GPU 目标缓冲由 updatePositions 显式同步。 */
 	private fitPositions(): void {
+		if (!this.fitLayout) {
+			this.layoutPositions.set(this.positions);
+			return;
+		}
 		fitGraphPositions(
 			this.positions,
-			this.renderPositions,
+			this.layoutPositions,
 			this.data.nodes.length,
 			this.graphRadiusEstimate * GRAPH_FIT_RADIUS_FACTOR,
 			this.fitWeights,
 		);
 	}
 
-	/** 布局热时每帧调用：先把链接密集的主体居中收进球壳，再按索引 gather 链接 */
-	updatePositions(): void {
+	/** Stable layout and transient animation offsets use separate buffers. */
+	setPositionOffsets(offsets: Float32Array): void {
+		this.positionOffsets = offsets;
+	}
+
+	get basePositions(): Readonly<Float32Array> {
+		return this.layoutPositions;
+	}
+
+	/** Update the shared node and link geometry, refitting only after the base layout changes. */
+	updatePositions(refit = true): void {
 		if (!this.nodeGeometry || !this.linkGeometry) return;
 		if (this.reveal) return; // 本轮目标快照不可变；结束时会一次性追上 Worker 最新坐标
-		this.fitPositions();
+		if (refit) this.fitPositions();
+		const offsets = this.positionOffsets;
+		if (offsets) {
+			for (let i = 0; i < this.renderPositions.length; i++) {
+				this.renderPositions[i] = this.layoutPositions[i] + offsets[i];
+			}
+		} else {
+			this.renderPositions.set(this.layoutPositions);
+		}
 		const nodeAttr = this.nodeGeometry.getAttribute('position') as BufferAttribute;
 		this.nodeTargetPositions.set(this.renderPositions);
 		nodeAttr.needsUpdate = true;
@@ -570,17 +596,21 @@ export class AggregateRenderer {
 	// ---------- 聚焦与选中高亮 ----------
 
 	/**
-	 * 聚焦模式：按每节点权重淡出/提亮。weightOf 返回 aDim 目标（1=全亮，0.12=淡出）；
+	 * 聚焦模式：按每节点权重淡出/提亮。weightOf 返回 aDim 目标（1=全亮，0=隐藏）；
 	 * 分级选中（选中/一度/二度/其余）就是不同的权重值，单 float aDim 足矣。
 	 */
-	setFocus(weightOf: ((i: number) => number) | null): void {
+	setFocus(
+		weightOf: ((i: number) => number) | null,
+		backgroundLinks = weightOf ? 0.25 : 1,
+		immediate = false,
+	): void {
 		const n = this.data.nodes.length;
-		this.focusActive = weightOf !== null;
+		this.targetFocusLinkScale = backgroundLinks;
 		for (let i = 0; i < n; i++) {
 			this.dimTarget[i] = weightOf ? weightOf(i) : 1;
 		}
 		this.dimAnimating = true;
-		this.syncLinkOpacity();
+		if (immediate) this.stepDim(FOCUS_FADE_S);
 	}
 
 	/** 选中链接高亮：tier1=一度（全饱和），tier2=二度（降亮度）；复用同一层，零新增 draw call */
@@ -652,7 +682,7 @@ export class AggregateRenderer {
 
 	private effectiveLinkOpacity(): number {
 		const base = this.baseLinkOpacity * this.tokens.linkOpacityScale;
-		return this.focusActive ? base * 0.25 : base;
+		return base * this.focusLinkScale;
 	}
 
 	private syncLinkOpacity(): void {
@@ -804,7 +834,11 @@ export class AggregateRenderer {
 			this.dimCurrent[i] = Math.abs(next - tgt) < 0.005 ? tgt : next;
 			if (this.dimCurrent[i] !== tgt) active = true;
 		}
-		this.dimAnimating = active;
+		const linkScale = this.focusLinkScale + (this.targetFocusLinkScale - this.focusLinkScale) * k;
+		this.focusLinkScale = Math.abs(linkScale - this.targetFocusLinkScale) < 0.005
+			? this.targetFocusLinkScale : linkScale;
+		this.syncLinkOpacity();
+		this.dimAnimating = active || this.focusLinkScale !== this.targetFocusLinkScale;
 		if (this.nodeGeometry) {
 			(this.nodeGeometry.getAttribute('aDim') as BufferAttribute).needsUpdate = true;
 		}

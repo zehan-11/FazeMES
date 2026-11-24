@@ -1,30 +1,9 @@
 <template>
-  <!-- 每次进入 AI 助手与知识库页面自动播放启动动画 -->
-  <KnowledgeLaunchOverlay ref="launchOverlay" :ready="assistantReady" />
-
-  <ContentWrap>
-    <div class="assistant-heading">
-      <div
-        ><h2>AI助手与知识库</h2
-        ><p>查询真实业务、生成报表、确认执行业务操作，也可基于已发布文档问答</p></div
-      >
-      <div class="assistant-heading-right">
-        <el-button size="small" plain @click="launchOverlay?.replay()">重播启动动画</el-button>
-        <el-tag :type="modelStatus?.configured ? 'success' : 'info'">
-          {{
-            modelStatus?.configured
-              ? `${modelStatus.provider} · ${modelStatus.model}（凭据已配置）`
-              : '模型尚未配置'
-          }}
-        </el-tag>
-      </div>
-    </div>
-    <el-button
-      v-hasPermi="['mes:insight:query', 'mes:insight:chat']"
-      class="mb-16px"
-      @click="$router.push({ path: '/mes/insight', query: { tab: 'assistant' } })"
-      >查询实时生产业务与交期风险</el-button
-    >
+  <KnowledgeLaunchOverlay v-if="moduleIntro && tab !== 'graph'" @done="moduleIntro = false" />
+  <section class="mes-assistant-page" :class="{ 'is-graph': tab === 'graph' }">
+    <el-tag class="model-status" :type="modelStatus?.configured ? 'success' : 'info'" :title="modelLabel">
+      {{ modelLabel }}
+    </el-tag>
     <el-alert
       v-if="error"
       :title="error"
@@ -33,9 +12,9 @@
       :closable="false"
       class="assistant-alert"
     />
-    <el-tabs v-model="tab">
+    <el-tabs v-model="tab" class="assistant-tabs">
       <el-tab-pane v-if="canKnowledge || canManage" label="知识图谱" name="graph">
-        <KnowledgeGraph v-if="tab === 'graph'" />
+        <KnowledgeGraph v-if="tab === 'graph'" ref="graphView" @open-document="preview" />
       </el-tab-pane>
       <el-tab-pane v-if="canBusiness" label="业务 Agent" name="business">
         <BusinessAssistant :active="tab === 'business'" @navigate="openBusinessAnalysis" />
@@ -652,7 +631,7 @@
         </div>
       </el-tab-pane>
     </el-tabs>
-  </ContentWrap>
+  </section>
 
   <el-dialog
     v-model="baseVisible"
@@ -880,19 +859,18 @@ const KnowledgeGraph = defineAsyncComponent(() => import('@/views/mes/graph/Know
 
 defineOptions({ name: 'MesAssistant' })
 
-const launchOverlay = ref<InstanceType<typeof KnowledgeLaunchOverlay>>()
-const assistantReady = ref(false)
+const graphView = ref<{ replayLaunch: () => Promise<void> }>()
 let wasDeactivated = false
 
-// 兼容 yudao-ui-admin-vue3 的 <KeepAlive> 路由缓存：离开后再切回此页每次都重播，首次挂载不重复触发
 onDeactivated(() => {
+  moduleIntro.value = false
   wasDeactivated = true
 })
 onActivated(() => {
-  if (wasDeactivated) {
-    wasDeactivated = false
-    launchOverlay.value?.replay()
-  }
+  if (!wasDeactivated) return
+  wasDeactivated = false
+  if (tab.value === 'graph') void graphView.value?.replayLaunch()
+  else moduleIntro.value = !reducedMotion.matches
 })
 
 const canChat = checkPermi(['mes:assistant:chat'])
@@ -903,23 +881,35 @@ const canBusiness = computed(
   () => checkPermi(['mes:insight:query']) && checkPermi(['mes:insight:chat'])
 )
 const assistantRoute = useRoute()
+const availableTabs = [
+  (canKnowledge || canManage) && 'graph',
+  canBusiness.value && 'business',
+  (canChat || canKnowledge) && 'chat',
+  (canKnowledge || canManage) && 'knowledge',
+  canConfig.value && 'config'
+].filter((item): item is string => Boolean(item))
+const requestedTab = assistantRoute.query.tab
 const tab = ref(
-  assistantRoute.query.tab === 'graph' && (canKnowledge || canManage)
-    ? 'graph'
-    : canBusiness.value
-      ? 'business'
-      : canChat || canKnowledge
-        ? 'chat'
-        : canManage
-          ? 'knowledge'
-          : 'config'
+  typeof requestedTab === 'string' && availableTabs.includes(requestedTab)
+    ? requestedTab
+    : (availableTabs[0] ?? 'config')
 )
+
+const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)')
+const moduleIntro = ref(tab.value !== 'graph' && !reducedMotion.matches)
+watch(tab, () => { moduleIntro.value = false })
+
 const businessRouter = useRouter()
 function openBusinessAnalysis(topic: string) {
   void businessRouter.push({ path: '/mes/insight', query: { tab: topic } })
 }
 const error = ref('')
 const modelStatus = ref<ModelStatus>()
+const modelLabel = computed(() =>
+  modelStatus.value?.configured
+    ? modelStatus.value.provider + ' · ' + modelStatus.value.model + '（凭据已配置）'
+    : '模型尚未配置'
+)
 const bases = ref<KnowledgeBase[]>([])
 const selectedBases = ref<number[]>([])
 const knowledgeBaseId = ref<number>()
@@ -1596,13 +1586,68 @@ onMounted(async () => {
     failure(exception, '助手初始化失败')
   } finally {
     configLoading.value = false
-    assistantReady.value = true
   }
 })
 </script>
 
 <style scoped>
-.assistant-heading,
+/* Only this tab takes the remaining height in the application's scroll area. */
+:global(.el-scrollbar__view:has(> section > .mes-assistant-page.is-graph)) {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+}
+:global(.el-scrollbar__view > section:has(> .mes-assistant-page.is-graph)) {
+  display: flex;
+  flex-direction: column;
+  flex: 1 1 0;
+  min-height: 0 !important;
+  padding: 0;
+}
+.mes-assistant-page {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  grid-template-rows: 42px auto auto;
+  min-width: 0;
+  background: var(--el-bg-color);
+}
+.mes-assistant-page.is-graph {
+  flex: 1 1 0;
+  min-height: 0;
+  grid-template-rows: 42px auto minmax(0, 1fr);
+}
+.mes-assistant-page > .assistant-tabs {
+  display: contents;
+  --el-tabs-header-height: 42px;
+}
+.mes-assistant-page :deep(.assistant-tabs > .el-tabs__header) {
+  grid-area: 1 / 1;
+  min-width: 0;
+  height: 42px;
+  margin: 0;
+  padding-inline: 10px 4px;
+}
+.mes-assistant-page :deep(.assistant-tabs > .el-tabs__content) {
+  grid-area: 3 / 1 / 4 / -1;
+  min-width: 0;
+  min-height: 0;
+}
+.mes-assistant-page:not(.is-graph) :deep(.assistant-tabs > .el-tabs__content) { padding: 10px; }
+.mes-assistant-page :deep(#pane-graph) { height: 100%; }
+.model-status {
+  grid-area: 1 / 2;
+  align-self: center;
+  justify-self: end;
+  margin-inline: 6px 10px;
+  max-width: min(40vw, 26em);
+  white-space: nowrap;
+}
+.model-status :deep(.el-tag__content) {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.mes-assistant-page > .assistant-alert { grid-area: 2 / 1 / 3 / -1; }
+
 .assistant-chat-toolbar,
 .assistant-document-heading,
 .assistant-composer-actions {
@@ -1612,19 +1657,10 @@ onMounted(async () => {
   gap: 12px;
 }
 
-.assistant-heading-right {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  flex-wrap: wrap;
-}
-
-.assistant-heading h2,
 .assistant-document-heading h3 {
   margin: 0 0 6px;
 }
 
-.assistant-heading p,
 .assistant-document-heading p,
 .assistant-welcome p,
 .assistant-method,
@@ -1916,10 +1952,6 @@ onMounted(async () => {
     overflow: auto;
     border-right: 0;
     border-bottom: 1px solid var(--el-border-color-lighter);
-  }
-
-  .assistant-heading {
-    flex-wrap: wrap;
   }
 
   .assistant-messages {

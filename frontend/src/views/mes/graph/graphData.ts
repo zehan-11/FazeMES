@@ -27,6 +27,7 @@ export interface GraphRelation {
   source: string
   target: string
   type: string
+  presentation?: 'category-member' | 'category-link'
   sourceEvidence: GraphSource
 }
 export interface KnowledgeGraph {
