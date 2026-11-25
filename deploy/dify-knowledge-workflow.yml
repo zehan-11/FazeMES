@@ -1,0 +1,242 @@
+app:
+  name: FazeMES · 问答流程骨架
+  description: 演示问题与证据的分支流转。手动输入设备问题和示例片段，留空片段可查看未命中分支。当前由模板整理输入，检索接口及模型待接。
+  mode: workflow
+  icon: 📖
+  icon_background: '#D5E7FF'
+  use_icon_as_answer_icon: false
+kind: app
+version: 0.3.0
+dependencies: []
+workflow:
+  environment_variables: []
+  conversation_variables: []
+  features:
+    opening_statement: ''
+    suggested_questions: []
+    retriever_resource:
+      enabled: false
+  graph:
+    nodes:
+    - id: '10001'
+      type: custom
+      position:
+        x: 0
+        y: 140
+      positionAbsolute:
+        x: 0
+        y: 140
+      width: 244
+      height: 100
+      sourcePosition: right
+      targetPosition: left
+      data:
+        type: start
+        title: 输入问题与授权片段
+        desc: ''
+        selected: false
+        variables:
+        - variable: question
+          label: 问题
+          type: paragraph
+          required: true
+          max_length: 8000
+          options: []
+        - variable: evidence
+          label: 可见的证据片段（留空测试未命中）
+          type: paragraph
+          required: false
+          max_length: 8000
+          options: []
+    - id: '10002'
+      type: custom
+      position:
+        x: 310
+        y: 140
+      positionAbsolute:
+        x: 310
+        y: 140
+      width: 244
+      height: 100
+      sourcePosition: right
+      targetPosition: left
+      data:
+        type: if-else
+        title: 有证据片段？
+        desc: ''
+        selected: false
+        cases:
+        - case_id: 'true'
+          logical_operator: and
+          conditions:
+          - id: has-evidence
+            variable_selector:
+            - '10001'
+            - evidence
+            varType: string
+            comparison_operator: not empty
+            value: ''
+    - id: '10003'
+      type: custom
+      position:
+        x: 620
+        y: 40
+      positionAbsolute:
+        x: 620
+        y: 40
+      width: 244
+      height: 100
+      sourcePosition: right
+      targetPosition: left
+      data:
+        type: template-transform
+        title: 整理证据卡
+        desc: ''
+        selected: false
+        variables:
+        - variable: evidence
+          value_selector:
+          - '10001'
+          - evidence
+        template: '参考片段
+
+          {{ evidence }}'
+    - id: '10004'
+      type: custom
+      position:
+        x: 620
+        y: 270
+      positionAbsolute:
+        x: 620
+        y: 270
+      width: 244
+      height: 100
+      sourcePosition: right
+      targetPosition: left
+      data:
+        type: template-transform
+        title: 提示补充信息
+        desc: ''
+        selected: false
+        variables: []
+        template: 当前没有参考片段。请补充设备型号或调整知识库范围。
+    - id: '10005'
+      type: custom
+      position:
+        x: 930
+        y: 140
+      positionAbsolute:
+        x: 930
+        y: 140
+      width: 244
+      height: 100
+      sourcePosition: right
+      targetPosition: left
+      data:
+        type: variable-aggregator
+        title: 汇合分支结果
+        desc: ''
+        selected: false
+        output_type: string
+        variables:
+        - - '10003'
+          - output
+        - - '10004'
+          - output
+    - id: '10006'
+      type: custom
+      position:
+        x: 1240
+        y: 140
+      positionAbsolute:
+        x: 1240
+        y: 140
+      width: 244
+      height: 100
+      sourcePosition: right
+      targetPosition: left
+      data:
+        type: end
+        title: 输出问题与结果
+        desc: ''
+        selected: false
+        outputs:
+        - variable: question
+          value_selector:
+          - '10001'
+          - question
+        - variable: result
+          value_selector:
+          - '10005'
+          - output
+    edges:
+    - id: 10001-source-10002
+      source: '10001'
+      target: '10002'
+      sourceHandle: source
+      targetHandle: target
+      type: custom
+      data:
+        sourceType: start
+        targetType: if-else
+        isInIteration: false
+        isInLoop: false
+    - id: 10002-true-10003
+      source: '10002'
+      target: '10003'
+      sourceHandle: 'true'
+      targetHandle: target
+      type: custom
+      data:
+        sourceType: if-else
+        targetType: template-transform
+        isInIteration: false
+        isInLoop: false
+    - id: 10002-false-10004
+      source: '10002'
+      target: '10004'
+      sourceHandle: 'false'
+      targetHandle: target
+      type: custom
+      data:
+        sourceType: if-else
+        targetType: template-transform
+        isInIteration: false
+        isInLoop: false
+    - id: 10003-source-10005
+      source: '10003'
+      target: '10005'
+      sourceHandle: source
+      targetHandle: target
+      type: custom
+      data:
+        sourceType: template-transform
+        targetType: variable-aggregator
+        isInIteration: false
+        isInLoop: false
+    - id: 10004-source-10005
+      source: '10004'
+      target: '10005'
+      sourceHandle: source
+      targetHandle: target
+      type: custom
+      data:
+        sourceType: template-transform
+        targetType: variable-aggregator
+        isInIteration: false
+        isInLoop: false
+    - id: 10005-source-10006
+      source: '10005'
+      target: '10006'
+      sourceHandle: source
+      targetHandle: target
+      type: custom
+      data:
+        sourceType: variable-aggregator
+        targetType: end
+        isInIteration: false
+        isInLoop: false
+    viewport:
+      x: 30
+      y: 40
+      zoom: 0.75

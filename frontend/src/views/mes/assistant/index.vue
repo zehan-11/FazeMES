@@ -95,6 +95,7 @@
                   <el-option label="两跳关系" :value="2" />
                 </el-select>
               </label>
+              <el-button plain @click="openJourney()">预览问答流程</el-button>
               <el-button v-if="sessionId" text :disabled="sending" @click="renameSession"
                 >重命名</el-button
               >
@@ -121,7 +122,7 @@
                 ><p>支持检索与多轮对话；会话仅对当前用户可见。</p></div
               >
               <article
-                v-for="item in messages"
+                v-for="(item, messageIndex) in messages"
                 :key="item.id"
                 class="assistant-message"
                 :class="item.role"
@@ -195,7 +196,16 @@
                     ></button
                   >
                 </div>
+                <el-button
+                  v-if="item.role === 'assistant' || item.status !== 'ANSWERED'"
+                  link
+                  type="primary"
+                  @click="openMessageJourney(item, messageIndex)"
+                >查看本次问答流程</el-button>
               </article>
+              <el-button v-if="searchResult" plain @click="openJourney(searchJourney(searchResult))">
+                查看本次检索流程
+              </el-button>
               <EvidenceResults v-if="searchResult" :result="searchResult" />
             </div>
             <div class="assistant-composer">
@@ -785,6 +795,17 @@
     </el-table>
     <p>历史版本用于核对来源，不参与当前检索或建图。更新文件不会自动发布。</p>
   </el-dialog>
+  <el-dialog
+    v-model="journeyVisible"
+    title="问答流程预览"
+    width="min(1440px, 96vw)"
+    top="3vh"
+    destroy-on-close
+    append-to-body
+    :body-style="{ padding: '0' }"
+  >
+    <WorkflowJourney v-if="journeyVisible" :journey="journeyData" @source="openJourneySource" />
+  </el-dialog>
   <el-dialog v-model="previewVisible" title="原文与分块" width="85%"
     ><div v-loading="previewLoading" v-if="previewDocument"
       ><h3>{{ previewDocument.title }} · v{{ previewDocument.version }}</h3
@@ -842,6 +863,8 @@ import {
   type ModelConfig,
   type ModelStatus
 } from '@/api/mes/assistant'
+import WorkflowJourney from './WorkflowJourney.vue'
+import { messageJourney, searchJourney, type Journey, type JourneySource } from './workflowJourney'
 import EvidenceResults from './EvidenceResults.vue'
 import AnswerText from './AnswerText.vue'
 import KnowledgeLaunchOverlay from './KnowledgeLaunchOverlay.vue'
@@ -859,10 +882,27 @@ const KnowledgeGraph = defineAsyncComponent(() => import('@/views/mes/graph/Know
 
 defineOptions({ name: 'MesAssistant' })
 
+const journeyVisible = ref(false)
+const journeyData = ref<Journey>()
+function openJourney(data?: Journey) {
+  journeyData.value = data
+  journeyVisible.value = true
+}
+function openMessageJourney(item: AssistantMessage, index: number) {
+  const user = item.role === 'user' ? item : messages.value[index - 1]
+  openJourney(messageJourney(user?.role === 'user' ? user.content : '此条答复未附提问', item))
+}
+function openJourneySource(source: JourneySource) {
+  if (!source.doc) return
+  journeyVisible.value = false
+  void preview(source.doc, source.version ?? undefined)
+}
+
 const graphView = ref<{ replayLaunch: () => Promise<void> }>()
 let wasDeactivated = false
 
 onDeactivated(() => {
+  journeyVisible.value = false
   moduleIntro.value = false
   wasDeactivated = true
 })
