@@ -280,7 +280,7 @@ function skipLaunch() {
 function onKeyDown(event: KeyboardEvent) {
   if (event.key !== 'Escape') return
   if (replaying.value || launchPending.value) skipLaunch()
-  else if (selectedId.value) goBack()
+  else if (selectedId.value) onCanvasClear()
 }
 
 function showDetail() {
