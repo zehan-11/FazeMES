@@ -1,242 +1,384 @@
 app:
-  name: FazeMES · 问答流程骨架
-  description: 演示问题与证据的分支流转。手动输入设备问题和示例片段，留空片段可查看未命中分支。当前由模板整理输入，检索接口及模型待接。
-  mode: workflow
+  description: 使用本地 Dify 知识库检索教学手册，命中后调用本机 Qwen 生成回答并附原文，未命中时提示补充信息。
   icon: 📖
   icon_background: '#D5E7FF'
+  icon_type: emoji
+  mode: workflow
+  name: FazeMES · 设备点检手册问答
   use_icon_as_answer_icon: false
-kind: app
-version: 0.3.0
 dependencies: []
+kind: app
+site:
+  chat_color_theme: null
+  chat_color_theme_inverted: false
+  copyright: null
+  custom_disclaimer: ''
+  default_language: zh-Hans
+  description: null
+  icon: 📖
+  icon_background: '#D5E7FF'
+  icon_type: emoji
+  input_placeholder: null
+  privacy_policy: null
+  show_workflow_steps: true
+  title: FazeMES · 设备点检手册问答
+  use_icon_as_answer_icon: false
+version: 0.7.0
 workflow:
-  environment_variables: []
   conversation_variables: []
+  environment_variables: []
   features:
+    file_upload: {}
     opening_statement: ''
-    suggested_questions: []
     retriever_resource:
       enabled: false
+    sensitive_word_avoidance:
+      enabled: false
+    suggested_questions: []
+    text_to_speech:
+      enabled: false
+      language: ''
+      voice: ''
   graph:
+    edges:
+    - data:
+        isInIteration: false
+        isInLoop: false
+        sourceType: start
+        targetType: knowledge-retrieval
+      id: 10100-source-10101
+      source: '10100'
+      sourceHandle: source
+      target: '10101'
+      targetHandle: target
+      type: custom
+    - data:
+        isInIteration: false
+        isInLoop: false
+        sourceType: knowledge-retrieval
+        targetType: if-else
+      id: 10101-source-10102
+      source: '10101'
+      sourceHandle: source
+      target: '10102'
+      targetHandle: target
+      type: custom
+    - data:
+        isInIteration: false
+        isInLoop: false
+        sourceType: code
+        targetType: http-request
+      id: 10103-source-10104
+      source: '10103'
+      sourceHandle: source
+      target: '10104'
+      targetHandle: target
+      type: custom
+    - data:
+        isInIteration: false
+        isInLoop: false
+        sourceType: http-request
+        targetType: code
+      id: 10104-source-10105
+      source: '10104'
+      sourceHandle: source
+      target: '10105'
+      targetHandle: target
+      type: custom
+    - data:
+        isInIteration: false
+        isInLoop: false
+        sourceType: code
+        targetType: end
+      id: 10105-source-10107
+      source: '10105'
+      sourceHandle: source
+      target: '10107'
+      targetHandle: target
+      type: custom
+    - data:
+        isInIteration: false
+        isInLoop: false
+        sourceType: template-transform
+        targetType: end
+      id: 10106-source-10108
+      source: '10106'
+      sourceHandle: source
+      target: '10108'
+      targetHandle: target
+      type: custom
+    - data:
+        isInIteration: false
+        isInLoop: false
+        sourceType: if-else
+        targetType: code
+      id: 10102-true-10103
+      source: '10102'
+      sourceHandle: 'true'
+      target: '10103'
+      targetHandle: target
+      type: custom
+    - data:
+        isInIteration: false
+        isInLoop: false
+        sourceType: if-else
+        targetType: template-transform
+      id: 10102-false-10106
+      source: '10102'
+      sourceHandle: 'false'
+      target: '10106'
+      targetHandle: target
+      type: custom
     nodes:
-    - id: '10001'
-      type: custom
-      position:
-        x: 0
-        y: 140
-      positionAbsolute:
-        x: 0
-        y: 140
-      width: 244
-      height: 100
-      sourcePosition: right
-      targetPosition: left
-      data:
+    - data:
+        desc: ''
+        title: 输入设备问题
         type: start
-        title: 输入问题与授权片段
-        desc: ''
-        selected: false
         variables:
-        - variable: question
-          label: 问题
-          type: paragraph
+        - label: 设备问题
+          max_length: 300
+          options: []
           required: true
-          max_length: 8000
-          options: []
-        - variable: evidence
-          label: 可见的证据片段（留空测试未命中）
-          type: paragraph
-          required: false
-          max_length: 8000
-          options: []
-    - id: '10002'
-      type: custom
+          type: text-input
+          variable: question
+      height: 105
+      id: '10100'
       position:
-        x: 310
-        y: 140
+        x: 0
+        y: 160
       positionAbsolute:
-        x: 310
-        y: 140
-      width: 244
-      height: 100
+        x: 0
+        y: 160
       sourcePosition: right
       targetPosition: left
-      data:
-        type: if-else
-        title: 有证据片段？
+      type: custom
+      width: 244
+    - data:
+        dataset_ids:
+        - pQw7G+d9Wx2UZC//2RNGkHgoqCJkO7C59Ukrn1iRa1Wvk1/tPqcQkDWBdoVQXkSf
         desc: ''
-        selected: false
+        metadata_filtering_mode: disabled
+        multiple_retrieval_config:
+          reranking_enable: false
+          top_k: 3
+        query_variable_selector:
+        - '10100'
+        - question
+        retrieval_mode: multiple
+        title: 检索点检手册
+        type: knowledge-retrieval
+      height: 105
+      id: '10101'
+      position:
+        x: 290
+        y: 160
+      positionAbsolute:
+        x: 290
+        y: 160
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 244
+    - data:
         cases:
         - case_id: 'true'
-          logical_operator: and
           conditions:
-          - id: has-evidence
-            variable_selector:
-            - '10001'
-            - evidence
-            varType: string
-            comparison_operator: not empty
+          - comparison_operator: not empty
+            id: match
             value: ''
-    - id: '10003'
-      type: custom
+            varType: array[object]
+            variable_selector:
+            - '10101'
+            - result
+          logical_operator: and
+        desc: ''
+        title: 找到参考片段？
+        type: if-else
+      height: 105
+      id: '10102'
       position:
-        x: 620
-        y: 40
+        x: 580
+        y: 160
       positionAbsolute:
-        x: 620
-        y: 40
-      width: 244
-      height: 100
+        x: 580
+        y: 160
       sourcePosition: right
       targetPosition: left
-      data:
-        type: template-transform
-        title: 整理证据卡
-        desc: ''
-        selected: false
-        variables:
-        - variable: evidence
-          value_selector:
-          - '10001'
-          - evidence
-        template: '参考片段
-
-          {{ evidence }}'
-    - id: '10004'
       type: custom
-      position:
-        x: 620
-        y: 270
-      positionAbsolute:
-        x: 620
-        y: 270
       width: 244
-      height: 100
-      sourcePosition: right
-      targetPosition: left
-      data:
-        type: template-transform
-        title: 提示补充信息
+    - data:
+        code: "import json\n\ndef main(question, hits):\n    sources = []\n    for\
+          \ index, item in enumerate(hits, 1):\n        metadata = item.get(\"metadata\"\
+          ) or {}\n        title = metadata.get(\"document_name\") or item.get(\"\
+          title\") or \"点检手册\"\n        sources.append(\"[{}] {}：{}\".format(index,\
+          \ title, item.get(\"content\", \"\")))\n    evidence = \"\\n\".join(sources)\n\
+          \    prompt = \"请用一句中文回答问题，只复述下列参考资料明确记载的事项。资料不足时请说明。\\n资料：{}\\n问题：{}\"\
+          .format(evidence, question)\n    body = {\"model\": \"qwen2.5:0.5b\", \"\
+          stream\": False, \"prompt\": prompt,\n            \"options\": {\"temperature\"\
+          : 0, \"num_predict\": 160}}\n    return {\"body\": json.dumps(body, ensure_ascii=False),\
+          \ \"sources\": evidence}\n"
+        code_language: python3
         desc: ''
-        selected: false
-        variables: []
-        template: 当前没有参考片段。请补充设备型号或调整知识库范围。
-    - id: '10005'
-      type: custom
-      position:
-        x: 930
-        y: 140
-      positionAbsolute:
-        x: 930
-        y: 140
-      width: 244
-      height: 100
-      sourcePosition: right
-      targetPosition: left
-      data:
-        type: variable-aggregator
-        title: 汇合分支结果
-        desc: ''
-        selected: false
-        output_type: string
-        variables:
-        - - '10003'
-          - output
-        - - '10004'
-          - output
-    - id: '10006'
-      type: custom
-      position:
-        x: 1240
-        y: 140
-      positionAbsolute:
-        x: 1240
-        y: 140
-      width: 244
-      height: 100
-      sourcePosition: right
-      targetPosition: left
-      data:
-        type: end
-        title: 输出问题与结果
-        desc: ''
-        selected: false
         outputs:
-        - variable: question
-          value_selector:
-          - '10001'
+          body:
+            children: null
+            type: string
+          sources:
+            children: null
+            type: string
+        title: 整理出处与模型输入
+        type: code
+        variables:
+        - value_selector:
+          - '10100'
           - question
-        - variable: result
-          value_selector:
-          - '10005'
+          variable: question
+        - value_selector:
+          - '10101'
+          - result
+          variable: hits
+      height: 105
+      id: '10103'
+      position:
+        x: 880
+        y: 45
+      positionAbsolute:
+        x: 880
+        y: 45
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 244
+    - data:
+        authorization:
+          type: no-auth
+        body:
+          data:
+          - id: body
+            key: ''
+            type: text
+            value: '{{#10103.body#}}'
+          type: raw-text
+        desc: ''
+        headers: Content-Type:application/json
+        method: post
+        params: ''
+        ssl_verify: true
+        timeout:
+          connect: 10
+          read: 150
+          write: 30
+        title: 本机 Qwen 生成回答
+        type: http-request
+        url: http://host.docker.internal:11434/api/generate
+      height: 105
+      id: '10104'
+      position:
+        x: 1180
+        y: 45
+      positionAbsolute:
+        x: 1180
+        y: 45
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 244
+    - data:
+        code: "import json\n\ndef main(body):\n    result = json.loads(body)\n   \
+          \ answer = result.get(\"response\", \"\").strip()\n    if not result.get(\"\
+          done\") or not answer:\n        raise ValueError(\"本机模型未返回完整回答\")\n    return\
+          \ {\"answer\": answer}\n"
+        code_language: python3
+        desc: ''
+        outputs:
+          answer:
+            children: null
+            type: string
+        title: 读取模型答复
+        type: code
+        variables:
+        - value_selector:
+          - '10104'
+          - body
+          variable: body
+      height: 105
+      id: '10105'
+      position:
+        x: 1480
+        y: 45
+      positionAbsolute:
+        x: 1480
+        y: 45
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 244
+    - data:
+        desc: ''
+        template: 没有检索到相关手册片段。请补充设备型号或换一个与设备点检有关的问题。
+        title: 未命中提示
+        type: template-transform
+        variables: []
+      height: 105
+      id: '10106'
+      position:
+        x: 880
+        y: 330
+      positionAbsolute:
+        x: 880
+        y: 330
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 244
+    - data:
+        desc: ''
+        outputs:
+        - value_selector:
+          - '10105'
+          - answer
+          variable: answer
+        - value_selector:
+          - '10103'
+          - sources
+          variable: sources
+        title: 输出回答与依据
+        type: end
+      height: 105
+      id: '10107'
+      position:
+        x: 1780
+        y: 45
+      positionAbsolute:
+        x: 1780
+        y: 45
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 244
+    - data:
+        desc: ''
+        outputs:
+        - value_selector:
+          - '10106'
           - output
-    edges:
-    - id: 10001-source-10002
-      source: '10001'
-      target: '10002'
-      sourceHandle: source
-      targetHandle: target
+          variable: answer
+        title: 输出未命中提示
+        type: end
+      height: 105
+      id: '10108'
+      position:
+        x: 1180
+        y: 330
+      positionAbsolute:
+        x: 1180
+        y: 330
+      sourcePosition: right
+      targetPosition: left
       type: custom
-      data:
-        sourceType: start
-        targetType: if-else
-        isInIteration: false
-        isInLoop: false
-    - id: 10002-true-10003
-      source: '10002'
-      target: '10003'
-      sourceHandle: 'true'
-      targetHandle: target
-      type: custom
-      data:
-        sourceType: if-else
-        targetType: template-transform
-        isInIteration: false
-        isInLoop: false
-    - id: 10002-false-10004
-      source: '10002'
-      target: '10004'
-      sourceHandle: 'false'
-      targetHandle: target
-      type: custom
-      data:
-        sourceType: if-else
-        targetType: template-transform
-        isInIteration: false
-        isInLoop: false
-    - id: 10003-source-10005
-      source: '10003'
-      target: '10005'
-      sourceHandle: source
-      targetHandle: target
-      type: custom
-      data:
-        sourceType: template-transform
-        targetType: variable-aggregator
-        isInIteration: false
-        isInLoop: false
-    - id: 10004-source-10005
-      source: '10004'
-      target: '10005'
-      sourceHandle: source
-      targetHandle: target
-      type: custom
-      data:
-        sourceType: template-transform
-        targetType: variable-aggregator
-        isInIteration: false
-        isInLoop: false
-    - id: 10005-source-10006
-      source: '10005'
-      target: '10006'
-      sourceHandle: source
-      targetHandle: target
-      type: custom
-      data:
-        sourceType: variable-aggregator
-        targetType: end
-        isInIteration: false
-        isInLoop: false
+      width: 244
     viewport:
-      x: 30
-      y: 40
-      zoom: 0.75
+      x: 25
+      y: 65
+      zoom: 0.58
+  rag_pipeline_variables: []
