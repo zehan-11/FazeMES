@@ -24,10 +24,10 @@ const failed = ref(false)
 const rows = ref<MesHomeWorkOrderStatusVO[]>([])
 const hasData = computed(() => rows.value.some((row) => row.count > 0))
 const statusColorMap: Record<number, string> = {
-  [MesProWorkOrderStatusEnum.PREPARE]: '#909399',
-  [MesProWorkOrderStatusEnum.CONFIRMED]: '#409eff',
-  [MesProWorkOrderStatusEnum.FINISHED]: '#67c23a',
-  [MesProWorkOrderStatusEnum.CANCELED]: '#f56c6c'
+  [MesProWorkOrderStatusEnum.PREPARE]: '#8798ad',
+  [MesProWorkOrderStatusEnum.CONFIRMED]: '#568aef',
+  [MesProWorkOrderStatusEnum.FINISHED]: '#30a98c',
+  [MesProWorkOrderStatusEnum.CANCELED]: '#dc8793'
 }
 const workOrderChartOptions = computed<EChartsOption>(() => ({
   tooltip: { trigger: 'item', formatter: '{b}: {c} ({d}%)' },
@@ -37,13 +37,13 @@ const workOrderChartOptions = computed<EChartsOption>(() => ({
       type: 'pie',
       radius: ['40%', '70%'],
       avoidLabelOverlap: true,
-      itemStyle: { borderRadius: 6, borderColor: '#fff', borderWidth: 2 },
+      itemStyle: { borderRadius: 6, borderColor: 'transparent', borderWidth: 2 },
       label: { show: true, formatter: '{b}\n{c}' },
       emphasis: { label: { show: true, fontSize: 14, fontWeight: 'bold' } },
       data: rows.value.map((row) => ({
         name: row.statusName,
         value: row.count,
-        itemStyle: { color: statusColorMap[row.status] || '#409eff' }
+        itemStyle: { color: statusColorMap[row.status] || '#568aef' }
       }))
     }
   ]

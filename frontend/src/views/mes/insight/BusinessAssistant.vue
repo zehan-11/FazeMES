@@ -1,9 +1,5 @@
 <template>
-  <section class="business-assistant">
-    <p class="note">
-      可查询工单、设备、库存、单据、质量、成本与生产风险，生成工单 Excel 报表。
-      可修改参考采购单价、确认或取消及完成工单、结算工单成本、修改设备状态和处理异常：核对预览并确认后执行，保留操作记录。
-    </p>
+  <section class="business-assistant" :class="{ compact }">
     <div class="conversation-controls">
       <el-select
         :model-value="conversation?.id"
@@ -29,111 +25,133 @@
         >删除本会话</el-button
       >
     </div>
-    <el-pagination
-      v-if="conversationTotal > 20"
-      small
-      layout="prev, pager, next"
-      :total="conversationTotal"
-      :page-size="20"
-      :current-page="conversationPage"
-      :disabled="listLoading"
-      @current-change="loadList"
-    />
-    <el-alert v-if="error" :title="error" type="error" :closable="false" show-icon />
-    <el-button v-if="recoverId" :disabled="historyLoading" @click="openConversation(recoverId)">
-      重新载入会话后继续
-    </el-button>
-    <div v-if="conversation" class="note">
-      {{ conversation.title }} · {{ conversation.turnCount }} 轮
-      <span v-if="historyLoading"> · 正在载入</span>
-    </div>
-    <el-button v-if="hasMore" :loading="olderLoading" @click="loadOlder">加载更早记录</el-button>
-    <article v-for="turn in turns" :key="turn.id" class="turn">
-      <p class="question">{{ turn.question || '已选择澄清选项' }}</p>
-      <el-tag size="small" :type="turn.answer.status === 'CLARIFY' ? 'warning' : 'info'">
-        {{
-          turn.answer.status === 'CLARIFY'
-            ? '需要澄清'
-            : turn.answer.status === 'OUT_OF_SCOPE'
-              ? '查询范围说明'
-              : turn.answer.mode === 'MODEL'
-                ? '模型分析 · 请核对依据'
-                : '业务规则答复'
-        }}
-      </el-tag>
-      <MarkdownView
-        class="answer-text"
-        :content="
-          turn.answer.executionReceipt ? turn.answer.executionReceipt.message : turn.answer.answer
-        "
+    <div class="business-stream">
+      <el-pagination
+        v-if="conversationTotal > 20"
+        small
+        layout="prev, pager, next"
+        :total="conversationTotal"
+        :page-size="20"
+        :current-page="conversationPage"
+        :disabled="listLoading"
+        @current-change="loadList"
       />
-      <p v-if="turn.answer.modelWarning" class="note">{{ turn.answer.modelWarning }}</p>
-      <small class="note">查询时间 {{ formatTime(turn.answer.generatedAt) }}</small>
-      <div v-if="turn.answer.status === 'CLARIFY'" class="clarification">
-        <p>{{ turn.answer.clarification?.prompt }}</p>
-        <el-button
-          v-for="choice in turn.answer.clarification?.choices || []"
-          :key="choice.id"
-          :disabled="sending || !isActiveClarification(turn)"
-          @click="choose(turn, choice.id)"
-          >{{ choice.label }}</el-button
-        >
-        <small class="note">
-          {{
-            isActiveClarification(turn)
-              ? '也可以在下方补充年份或筛选条件。'
-              : '此轮选项已失效，请查看最新答复。'
-          }}
-        </small>
-      </div>
-      <AgentResult
-        v-if="turn.answer.topic === 'agent_data' || turn.answer.topic === 'agent_action'"
-        :answer="turn.answer"
-        @failure="handleFailure"
-        @executed="turn.answer.executionReceipt = $event"
-      />
-      <InventoryEvidence
-        v-else-if="isStockEvidence(turn.answer.evidence)"
-        :turn-id="turn.id"
-        :evidence="turn.answer.evidence"
-        @failure="handleFailure"
-      />
-      <LegacyBusinessEvidence
-        v-else-if="turn.answer.status === 'ANSWERED'"
-        :answer="turn.answer"
-        @draft="emit('draft', $event)"
-        @navigate="emit('navigate', $event)"
-      />
-    </article>
-    <div class="presets">
-      <el-button
-        v-for="preset in presets"
-        :key="preset"
-        plain
-        :disabled="sending || !canChat"
-        @click="askPreset(preset)"
-      >
-        {{ preset }}
+      <el-alert v-if="error" :title="error" type="error" :closable="false" show-icon />
+      <el-button v-if="recoverId" :disabled="historyLoading" @click="openConversation(recoverId)">
+        重新载入会话后继续
       </el-button>
+      <div v-if="conversation" class="note">
+        {{ conversation.title }} · {{ conversation.turnCount }} 轮
+        <span v-if="historyLoading"> · 正在载入</span>
+      </div>
+      <el-button v-if="hasMore" :loading="olderLoading" @click="loadOlder">加载更早记录</el-button>
+      <div v-if="!turns.length && !historyLoading" class="business-welcome">
+        <h3>今天想了解哪项生产业务？</h3>
+        <p>从工单、设备或库存开始。涉及业务变更时，可以先核对预览再确认执行。</p>
+        <PromptGrid
+          :items="presets.slice(0, 6)"
+          :disabled="sending || !canChat"
+          @pick="askPreset"
+        />
+      </div>
+      <article v-for="turn in turns" :key="turn.id" class="turn">
+        <p class="question">{{ turn.question || '已选择澄清选项' }}</p>
+        <el-tag size="small" :type="turn.answer.status === 'CLARIFY' ? 'warning' : 'info'">
+          {{
+            turn.answer.status === 'CLARIFY'
+              ? '需要澄清'
+              : turn.answer.status === 'OUT_OF_SCOPE'
+                ? '查询范围说明'
+                : turn.answer.mode === 'MODEL'
+                  ? '模型分析 · 请核对依据'
+                  : '业务规则答复'
+          }}
+        </el-tag>
+        <MarkdownView
+          class="answer-text"
+          :content="
+            turn.answer.executionReceipt ? turn.answer.executionReceipt.message : turn.answer.answer
+          "
+        />
+        <p v-if="turn.answer.modelWarning" class="note">{{ turn.answer.modelWarning }}</p>
+        <small class="note">查询时间 {{ formatTime(turn.answer.generatedAt) }}</small>
+        <div v-if="turn.answer.status === 'CLARIFY'" class="clarification">
+          <p>{{ turn.answer.clarification?.prompt }}</p>
+          <el-button
+            v-for="choice in turn.answer.clarification?.choices || []"
+            :key="choice.id"
+            :disabled="sending || !isActiveClarification(turn)"
+            @click="choose(turn, choice.id)"
+            >{{ choice.label }}</el-button
+          >
+          <small class="note">
+            {{
+              isActiveClarification(turn)
+                ? '也可以在下方补充年份或筛选条件。'
+                : '此轮选项已失效，请查看最新答复。'
+            }}
+          </small>
+        </div>
+        <AgentResult
+          v-if="turn.answer.topic === 'agent_data' || turn.answer.topic === 'agent_action'"
+          :answer="turn.answer"
+          @failure="handleFailure"
+          @executed="turn.answer.executionReceipt = $event"
+        />
+        <InventoryEvidence
+          v-else-if="isStockEvidence(turn.answer.evidence)"
+          :turn-id="turn.id"
+          :evidence="turn.answer.evidence"
+          @failure="handleFailure"
+        />
+        <LegacyBusinessEvidence
+          v-else-if="turn.answer.status === 'ANSWERED'"
+          :answer="turn.answer"
+          @draft="emit('draft', $event)"
+          @navigate="emit('navigate', $event)"
+        />
+      </article>
     </div>
-    <el-input
-      v-model="question"
-      type="textarea"
-      :rows="3"
-      maxlength="1000"
-      show-word-limit
-      :disabled="!canChat || sending || historyLoading || olderLoading || !!recoverId"
-      placeholder="例如：修改Broky电机采购模块的采购单价为64元；确认工单 WO-001；把设备 DV-001 的状态改成维护中。请使用实际物料或编码。"
-    />
-    <div class="conversation-controls">
-      <el-checkbox v-model="useModel" :disabled="!canModel || sending">
-        使用已配置模型理解问题（业务执行仍需确认）
-      </el-checkbox>
-      <el-button type="primary" :loading="sending" :disabled="!canSend" @click="send()"
-        >发送给业务 Agent</el-button
-      >
-      <el-button @click="router.push('/mes/assistant')">知识库与模型配置</el-button>
+    <div class="business-composer">
+      <el-input
+        v-model="question"
+        type="textarea"
+        :autosize="{ minRows: 2, maxRows: 5 }"
+        @keydown.ctrl.enter.prevent="send()"
+        maxlength="1000"
+        show-word-limit
+        :disabled="!canChat || sending || historyLoading || olderLoading || !!recoverId"
+        placeholder="输入工单号、设备编码或业务问题，Ctrl + Enter 发送"
+      />
+      <div class="conversation-controls">
+        <el-dropdown trigger="click" @command="askPreset">
+          <el-button size="small" round :disabled="sending || !canChat">快捷提问 ⌄</el-button>
+          <template #dropdown
+            ><el-dropdown-menu>
+              <el-dropdown-item
+                v-for="preset in presets"
+                :key="preset.question"
+                :command="preset.question"
+                >{{ preset.title }}</el-dropdown-item
+              >
+            </el-dropdown-menu></template
+          >
+        </el-dropdown>
+        <el-checkbox v-model="useModel" :disabled="!canModel || sending">
+          模型理解问题
+        </el-checkbox>
+        <el-button type="primary" :loading="sending" :disabled="!canSend" @click="send()"
+          >发送给业务 Agent</el-button
+        >
+      </div>
     </div>
+    <el-button
+      v-if="!compact && $route.path !== '/mes/assistant'"
+      text
+      size="small"
+      @click="router.push('/mes/assistant')"
+      >知识库与模型配置</el-button
+    >
   </section>
 </template>
 
@@ -149,15 +167,24 @@ import { checkPermi } from '@/utils/permission'
 import InventoryEvidence from './InventoryEvidence.vue'
 import LegacyBusinessEvidence from './LegacyBusinessEvidence.vue'
 import AgentResult from './AgentResult.vue'
+import PromptGrid from '@/views/mes/assistant/PromptGrid.vue'
 import MarkdownView from '@/components/MarkdownView/index.vue'
 
-const props = defineProps<{ active: boolean }>()
-const emit = defineEmits<{ draft: [value: Draft]; navigate: [topic: string] }>()
+const props = defineProps<{ active: boolean; compact?: boolean; initialId?: number }>()
+const emit = defineEmits<{
+  draft: [value: Draft]
+  navigate: [topic: string]
+  conversation: [id?: number]
+}>()
 const router = useRouter()
 const conversation = ref<BusinessConversation>()
 const conversations = ref<BusinessConversation[]>([])
 const conversationTotal = ref(0)
 const conversationPage = ref(1)
+watch(
+  () => conversation.value?.id,
+  (id) => emit('conversation', id)
+)
 const turns = ref<BusinessTurn[]>([])
 const hasMore = ref(false)
 const beforeTurnId = ref<number | null>(null)
@@ -186,16 +213,52 @@ const canSend = computed(
     !creating.value &&
     !recoverId.value
 )
-const presets = computed(() => [
-  ...(checkPermi(['mes:pro-work-order:query']) ? ['查询全部工单进度'] : []),
-  ...(checkPermi(['mes:pro-work-order:export']) ? ['生成本月未完成工单报表'] : []),
-  ...(checkPermi(['mes:dv-machinery:query']) ? ['查询设备状态'] : []),
-  ...(checkPermi(['mes:insight:manage']) ? ['新建异常：物料供应需要跟进'] : []),
-  ...(checkPermi(['mes:wm-material-stock:query']) ? ['查上个月原材料收发存，按批次'] : []),
-  '今天哪些工单有交付风险？',
-  '有哪些待处理异常？',
-  ...(checkPermi(['mes:cost:query']) ? ['BROKY-FG-V2 的 BOM 标准成本是多少？'] : [])
-])
+const presets = computed(() =>
+  [
+    {
+      title: '工单进度到哪了？',
+      detail: '查看生产工单的执行状态',
+      question: '查询全部工单进度',
+      permission: 'mes:pro-work-order:query'
+    },
+    {
+      title: '哪些工单有交付风险？',
+      detail: '查看今天的交付风险',
+      question: '今天哪些工单有交付风险？'
+    },
+    {
+      title: '现场设备状态如何？',
+      detail: '查询设备当前运行状态',
+      question: '查询设备状态',
+      permission: 'mes:dv-machinery:query'
+    },
+    {
+      title: '上月原料进出了多少？',
+      detail: '按批次核对收发存',
+      question: '查上个月原材料收发存，按批次',
+      permission: 'mes:wm-material-stock:query'
+    },
+    { title: '还有哪些待处理异常？', detail: '查看需要跟进的异常', question: '有哪些待处理异常？' },
+    {
+      title: '导出未完工单报表',
+      detail: '生成本月工单 Excel 报表',
+      question: '生成本月未完成工单报表',
+      permission: 'mes:pro-work-order:export'
+    },
+    {
+      title: '跟进一个供应异常',
+      detail: '预览异常处理请求',
+      question: '新建异常：物料供应需要跟进',
+      permission: 'mes:insight:manage'
+    },
+    {
+      title: '查询物料标准成本',
+      detail: '核对 BOM 成本依据',
+      question: 'BROKY-FG-V2 的 BOM 标准成本是多少？',
+      permission: 'mes:cost:query'
+    }
+  ].filter((item) => !item.permission || checkPermi([item.permission]))
+)
 const formatTime = (value: string) => value.replace('T', ' ').replace(/([+-]\d\d:\d\d|Z)$/, '')
 
 function resetContext() {
@@ -400,10 +463,16 @@ async function refresh() {
     await openConversation(conversation.value.id)
   await loadList()
 }
+let initialOpened = false
 watch(
   () => props.active,
   (active) => {
-    if (active) void refresh()
+    if (!active) return
+    if (props.initialId && !initialOpened) {
+      initialOpened = true
+      void loadList()
+      void openConversation(props.initialId)
+    } else void refresh()
   },
   { immediate: true }
 )
@@ -434,8 +503,7 @@ defineExpose({ refresh })
   gap: 12px;
 }
 
-.conversation-controls,
-.presets {
+.conversation-controls {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
@@ -446,7 +514,6 @@ defineExpose({ refresh })
   width: min(340px, 100%);
 }
 
-.presets .el-button,
 .clarification .el-button {
   margin-left: 0;
 }
@@ -484,5 +551,68 @@ defineExpose({ refresh })
 .clarification p,
 .clarification small {
   width: 100%;
+}
+.business-assistant {
+  min-width: 0;
+}
+.business-stream {
+  min-height: 0;
+  max-height: 62vh;
+  overflow: auto;
+  scrollbar-gutter: stable;
+}
+.business-welcome {
+  padding: 18px 3px 14px;
+}
+.business-welcome h3 {
+  margin: 0 0 7px;
+  font-size: 21px;
+  color: var(--fm-text);
+}
+.business-welcome p {
+  margin: 0 0 16px;
+  color: var(--fm-secondary);
+  line-height: 1.6;
+}
+.turn {
+  margin-bottom: 10px;
+  border-color: var(--fm-line);
+  border-radius: 12px;
+  background: var(--fm-card);
+}
+.business-composer {
+  padding: 10px 12px;
+  border: 1px solid var(--fm-strong-line);
+  border-radius: 16px;
+  background: var(--fm-overlay);
+  box-shadow: var(--fm-shadow);
+  backdrop-filter: blur(14px);
+}
+.business-composer :deep(.el-textarea__inner) {
+  background: transparent;
+  box-shadow: none;
+}
+.business-composer > .conversation-controls {
+  margin-top: 8px;
+}
+.business-composer .el-button--primary {
+  margin-left: auto;
+}
+.compact .conversation-controls {
+  gap: 5px;
+}
+.compact .conversation-controls .el-select {
+  width: 160px;
+}
+.compact .business-welcome {
+  padding: 8px 0;
+}
+.compact .business-stream {
+  max-height: 36dvh;
+}
+@media (max-width: 600px) {
+  .conversation-controls .el-select {
+    width: 100%;
+  }
 }
 </style>

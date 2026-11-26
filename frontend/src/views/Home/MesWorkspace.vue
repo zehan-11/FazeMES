@@ -14,11 +14,12 @@
             @click="router.push('/mes/insight')"
             >进入生产决策中心</el-button
           >
-          <el-button v-if="canLoadData" :loading="loading" @click="loadData">刷新数据</el-button>
+          <el-button v-if="canLoadData" :loading="loading" @click="refreshWorkspace">刷新数据</el-button>
         </div>
       </div>
     </el-card>
 
+    <CapabilityCards ref="capabilityCards" />
     <HomeShortcuts v-if="shortcuts.length" :items="shortcuts" @navigate="navigate" />
 
     <el-row v-if="statistics.length" :gutter="16" class="statistics">
@@ -149,6 +150,7 @@ import HomeAlertPanel from '@/views/mes/home/HomeAlertPanel.vue'
 import HomeProductionTrend from '@/views/mes/home/HomeProductionTrend.vue'
 import HomeWorkOrderChart from '@/views/mes/home/HomeWorkOrderChart.vue'
 import HomeShortcuts from '@/views/mes/home/HomeShortcuts.vue'
+import CapabilityCards from './CapabilityCards.vue'
 
 defineOptions({ name: 'Index' })
 
@@ -296,6 +298,11 @@ const loadData = async () => {
   }
 }
 
+const capabilityCards = ref<InstanceType<typeof CapabilityCards>>()
+function refreshWorkspace() {
+  void capabilityCards.value?.refresh()
+  void loadData()
+}
 onMounted(loadData)
 </script>
 

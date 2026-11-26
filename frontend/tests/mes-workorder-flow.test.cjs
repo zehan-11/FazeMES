@@ -40,7 +40,7 @@ const order = (overrides = {}) => ({
   ...overrides
 })
 
-function setup(t, relative = 'WorkOrderForm.vue', { api = {}, confirm, push } = {}) {
+function setup(t, relative = 'WorkOrderForm.vue', { api = {}, confirm, push, permissions } = {}) {
   const filename = path.join(__dirname, '../src/views/mes/pro/workorder', relative)
   const { descriptor } = parse(fs.readFileSync(filename, 'utf8'), { filename })
   const events = [],
@@ -53,6 +53,7 @@ function setup(t, relative = 'WorkOrderForm.vue', { api = {}, confirm, push } = 
       vue,
       '@/utils/mesQuantity': { quantityRule: () => ({}) },
       '@/utils/dict': {},
+      '@/utils/permission': { checkPermi: (keys) => !permissions || keys.some(key => permissions.has(key)) },
       '@/utils/formatTime': {},
       '@/utils/download': {},
       '@/utils/tree': { handleTree: (rows) => rows },
@@ -101,6 +102,21 @@ function setup(t, relative = 'WorkOrderForm.vue', { api = {}, confirm, push } = 
   state.formRef.value = { validate: async () => true, resetFields: () => {} }
   return { state, events, destinations, successes }
 }
+
+test('more actions match the work order state and the operator permissions', (t) => {
+  const permissions = new Set(['mes:pro-work-order:update', 'mes:pro-work-order:query'])
+  const { state } = setup(t, 'index.vue', { permissions })
+  const labels = (status, type = Type.SELF) =>
+    Array.from(state.moreActions(order({ status, type })), action => action.label)
+  assert.deepEqual(labels(Status.PREPARE), ['确认工单', '条码'])
+  assert.deepEqual(labels(Status.CONFIRMED), ['损耗结案', '工单完工', '条码', '取消'])
+  assert.deepEqual(labels(Status.FINISHED), ['损耗记录', '条码'])
+  permissions.clear()
+  assert.deepEqual(labels(Status.CONFIRMED), [])
+  permissions.add('mes:wm-product-issue:query')
+  assert.deepEqual(labels(Status.CONFIRMED), ['生产领料'])
+  assert.deepEqual(labels(Status.CONFIRMED, -1), [])
+})
 
 test('saving creates a draft and requires an explicit confirmation before production navigation', async (t) => {
   const calls = []

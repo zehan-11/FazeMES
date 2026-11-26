@@ -121,6 +121,7 @@ function setup(t, filename, props, api = {}, allowed) {
       './InventoryEvidence.vue': {},
       './LegacyBusinessEvidence.vue': {},
       './AgentResult.vue': {},
+      '@/views/mes/assistant/PromptGrid.vue': {},
       '@/components/MarkdownView/index.vue': {}
     },
     { ...vue, useRouter: () => ({ push: () => {} }), onBeforeUnmount: () => {} }
@@ -136,6 +137,23 @@ function setup(t, filename, props, api = {}, allowed) {
   t.after(() => scope.stop())
   return { state, events, props: reactiveProps }
 }
+
+test('expanding the floating agent restores its authorized conversation once', async (t) => {
+  const calls = []
+  const { state, props } = setup(t, 'BusinessAssistant.vue', { active: false, initialId: 17 }, {
+    conversation: async id => { calls.push(id); return history(id) }
+  })
+  assert.deepEqual(calls, [])
+  props.active = true
+  await flush()
+  assert.equal(state.conversation.value.id, 17)
+  await state.openConversation(21)
+  props.active = false
+  await flush()
+  props.active = true
+  await flush()
+  assert.deepEqual(calls, [17, 21, 21])
+})
 
 test('business conversation resumes persisted history and sends the exact current version once', async (t) => {
   const calls = [],

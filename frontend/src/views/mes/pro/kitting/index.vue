@@ -49,16 +49,17 @@
         v-loading="boardLoading"
         :data="visibleBoard"
         highlight-current-row
+        :current-row-key="selectedOrderId"
         row-key="workOrderId"
         empty-text="当前筛选下无已确认工单"
         @row-click="openAnalysis"
       >
-        <el-table-column label="工单" min-width="160"
-          ><template #default="{ row }"
-            ><strong>{{ row.workOrderCode }}</strong
-            ><div class="muted">{{ row.workOrderName }}</div></template
-          ></el-table-column
-        >
+        <el-table-column label="工单" prop="workOrderCode" min-width="175" show-overflow-tooltip>
+          <template #default="{ row }">
+            <span class="order-code">{{ row.workOrderCode }}</span>
+            <span class="workorder-name muted">{{ row.workOrderName }}</span>
+          </template>
+        </el-table-column>
         <el-table-column label="齐套状态" min-width="100"
           ><template #default="{ row }"
             ><el-tag :type="statusTone(row.status)">{{ statusText(row.status) }}</el-tag></template
@@ -421,19 +422,38 @@ const reservationColumns = [
   { key: 'consumedQuantity', label: '已消耗' },
   { key: 'releasedQuantity', label: '已释放' }
 ]
+let boardRequest = 0
 async function loadBoard() {
+  const request = ++boardRequest
   boardLoading.value = true
   error.value = ''
   try {
-    board.value = await KittingApi.board({ ...query })
+    const rows = await KittingApi.board({ ...query })
+    if (request !== boardRequest) return
+    board.value = rows
     boardPage.value = 1
+    // Explicit deep links can point to closed orders outside this shortage board.
+    const explicitId = Number(route.query.workOrderId)
+    const explicit = Number.isSafeInteger(explicitId) && explicitId > 0
+    if (!explicit && !rows.some((row) => row.workOrderId === selectedOrderId.value)) {
+      selectedOrderId.value = rows[0]?.workOrderId
+      if (selectedOrderId.value) await loadDetail(selectedOrderId.value)
+      else clearDetail()
+    }
   } catch {
-    error.value = '齐套看板加载失败，请稍后重试。'
+    if (request === boardRequest) error.value = '齐套看板加载失败，请稍后重试。'
   } finally {
-    boardLoading.value = false
+    if (request === boardRequest) boardLoading.value = false
   }
 }
 let detailRequest = 0
+function clearDetail() {
+  detailRequest++
+  analysis.value = undefined
+  reservations.value = []
+  history.value = []
+  detailLoading.value = false
+}
 async function loadDetail(id: number) {
   const request = ++detailRequest
   if (analysis.value?.workOrderId !== id) {
@@ -463,18 +483,15 @@ async function loadDetail(id: number) {
 async function openAnalysis(row: KittingAnalysis) {
   selectedOrderId.value = row.workOrderId
   await router.replace({ query: { ...route.query, workOrderId: String(row.workOrderId) } })
-  await loadDetail(row.workOrderId)
+  if (selectedOrderId.value === row.workOrderId) await loadDetail(row.workOrderId)
 }
 async function selectOrder() {
-  if (selectedOrderId.value) {
-    await router.replace({ query: { ...route.query, workOrderId: String(selectedOrderId.value) } })
-    await loadDetail(selectedOrderId.value)
+  const id = selectedOrderId.value
+  if (id) {
+    await router.replace({ query: { ...route.query, workOrderId: String(id) } })
+    if (selectedOrderId.value === id) await loadDetail(id)
   } else {
-    detailRequest++
-    analysis.value = undefined
-    reservations.value = []
-    history.value = []
-    detailLoading.value = false
+    clearDetail()
     const nextQuery = { ...route.query }
     delete nextQuery.workOrderId
     await router.replace({ query: nextQuery })
@@ -597,7 +614,7 @@ h3 {
 
 .kitting-layout {
   display: grid;
-  grid-template-columns: 390px minmax(0, 1fr);
+  grid-template-columns: clamp(435px, 34%, 575px) minmax(0, 1fr);
   gap: 16px;
 }
 
@@ -643,7 +660,25 @@ h3 {
   --el-table-tr-bg-color: var(--el-color-danger-light-9);
 }
 
-@media (width <= 1300px) {
+.kitting-layout > * {
+  min-width: 0;
+}
+.order-code,
+.workorder-name {
+  display: block;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+.order-code {
+  font:
+    600 13px/1.65 ui-monospace,
+    Consolas,
+    monospace;
+  font-variant-numeric: tabular-nums;
+}
+
+@media (width <= 1150px) {
   .kitting-layout {
     grid-template-columns: 1fr;
   }

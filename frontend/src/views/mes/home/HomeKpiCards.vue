@@ -42,7 +42,7 @@ const cards = computed(() => {
     {
       label: '进行中工单',
       icon: 'ep:document',
-      color: '#409eff',
+      color: 'var(--fm-blue-ink)',
       value: data.workOrderActiveCount,
       hint: '待排产 ' + data.workOrderPrepareCount + ' · 已完成 ' + data.workOrderFinishedCount,
       path: props.destinations.MesProWorkOrder
@@ -50,7 +50,7 @@ const cards = computed(() => {
     {
       label: '今日产量',
       icon: 'ep:data-analysis',
-      color: '#67c23a',
+      color: 'var(--fm-tone-success)',
       value: formatQuantity(data.todayOutput) + ' 件',
       hint: '昨日产量 ' + formatQuantity(data.yesterdayOutput) + ' 件',
       path: props.destinations.MesProFeedback
@@ -58,7 +58,7 @@ const cards = computed(() => {
     {
       label: '报工合格率',
       icon: 'ep:circle-check',
-      color: '#e6a23c',
+      color: 'var(--fm-tone-warning)',
       value:
         known && total > 0n
           ? (Number((qualified * 1000n + total / 2n) / total) / 10).toFixed(1) + '%'
@@ -75,7 +75,7 @@ const cards = computed(() => {
     {
       label: '运行中设备',
       icon: 'ep:cpu',
-      color: '#7c3aed',
+      color: 'var(--fm-blue-ink)',
       value: data.machineryProducing + ' / ' + data.machineryTotal,
       hint: '停机 ' + data.machineryStop + ' · 维护 ' + data.machineryMaintenance,
       path: props.destinations.MesDvMachinery

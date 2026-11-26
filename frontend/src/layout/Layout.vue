@@ -2,6 +2,7 @@
 import { computed, defineComponent, unref } from 'vue'
 import { useAppStore } from '@/store/modules/app'
 import { Backtop } from '@/components/Backtop'
+import FloatingAssistant from './components/FloatingAssistant.vue'
 import { Setting } from '@/layout/components/Setting'
 import { useRenderLayout } from './components/useRenderLayout'
 import { useDesign } from '@/hooks/web/useDesign'
@@ -66,6 +67,7 @@ export default defineComponent({
         {renderLayout()}
 
         <Backtop></Backtop>
+        <FloatingAssistant />
 
         <Setting></Setting>
       </section>
