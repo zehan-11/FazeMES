@@ -45,7 +45,7 @@ export function difyJourney(trace: DifyRun): Journey {
   return {
     origin: 'Dify 运行记录',
     question: trace.question,
-    scope: 'Dify 设备点检示例手册',
+    scope: 'Dify 项目教学手册',
     sources: trace.sources,
     branch: '',
     result: trace.answer,
