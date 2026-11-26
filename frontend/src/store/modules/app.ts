@@ -2,7 +2,8 @@ import { CACHE_KEY, useCache } from '@/hooks/web/useCache'
 import { ElementPlusSize } from '@/types/elementPlus'
 import { LayoutType } from '@/types/layout'
 import { ThemeTypes } from '@/types/theme'
-import { humpToUnderline, setCssVar } from '@/utils'
+import { setCssVar } from '@/utils'
+import { glassPreferences } from '@/styles/glassTheme'
 import { getCssColorVariable, hexToRGB, mix } from '@/utils/color'
 import { normalizeLayout } from '@/utils/layout'
 import { ElMessage } from 'element-plus'
@@ -52,7 +53,7 @@ export const useAppStore = defineStore('app', {
       pageLoading: false, // 路由跳转loading
 
       breadcrumb: true, // 面包屑
-      breadcrumbIcon: true, // 面包屑图标
+      breadcrumbIcon: false, // 面包屑图标
       collapse: false, // 折叠菜单
       uniqueOpened: true, // 是否只保持一个子菜单的展开
       hamburger: true, // 折叠图标
@@ -62,7 +63,7 @@ export const useAppStore = defineStore('app', {
       locale: true, // 多语言图标
       message: true, // 消息图标
       im: import.meta.env.VITE_APP_LOCAL_MES !== 'true', // MES 本地底稿未启用 IM 服务
-      tagsView: true, // 标签页
+      tagsView: false, // 标签页
       tagsViewImmerse: false, // 标签页沉浸
       tagsViewIcon: true, // 是否显示标签图标
       logo: true, // logo
@@ -72,38 +73,9 @@ export const useAppStore = defineStore('app', {
       fixedMenu: wsCache.get('fixedMenu') || false, // 是否固定菜单
 
       layout: normalizeLayout(wsCache.get(CACHE_KEY.LAYOUT)), // layout布局
-      isDark: wsCache.get(CACHE_KEY.IS_DARK) || false, // 是否是暗黑模式
+      isDark: wsCache.get(CACHE_KEY.IS_DARK) ?? true, // 是否是暗黑模式
       currentSize: wsCache.get('default') || 'default', // 组件尺寸
-      theme: wsCache.get(CACHE_KEY.THEME) || {
-        // 主题色
-        elColorPrimary: '#409eff',
-        // 左侧菜单边框颜色
-        leftMenuBorderColor: 'inherit',
-        // 左侧菜单背景颜色
-        leftMenuBgColor: '#001529',
-        // 左侧菜单浅色背景颜色
-        leftMenuBgLightColor: '#0f2438',
-        // 左侧菜单选中背景颜色
-        leftMenuBgActiveColor: 'var(--el-color-primary)',
-        // 左侧菜单收起选中背景颜色
-        leftMenuCollapseBgActiveColor: 'var(--el-color-primary)',
-        // 左侧菜单字体颜色
-        leftMenuTextColor: '#bfcbd9',
-        // 左侧菜单选中字体颜色
-        leftMenuTextActiveColor: '#fff',
-        // logo字体颜色
-        logoTitleTextColor: '#fff',
-        // logo边框颜色
-        logoBorderColor: 'inherit',
-        // 头部背景颜色
-        topHeaderBgColor: '#fff',
-        // 头部字体颜色
-        topHeaderTextColor: 'inherit',
-        // 头部悬停颜色
-        topHeaderHoverColor: '#f6f6f6',
-        // 头部边框颜色
-        topToolBorderColor: '#eee'
-      }
+      theme: glassPreferences(wsCache.get(CACHE_KEY.THEME))
     }
   },
   getters: {
@@ -193,12 +165,15 @@ export const useAppStore = defineStore('app', {
     setPrimaryLight() {
       if (this.theme.elColorPrimary) {
         const elColorPrimary = this.theme.elColorPrimary
-        const color = this.isDark ? '#000000' : '#ffffff'
+        const surface = this.isDark ? '#0f1b30' : '#ffffff'
         const lightList = [3, 5, 7, 8, 9]
         lightList.forEach((v) => {
-          setCssVar(`--el-color-primary-light-${v}`, mix(color, elColorPrimary, v / 10))
+          setCssVar(`--el-color-primary-light-${v}`, mix(surface, elColorPrimary, v / 10))
         })
-        setCssVar(`--el-color-primary-dark-2`, mix(color, elColorPrimary, 0.2))
+        setCssVar(
+          '--el-color-primary-dark-2',
+          mix(this.isDark ? '#c2dcff' : '#10265a', elColorPrimary, 0.2)
+        )
 
         this.setAllColorRgbVars()
       }
@@ -311,13 +286,15 @@ export const useAppStore = defineStore('app', {
       this.mobile = mobile
     },
     setTheme(theme: ThemeTypes) {
-      this.theme = Object.assign(this.theme, theme)
+      this.theme = glassPreferences({ ...this.theme, ...theme })
+      this.setCssVarTheme()
       wsCache.set(CACHE_KEY.THEME, this.theme)
     },
     setCssVarTheme() {
-      for (const key in this.theme) {
-        setCssVar(`--${humpToUnderline(key)}`, this.theme[key])
-      }
+      const colors = glassPreferences(this.theme)
+      setCssVar('--el-color-primary', colors.elColorPrimary)
+      setCssVar('--fm-header-tint', colors.topHeaderBgColor)
+      setCssVar('--fm-menu-tint', colors.leftMenuBgColor)
       this.setPrimaryLight()
     },
     setFooter(footer: boolean) {

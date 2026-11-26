@@ -1,4 +1,5 @@
 <script lang="ts" setup>
+import { Expand, Fold } from '@element-plus/icons-vue'
 import { useAppStore } from '@/store/modules/app'
 import { propTypes } from '@/utils/propTypes'
 import { useDesign } from '@/hooks/web/useDesign'
@@ -24,12 +25,15 @@ const toggleCollapse = () => {
 </script>
 
 <template>
-  <div :class="prefixCls" @click="toggleCollapse">
-    <Icon
-      :color="color"
-      :icon="collapse ? 'ep:expand' : 'ep:fold'"
-      :size="18"
-      class="cursor-pointer"
-    />
-  </div>
+  <button
+    type="button"
+    :class="[prefixCls, 'fm-icon-button']"
+    :aria-expanded="!collapse"
+    :aria-label="collapse ? '展开导航' : '收起导航'"
+    @click="toggleCollapse"
+  >
+    <ElIcon :color="color" :size="18" aria-hidden="true">
+      <Expand v-if="collapse" /><Fold v-else />
+    </ElIcon>
+  </button>
 </template>

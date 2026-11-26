@@ -1,5 +1,8 @@
 <script lang="tsx">
 import { defineComponent, computed } from 'vue'
+import { ElIcon, ElPopover } from 'element-plus'
+import { Setting as SettingsIcon } from '@element-plus/icons-vue'
+import { ThemeSwitch } from '@/layout/components/ThemeSwitch'
 import router from '@/router'
 import { Message } from '@/layout/components/Message'
 import { Collapse } from '@/layout/components/Collapse'
@@ -77,56 +80,84 @@ export default defineComponent({
     return () => (
       <div
         id={`${variables.namespace}-tool-header`}
-        class={[
-          prefixCls,
-          'h-[var(--top-tool-height)] relative px-[var(--top-tool-p-x)] flex items-center justify-between',
-          'dark:bg-[var(--el-bg-color)]'
-        ]}
+        class={[prefixCls, 'h-[var(--top-tool-height)] relative flex items-center justify-between']}
       >
         {showSidebarControl.value || showBreadcrumb.value ? (
-          <div class="h-full flex items-center">
+          <div class="fm-header-path">
             {showSidebarControl.value && hamburger.value && !isTwoColumnLayout(layout.value) ? (
               <Collapse class="custom-hover" color="var(--top-header-text-color)"></Collapse>
             ) : undefined}
-            {showBreadcrumb.value && breadcrumb.value ? (
-              <Breadcrumb class="lt-md:hidden"></Breadcrumb>
-            ) : undefined}
+            {showBreadcrumb.value && breadcrumb.value ? <Breadcrumb /> : undefined}
           </div>
         ) : undefined}
-        <div class="h-full flex items-center">
-          <FmsAccountSetSwitch />
-          {hasTenantVisitPermission.value ? <TenantVisit /> : undefined}
-          <div
-            class="v-setting custom-hover"
-            title={t('setting.projectSetting')}
-            onClick={openSetting}
-          >
-            <Icon color="var(--top-header-text-color)" size={18} icon="ep:setting" />
-          </div>
-          {screenfull.value ? (
-            <Screenfull class="custom-hover" color="var(--top-header-text-color)"></Screenfull>
-          ) : undefined}
-          {search.value ? (
-            <RouterSearch isModal={false} color="var(--top-header-text-color)" />
-          ) : undefined}
-          {size.value ? (
-            <SizeDropdown class="custom-hover" color="var(--top-header-text-color)"></SizeDropdown>
-          ) : undefined}
-          {locale.value ? (
-            <LocaleDropdown
-              class="custom-hover"
-              color="var(--top-header-text-color)"
-            ></LocaleDropdown>
-          ) : undefined}
-          {message.value ? (
-            <Message class="custom-hover" color="var(--top-header-text-color)"></Message>
-          ) : undefined}
-          {/* IM 聊天入口 */}
-          {im.value ? (
-            <div class="custom-hover" onClick={goToChat}>
-              <Icon color="var(--top-header-text-color)" size={18} icon="ep:chat-dot-round" />
-            </div>
-          ) : undefined}
+        <div class="fm-header-actions">
+          <ThemeSwitch />
+          {screenfull.value ? <Screenfull class="fm-icon-button" /> : undefined}
+          <ElPopover trigger="click" placement="bottom-end" width={300} persistent>
+            {{
+              reference: () => (
+                <button
+                  type="button"
+                  class="fm-icon-button"
+                  aria-label="工作台工具与设置"
+                  title="工作台工具与设置"
+                >
+                  <ElIcon size={18}>
+                    <SettingsIcon />
+                  </ElIcon>
+                </button>
+              ),
+              default: () => (
+                <div class="fm-workbench-tools">
+                  <FmsAccountSetSwitch />
+                  {hasTenantVisitPermission.value ? <TenantVisit /> : undefined}
+                  <button type="button" class="fm-tools-setting" onClick={openSetting}>
+                    <Icon size={16} icon="ep:operation" />
+                    {t('setting.projectSetting')}
+                  </button>
+                  {search.value ? (
+                    <RouterSearch isModal={false} color="var(--top-header-text-color)" />
+                  ) : undefined}
+                  {size.value ? (
+                    <SizeDropdown
+                      title={t('setting.sizeIcon')}
+                      class="custom-hover"
+                      color="var(--top-header-text-color)"
+                    ></SizeDropdown>
+                  ) : undefined}
+                  {locale.value ? (
+                    <LocaleDropdown
+                      title={t('setting.localeIcon')}
+                      class="custom-hover"
+                      color="var(--top-header-text-color)"
+                    ></LocaleDropdown>
+                  ) : undefined}
+                  {message.value ? (
+                    <Message
+                      title={t('setting.messageIcon')}
+                      class="custom-hover"
+                      color="var(--top-header-text-color)"
+                    ></Message>
+                  ) : undefined}
+                  {/* IM 聊天入口 */}
+                  {im.value ? (
+                    <button
+                      type="button"
+                      title="即时通讯"
+                      class="fm-icon-button"
+                      onClick={goToChat}
+                    >
+                      <Icon
+                        color="var(--top-header-text-color)"
+                        size={18}
+                        icon="ep:chat-dot-round"
+                      />
+                    </button>
+                  ) : undefined}
+                </div>
+              )
+            }}
+          </ElPopover>
           <UserInfo></UserInfo>
         </div>
       </div>

@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="zh-CN">
+<html lang="zh-CN" class="dark">
   <head>
     <meta charset="UTF-8" />
     <link rel="icon" type="image/svg+xml" href="/fazemes-logo.svg" />
@@ -8,6 +8,18 @@
     <meta name="keywords" content="FazeMES，生产执行管理示例" />
     <meta name="description" content="FazeMES，生产执行管理示例" />
     <title>%VITE_APP_TITLE%</title>
+    <script>
+      // Paint the splash in the saved mode before the Vue bundle loads (web-storage-cache).
+      try {
+        if (JSON.parse(localStorage.getItem('isDark'))?.v === 'false') {
+          document.documentElement.className = 'light'
+        }
+      } catch { /* Storage may be unavailable. The first-visit theme is deep blue. */ }
+    </script>
+    <style>
+      html { color-scheme: dark; background: #0a0f1e; color: #e6edf5; }
+      html.light { color-scheme: light; background: #f5f7fa; color: #16202f; }
+    </style>
   </head>
   <body>
     <div id="app">
@@ -19,7 +31,7 @@
           justify-content: center;
           align-items: center;
           flex-direction: column;
-          background: #f0f2f5;
+          background: transparent;
         }
 
         .app-loading .app-loading-wrap {

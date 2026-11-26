@@ -1,6 +1,6 @@
 <template>
   <KnowledgeLaunchOverlay v-if="moduleIntro && tab !== 'graph'" @done="moduleIntro = false" />
-  <section class="mes-assistant-page" :class="{ 'is-graph': tab === 'graph' }">
+  <section class="mes-assistant-page" :class="{ 'is-graph': tab === 'graph', 'fm-panel': tab !== 'graph' }">
     <el-tag class="model-status" :type="modelStatus?.configured ? 'success' : 'info'" :title="modelLabel">
       {{ modelLabel }}
     </el-tag>
@@ -58,19 +58,15 @@
                   :value="base.id"
                 />
               </el-select>
-              <label class="assistant-method"
-                >检索模式
-                <el-select
+              <div class="assistant-method assistant-method--segmented">
+                <span>检索模式</span>
+                <GlassSegmented
                   v-model="retrievalMode"
-                  aria-label="检索模式"
-                  class="assistant-mode-select"
+                  label="检索模式"
+                  :options="retrievalChoices"
                   :disabled="sending"
-                >
-                  <el-option label="文档检索" value="DOCUMENT" />
-                  <el-option label="图谱检索" value="GRAPH" />
-                  <el-option label="混合检索" value="HYBRID" />
-                </el-select>
-              </label>
+                />
+              </div>
               <label v-if="retrievalMode !== 'GRAPH'" class="assistant-method">
                 文档策略
                 <el-select
@@ -867,6 +863,7 @@ import {
 import DifyAssistant from './DifyAssistant.vue'
 import WorkflowJourney from './WorkflowJourney.vue'
 import { messageJourney, searchJourney, type Journey, type JourneySource } from './workflowJourney'
+import GlassSegmented from '@/components/GlassSegmented.vue'
 import EvidenceResults from './EvidenceResults.vue'
 import AnswerText from './AnswerText.vue'
 import KnowledgeLaunchOverlay from './KnowledgeLaunchOverlay.vue'
@@ -966,6 +963,11 @@ const searching = ref(false)
 const historyLoading = ref(false)
 const searchResult = ref<EvidenceSearchResult>()
 const modeLabels = { DOCUMENT: '文档问答', GRAPH: '图谱问答', HYBRID: '混合问答' }
+const retrievalChoices = [
+  { value: 'DOCUMENT', label: '文档 RAG' },
+  { value: 'GRAPH', label: '图谱 GraphRAG' },
+  { value: 'HYBRID', label: '混合' }
+] as const
 const retrievalMode = ref<RetrievalMode>('DOCUMENT')
 const documentStrategy = ref<DocumentStrategy>('COMBINED')
 const strategyLabels = { LEXICAL: '关键词', SEMANTIC: '语义', COMBINED: '综合' }

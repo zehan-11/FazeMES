@@ -1,5 +1,5 @@
 <script lang="ts" setup>
-import { Icon } from '@/components/Icon'
+import { FullScreen, ScaleToOriginal } from '@element-plus/icons-vue'
 import { useFullscreen } from '@vueuse/core'
 import { propTypes } from '@/utils/propTypes'
 import { useDesign } from '@/hooks/web/useDesign'
@@ -22,11 +22,15 @@ const toggleFullscreen = () => {
 </script>
 
 <template>
-  <div :class="prefixCls" @click="toggleFullscreen">
-    <Icon
-      :color="color"
-      :icon="isFullscreen ? 'zmdi:fullscreen-exit' : 'zmdi:fullscreen'"
-      :size="18"
-    />
-  </div>
+  <button
+    type="button"
+    :class="prefixCls"
+    :aria-label="isFullscreen ? '退出全屏' : '进入全屏'"
+    :title="isFullscreen ? '退出全屏' : '进入全屏'"
+    @click="toggleFullscreen"
+  >
+    <ElIcon :color="color" :size="18" aria-hidden="true">
+      <ScaleToOriginal v-if="isFullscreen" /><FullScreen v-else />
+    </ElIcon>
+  </button>
 </template>
