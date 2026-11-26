@@ -153,10 +153,13 @@ pwsh -File deploy/resume-local.ps1 -Build
 
 编排文件为 [dify-knowledge-workflow.yml](dify-knowledge-workflow.yml)。导入其他工作区后，重新选择该工作区的知识库，添加设备点检示例手册，配置本地模型端点并测试两条分支。本机使用 Docker Desktop，工作室入口为 `http://127.0.0.1:18780/apps`，部署目录为 `D:/FazeMES-Dify-1.20.0/docker`。重启时先启动 Docker Desktop 和 Ollama，再在部署目录执行 `docker compose up -d`。本机代理仅为模型推理额外放行向 `host.docker.internal:11434/api/generate` 发出的 POST 请求。
 
-Dify 演示库只包含教学用的设备点检片段。FazeMES 知识助手的现有问答和长带预览仍使用原有检索链路。
+在 FazeMES 的「知识助手」打开「设备手册问答 · Dify」，输入问题并点击「运行 Dify 问答」。这个入口仅查询 Dify 的设备点检示例库，沿用知识助手的聊天和知识库权限。FazeMES 后端调用已发布工作流，按 Dify 返回的运行 ID 与节点执行 ID 归集事件，结束后将答案、来源片段与执行顺序返回页面。「查看本次执行流程」打开该次问答的彩色长带，点节点可核对分支、耗时、来源或输出。「在 Dify 中查看编排画布」在新标签页打开原生工作室。原有文档、图谱和混合问答使用各自原有的知识库范围。
+
+后端配置项为 `mes.dify.base-url`（本机默认 `http://127.0.0.1:18780/v1`）及 `mes.dify.api-key`（已发布应用的 API 密钥）。本机把密钥保存在 Git 忽略的 `.runtime/application-meslocal.yaml`，修改后重启后端。前端 `VITE_DIFY_STUDIO_URL` 仅设置编排画布链接，切换工作区后可在对应 Vite 环境中更新。运行历史可在 Dify 工作室按运行 ID 核对。
 
 ## 本地实测记录
 
+- 从知识助手页面运行上述两道题，命中时执行 7 个节点并返回 1 条手册片段，未命中时执行 5 个节点。按运行 ID 在 Dify 工作室核对，两次长带上的节点执行 ID、名称和顺序均与原始记录一致。
 - 五种文件格式的接口验收通过 36 项检查，包括原文件字节、分块哈希、字符位置和 PDF 页码。
 - 双账号验收通过个人库隔离、企业库角色授权与撤销，以及向量检索来源隔离。
 - 使用同一组临时中文资料时，验收用英文问题的关键词检索返回 0 条，语义检索返回 2 条。

@@ -95,7 +95,8 @@
                   <el-option label="两跳关系" :value="2" />
                 </el-select>
               </label>
-              <el-button plain @click="openJourney()">预览问答流程</el-button>
+              <DifyAssistant v-if="canChat && canKnowledge" @journey="openJourney" />
+              <el-button plain @click="openJourney()">预览流程示例</el-button>
               <el-button v-if="sessionId" text :disabled="sending" @click="renameSession"
                 >重命名</el-button
               >
@@ -797,7 +798,7 @@
   </el-dialog>
   <el-dialog
     v-model="journeyVisible"
-    title="问答流程预览"
+    :title="journeyData?.trace ? '本次 Dify 执行流程' : '问答流程预览'"
     width="min(1440px, 96vw)"
     top="3vh"
     destroy-on-close
@@ -863,6 +864,7 @@ import {
   type ModelConfig,
   type ModelStatus
 } from '@/api/mes/assistant'
+import DifyAssistant from './DifyAssistant.vue'
 import WorkflowJourney from './WorkflowJourney.vue'
 import { messageJourney, searchJourney, type Journey, type JourneySource } from './workflowJourney'
 import EvidenceResults from './EvidenceResults.vue'

@@ -1,5 +1,10 @@
 <template>
-  <section class="journey" :style="{ '--accent': station.light }" aria-label="问答流程">
+  <section
+    class="journey"
+    :class="{ 'has-trace': run.trace }"
+    :style="{ '--accent': station.light }"
+    aria-label="问答流程"
+  >
     <header class="mast">
       <div class="brand"><i aria-hidden="true"></i>FazeMES <span>/</span> 知识助手</div>
       <span class="origin"><i aria-hidden="true"></i>{{ run.origin }}</span>
@@ -10,7 +15,7 @@
         <nav class="stations" aria-label="流程阶段">
           <button
             v-for="(s, i) in stations"
-            :key="s.label"
+            :key="s.id"
             type="button"
             :class="{ current: active === i }"
             :style="{ '--ink': s.light }"
@@ -23,7 +28,27 @@
         </nav>
         <section class="inspector" :aria-label="station.name">
           <div class="section-label">{{ station.label }}</div>
-          <template v-if="active === 0">
+          <template v-if="step && run.trace">
+            <h3>{{ step.title }}</h3>
+            <p
+              >{{ stepStatus(step.status)
+              }}<span v-if="step.seconds != null"> · {{ formatElapsed(step.seconds) }}</span></p
+            >
+            <p v-if="step.type === 'start'">{{ run.question }}</p>
+            <template v-if="step.type === 'knowledge-retrieval'">
+              <p>返回 {{ run.sources.length }} 条来源片段</p>
+              <details v-for="(source, i) in run.sources" :key="i" class="source">
+                <summary>[{{ i + 1 }}] {{ source.title }}</summary
+                ><p>{{ source.text }}</p>
+              </details>
+            </template>
+            <p v-if="step.type === 'if-else' && run.trace.steps[active + 1]">
+              本次进入「{{ run.trace.steps[active + 1].title }}」。
+            </p>
+            <p v-else-if="step.detail">{{ step.detail }}</p>
+            <small>运行 ID · {{ run.trace.runId }}</small>
+          </template>
+          <template v-else-if="active === 0">
             <h3>{{ run.question }}</h3
             ><p>{{ run.scope }}</p>
           </template>
@@ -65,19 +90,19 @@
           @keydown.down.prevent="go(active + 1)"
           @keydown.up.prevent="go(active - 1)"
           @keydown.home.prevent="go(0)"
-          @keydown.end.prevent="go(3)"
+          @keydown.end.prevent="go(last)"
         >
           <div class="screen">
             <canvas ref="canvas" aria-hidden="true"></canvas>
           </div>
-          <div class="distance" aria-hidden="true"></div>
+          <div class="distance" :style="{ height: last * 100 + '%' }" aria-hidden="true"></div>
         </div>
         <footer>
-          <span>滚动浏览流程</span>
+          <span>{{ run.trace ? `节点 ${active + 1} / ${stations.length}` : '滚动浏览流程' }}</span>
           <div class="meter" aria-hidden="true"
             ><i
               v-for="(s, i) in stations"
-              :key="s.label"
+              :key="s.id"
               :style="{ background: i <= active ? s.light : undefined }"
             ></i
           ></div>
@@ -90,7 +115,7 @@
           >
           <button
             type="button"
-            :disabled="active === 3"
+            :disabled="active === last"
             aria-label="下一阶段"
             @click="go(active + 1)"
             >↓</button
@@ -104,7 +129,7 @@
 <script setup lang="ts">
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { exampleJourney, type Journey, type JourneySource } from './workflowJourney'
-import { stations, paintRunway, stationAt } from './workflowRunway'
+import { journeyStations, paintRunway, stationAt, stepStatus } from './workflowRunway'
 
 const props = defineProps<{ journey?: Journey }>()
 defineEmits<{ source: [source: JourneySource] }>()
@@ -112,21 +137,28 @@ const run = computed(() => props.journey ?? exampleJourney)
 const travel = ref<HTMLDivElement>()
 const canvas = ref<HTMLCanvasElement>()
 const active = ref(0)
-const station = computed(() => stations[active.value])
+const stations = computed(() => journeyStations(run.value))
+const last = computed(() => stations.value.length - 1)
+const step = computed(() => run.value.trace?.steps[active.value])
+const station = computed(() => stations.value[Math.min(active.value, last.value)])
 let observer: ResizeObserver | undefined
 let frame = 0
 let drawnPosition = 0
 const motion = window.matchMedia('(prefers-reduced-motion: reduce)')
 
+function formatElapsed(seconds: number) {
+  if (seconds > 0 && seconds < 0.001) return '不足 1 毫秒'
+  return seconds < 1 ? Math.round(seconds * 1000) + ' 毫秒' : seconds.toFixed(2) + ' 秒'
+}
 function paint() {
   frame = 0
   const viewport = travel.value
   if (!viewport || !canvas.value) return
   const range = Math.max(1, viewport.scrollHeight - viewport.clientHeight)
-  const position = Math.max(0, Math.min(3, (3 * viewport.scrollTop) / range))
+  const position = Math.max(0, Math.min(last.value, (last.value * viewport.scrollTop) / range))
   active.value = Math.round(position)
   drawnPosition = motion.matches ? active.value : position
-  paintRunway(canvas.value, drawnPosition, run.value)
+  paintRunway(canvas.value, drawnPosition, run.value, stations.value)
 }
 function schedule() {
   if (!frame) frame = requestAnimationFrame(paint)
@@ -137,7 +169,8 @@ function selectBand(event: MouseEvent) {
   const index = stationAt(
     (event.clientX - rect.left) / rect.width,
     (event.clientY - rect.top) / rect.height,
-    drawnPosition
+    drawnPosition,
+    stations.value.length
   )
   if (index !== undefined) go(index)
 }
@@ -145,7 +178,9 @@ function go(i: number) {
   const viewport = travel.value
   if (!viewport) return
   viewport.scrollTo({
-    top: (Math.max(0, Math.min(3, i)) / 3) * (viewport.scrollHeight - viewport.clientHeight),
+    top:
+      (Math.max(0, Math.min(last.value, i)) / Math.max(1, last.value)) *
+      (viewport.scrollHeight - viewport.clientHeight),
     behavior: motion.matches ? 'instant' : 'smooth'
   })
 }
@@ -297,6 +332,13 @@ footer button:hover:enabled {
   letter-spacing: 0.1em;
   color: var(--ink);
 }
+.has-trace .stations {
+  max-height: 36vh;
+  overflow-y: auto;
+}
+.has-trace .stations small {
+  letter-spacing: 0.03em;
+}
 .inspector {
   margin-top: clamp(18px, 3vh, 36px);
   padding-top: 20px;
@@ -421,6 +463,15 @@ footer button:disabled {
     display: flex;
     padding: 3px 8px;
     justify-content: space-around;
+  }
+  .has-trace .stations {
+    justify-content: flex-start;
+    flex-wrap: wrap;
+    max-height: 16vh;
+    gap: 2px 7px;
+  }
+  .has-trace .stations button {
+    white-space: nowrap;
   }
   .stations button {
     display: flex;

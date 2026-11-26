@@ -1,3 +1,4 @@
+import type { DifyRun } from '@/api/mes/assistant/dify'
 import type { AssistantMessage } from '@/api/mes/assistant'
 import type { EvidenceSearchResult } from '@/api/mes/assistant/evidence'
 
@@ -10,7 +11,8 @@ export interface JourneySource {
 }
 
 export interface Journey {
-  origin: '示例数据' | '检索记录' | '会话记录'
+  origin: '示例数据' | '检索记录' | '会话记录' | 'Dify 运行记录'
+  trace?: DifyRun
   question: string
   scope: string
   sources: JourneySource[]
@@ -37,6 +39,18 @@ export const exampleJourney: Journey = {
   branch: '已找到参考片段',
   result:
     '在点检单中填写设备编号、发生时间、运行状态和异常位置 [1]。单独记录观察到的现象，交由当班负责人复核 [2]。'
+}
+
+export function difyJourney(trace: DifyRun): Journey {
+  return {
+    origin: 'Dify 运行记录',
+    question: trace.question,
+    scope: 'Dify 设备点检示例手册',
+    sources: trace.sources,
+    branch: '',
+    result: trace.answer,
+    trace
+  }
 }
 
 const modes = { DOCUMENT: '文档检索', GRAPH: '图谱检索', HYBRID: '混合检索' }
