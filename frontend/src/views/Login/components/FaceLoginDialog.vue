@@ -6,8 +6,10 @@ const props = defineProps<{ modelValue: boolean; username: string }>()
 const emit = defineEmits<{ 'update:modelValue': [value: boolean]; success: [value: TokenType] }>()
 const working = ref(false)
 const error = ref('')
+const verified = ref(false)
 let generation = 0
 const capture = async (image: string) => {
+  verified.value = false
   working.value = true
   error.value = ''
   const current = ++generation
@@ -16,6 +18,7 @@ const capture = async (image: string) => {
     if (current !== generation || !props.modelValue) return
     const result = await FaceApi.login(props.username.trim(), challenge.challenge, image)
     if (current === generation && props.modelValue) {
+      verified.value = true
       emit('update:modelValue', false)
       emit('success', result)
     }
@@ -29,6 +32,7 @@ const capture = async (image: string) => {
 watch(
   () => props.modelValue,
   (value) => {
+    if (value) verified.value = false
     if (!value) {
       generation++
       working.value = false
@@ -42,6 +46,7 @@ onBeforeUnmount(() => {
 </script>
 <template>
   <el-dialog
+    class="fm-face-login-dialog"
     :model-value="modelValue"
     title="本人人脸登录"
     width="min(600px, 94vw)"
@@ -56,6 +61,8 @@ onBeforeUnmount(() => {
     <FaceCapture
       :active="modelValue"
       :disabled="working"
+      :processing="working"
+      :confirmed="verified"
       :capture-label="working ? '正在核验…' : '开始人脸核验'"
       @capture="capture"
     />

@@ -22,11 +22,11 @@ const icons = [Reading, Connection, Search, Files, Document, DataAnalysis]
 
 <template>
   <div class="prompt-gallery">
-    <div class="prompt-grid">
+    <div v-spotlight class="prompt-grid">
       <button
         v-for="(item, i) in items"
         :key="item.question"
-        class="prompt-card"
+        class="prompt-card fm-spotlight"
         type="button"
         :disabled="disabled"
         @click="emit('pick', item.question)"
@@ -62,20 +62,19 @@ const icons = [Reading, Connection, Search, Files, Document, DataAnalysis]
   padding: 14px 11px;
   border: 1px solid var(--fm-line);
   border-radius: 12px;
-  background: var(--fm-card);
+  background: var(--fm-card-glass);
   color: var(--fm-text);
   text-align: left;
   font-family: inherit;
   cursor: pointer;
   box-shadow: inset 0 1px var(--fm-highlight);
   transition:
-    background var(--fm-motion),
+    transform var(--fm-motion),
     border-color var(--fm-motion);
 }
 .prompt-card:hover:not(:disabled),
 .prompt-card:focus-visible {
   border-color: var(--fm-focus);
-  background: var(--fm-hover);
 }
 .prompt-icon,
 .prompt-arrow {

@@ -6,7 +6,8 @@
       --el-card-bg-color: var(--fm-card);
       --el-card-border-color: var(--fm-line);
       --el-card-border-radius: var(--fm-panel-radius);
-      background: var(--fm-card);
+      background: var(--fm-card-glass);
+      backdrop-filter: var(--fm-card-filter);
       border: 1px solid var(--fm-line);
       border-radius: var(--fm-panel-radius);
       box-shadow:
@@ -81,6 +82,9 @@
       .el-input-tag
     ) {
       border-radius: 9px;
+      &:where(:not(html:has(.v-login) *), .fm-face-login-dialog *) {
+        box-shadow: inset 0 0 0 1px var(--fm-strong-line);
+      }
       background-color: var(--fm-slot);
       transition:
         box-shadow var(--fm-motion),
@@ -96,7 +100,7 @@
     ) {
       box-shadow:
         inset 0 0 0 1px var(--fm-focus),
-        0 0 0 3px rgb(59 130 246 / 14%);
+        0 0 0 3px var(--fm-focus-halo);
     }
     .el-form-item.is-error :is(.el-input__wrapper, .el-textarea__inner, .el-select__wrapper) {
       box-shadow: inset 0 0 0 1px var(--el-color-danger);
@@ -128,9 +132,9 @@
       background: var(--fm-overlay);
       border: 1px solid var(--fm-line);
       box-shadow:
-        inset 0 1px var(--fm-highlight),
+        inset 0 1px var(--fm-overlay-highlight),
         var(--fm-float-shadow);
-      backdrop-filter: blur(15px);
+      backdrop-filter: var(--fm-overlay-filter);
     }
     :is(.fm-login-card, .fm-ai-window, .el-dialog, .el-drawer, .el-message-box) {
       border-radius: 16px;
@@ -238,19 +242,15 @@
       .is-text
     ) {
       --el-button-text-color: var(--fm-text);
-      --el-button-bg-color: var(--fm-slot);
+      --el-button-bg-color: var(--fm-secondary-button);
       --el-button-border-color: var(--fm-strong-line);
       --el-button-hover-bg-color: var(--fm-hover);
       --el-button-hover-text-color: var(--fm-blue-ink);
     }
     .el-button--primary:not(.is-plain, .is-text, .is-link, .is-disabled, .is-loading) {
-      color: #fff;
-      border-color: transparent;
-      background: linear-gradient(
-        125deg,
-        var(--el-color-primary),
-        color-mix(in srgb, var(--el-color-primary) 65%, #0033ab)
-      );
+      color: var(--fm-tool-ink, #fff);
+      border-color: var(--fm-tool-edge, transparent);
+      background: var(--fm-tool-fill, var(--fm-primary-glass));
       box-shadow: inset 0 1px rgb(255 255 255 / 12%);
       &:hover {
         box-shadow: 0 4px 14px rgb(37 99 235 / 28%);
@@ -284,12 +284,24 @@
       }
     }
     .el-button:not(.is-disabled, .is-loading):active {
-      transform: scale(0.97);
+      transform: scale(var(--fm-press-scale));
     }
     .el-button:is(.is-link, .is-text):not(.is-disabled):hover,
     .el-link:not(.is-disabled):hover {
       background-color: var(--fm-hover);
       border-radius: 6px;
+    }
+    .el-button--danger:is(.is-text, .is-link):not(.is-disabled),
+    .el-link--danger:not(.is-disabled),
+    .el-dropdown-menu__item:is(.delete-doc, .order-destructive):not(.is-disabled) {
+      --el-button-text-color: var(--fm-tone-danger);
+      --el-button-hover-text-color: var(--fm-danger-hover);
+      --el-link-text-color: var(--fm-tone-danger);
+      --el-link-hover-text-color: var(--fm-danger-hover);
+      color: var(--fm-tone-danger);
+      &:is(:hover, :focus-visible) {
+        color: var(--fm-danger-hover);
+      }
     }
     .el-link {
       transition: background-color var(--fm-motion);

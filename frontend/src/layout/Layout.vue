@@ -57,19 +57,26 @@ export default defineComponent({
           'w-[100%] h-[100%] relative'
         ]}
       >
-        {mobile.value && !collapse.value ? (
-          <div
-            class="absolute left-0 top-0 z-99 h-full w-full bg-[var(--el-color-black)] opacity-30"
-            onClick={handleClickOutside}
-          ></div>
-        ) : undefined}
+        <div class="fazemes-ambient-backdrop" aria-hidden="true">
+          <i class="aurora-blue" />
+          <i class="aurora-cyan" />
+          <i class="aurora-indigo" />
+        </div>
+        <div class="fm-layout-frame">
+          {mobile.value && !collapse.value ? (
+            <div
+              class="absolute left-0 top-0 z-99 h-full w-full bg-[var(--el-color-black)] opacity-30"
+              onClick={handleClickOutside}
+            ></div>
+          ) : undefined}
 
-        {renderLayout()}
+          {renderLayout()}
 
-        <Backtop></Backtop>
-        <FloatingAssistant />
+          <Backtop></Backtop>
+          <FloatingAssistant />
 
-        <Setting></Setting>
+          <Setting></Setting>
+        </div>
       </section>
     )
   }
@@ -80,6 +87,7 @@ export default defineComponent({
 $prefix-cls: #{$namespace}-layout;
 
 .#{$prefix-cls} {
-  background-color: var(--app-content-bg-color);
+  isolation: isolate;
+  background-color: var(--fm-base);
 }
 </style>

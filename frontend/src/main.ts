@@ -31,6 +31,7 @@ import router, { setupRouter } from '@/router'
 
 // 指令
 import { setupAuth, setupMountedFocus } from '@/directives'
+import { vSpotlight } from '@/directives/spotlight'
 
 import { createApp } from 'vue'
 
@@ -73,6 +74,7 @@ const setupAll = async () => {
   // directives 指令
   setupAuth(app)
   setupMountedFocus(app)
+  app.directive('spotlight', vSpotlight)
 
   // wangEditor 插件注册
   setupWangEditorPlugin()

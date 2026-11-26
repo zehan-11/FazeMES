@@ -10,13 +10,13 @@
       </div>
       <div class="metrics" v-if="risks">
         <div
-          ><small>未结工单</small><strong>{{ risks.summary.open }}</strong></div
+          ><small>未结工单</small><strong><AnimatedNumber :value="risks.summary.open" /></strong></div
         >
         <div
-          ><small>高风险工单</small><strong class="danger">{{ risks.summary.high }}</strong></div
+          ><small>高风险工单</small><strong class="danger"><AnimatedNumber :value="risks.summary.high" /></strong></div
         >
         <div
-          ><small>交期尚不能估算</small><strong>{{ risks.summary.unknown }}</strong></div
+          ><small>交期尚不能估算</small><strong><AnimatedNumber :value="risks.summary.unknown" /></strong></div
         >
         <div class="metric-note"
           >规则估算 · 实时业务依据<small>更新于 {{ fmt(risks.generatedAt) }}</small></div
@@ -659,6 +659,7 @@
 </template>
 
 <script setup lang="ts">
+import AnimatedNumber from '@/components/AnimatedNumber.vue'
 import JevSettingsDialog from './JevSettingsDialog.vue'
 import BusinessAssistant from './BusinessAssistant.vue'
 import JevIncidentAssist from './JevIncidentAssist.vue'

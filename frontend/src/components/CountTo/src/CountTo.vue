@@ -90,12 +90,15 @@ watch([() => props.startVal, () => props.endVal], () => {
 
 const start = () => {
   const { startVal, duration } = props
+  cancelAnimationFrame(state.rAF)
   state.localStartVal = startVal
   state.startTime = null
   state.localDuration = duration
   state.paused = false
   state.rAF = requestAnimationFrame(count)
 }
+
+onBeforeUnmount(() => cancelAnimationFrame(state.rAF))
 
 const pauseResume = () => {
   if (state.paused) {

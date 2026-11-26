@@ -31,8 +31,13 @@ const timestamp = (doc: ListedDocument) =>
       :description="loading ? '正在加载文档' : '当前知识库没有可见文档'"
       :image-size="65"
     />
-    <div v-else-if="view === 'cards'" class="document-grid">
-      <article v-for="doc in documents" :key="doc.id" class="document-card">
+    <div v-else-if="view === 'cards'" v-spotlight class="document-grid">
+      <article
+        v-for="(doc, i) in documents"
+        :key="doc.id"
+        class="document-card fm-spotlight fm-stagger"
+        :style="{ '--i': Math.min(i, 7) }"
+      >
         <header>
           <span class="format-badge"
             ><el-icon><Document /></el-icon>{{ format(doc) }}</span
@@ -117,7 +122,8 @@ const timestamp = (doc: ListedDocument) =>
   min-width: 0;
   flex-direction: column;
   padding: 17px 15px 13px;
-  background: linear-gradient(145deg, var(--fm-hover), transparent 60%), var(--fm-card);
+  background: var(--fm-card-glass);
+  backdrop-filter: var(--fm-card-filter);
   border: 1px solid var(--fm-line);
   border-radius: var(--fm-panel-radius);
   box-shadow:
@@ -130,7 +136,6 @@ const timestamp = (doc: ListedDocument) =>
 .document-card:hover,
 .document-card:focus-within {
   border-color: var(--fm-strong-line);
-  transform: translateY(-2px);
 }
 .document-card header,
 .document-card footer,

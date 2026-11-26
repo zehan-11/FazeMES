@@ -1,16 +1,17 @@
 <template>
-  <el-card shadow="never" class="mb-16px">
+  <el-card shadow="never" class="mb-16px fm-stagger">
     <template #header>
       <div class="shortcut-header">
         <span>岗位常用入口</span>
         <span class="shortcut-hint">根据当前账号的业务权限提供</span>
       </div>
     </template>
-    <div class="shortcuts">
+    <div v-spotlight class="shortcuts">
       <el-button
-        v-for="item in items"
+        v-for="(item, i) in items"
         :key="item.path"
-        class="shortcut"
+        class="shortcut fm-spotlight fm-stagger"
+        :style="{ '--i': Math.min(i, 7) }"
         @click="emit('navigate', item.path)"
       >
         <Icon :icon="item.icon" :size="22" />

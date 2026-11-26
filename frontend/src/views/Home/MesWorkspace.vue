@@ -1,6 +1,6 @@
 <template>
   <div class="mes-workspace">
-    <el-card shadow="never" class="mb-16px">
+    <el-card shadow="never" class="mb-16px fm-stagger">
       <div class="welcome">
         <div>
           <div class="eyebrow">FazeMES / 生产执行</div>
@@ -22,11 +22,11 @@
     <CapabilityCards ref="capabilityCards" />
     <HomeShortcuts v-if="shortcuts.length" :items="shortcuts" @navigate="navigate" />
 
-    <el-row v-if="statistics.length" :gutter="16" class="statistics">
-      <el-col v-for="stat in statistics" :key="stat.key" :xs="24" :sm="8">
-        <el-card v-loading="loading" shadow="never">
+    <el-row v-if="statistics.length" v-spotlight :gutter="16" class="statistics">
+      <el-col v-for="(stat, i) in statistics" :key="stat.key" :xs="24" :sm="8">
+        <el-card v-loading="loading" shadow="never" class="fm-spotlight fm-stagger" :style="{ '--i': i }">
           <div class="stat-label">{{ stat.label }}</div>
-          <div class="stat-value">{{ counts[stat.key] ?? '—' }}</div>
+          <div class="stat-value"><AnimatedNumber :value="counts[stat.key]" /></div>
           <div class="stat-hint">{{ stat.hint }}</div>
         </el-card>
       </el-col>
@@ -103,7 +103,7 @@
       </el-col>
     </el-row>
 
-    <el-card shadow="never" class="mb-16px">
+    <el-card shadow="never" class="mb-16px fm-stagger">
       <template #header>
         <div class="section-header">
           <span>全部业务</span>
@@ -136,6 +136,7 @@
 </template>
 
 <script setup lang="ts">
+import AnimatedNumber from '@/components/AnimatedNumber.vue'
 import { MdItemApi } from '@/api/mes/md/item'
 import { MesHomeStatisticsApi, type MesHomeSummaryVO } from '@/api/mes/home'
 import { ProFeedbackApi } from '@/api/mes/pro/feedback'

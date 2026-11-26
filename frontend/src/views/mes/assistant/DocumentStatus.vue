@@ -82,7 +82,9 @@ const state = computed(() => {
         detail
       }}</div>
     </template>
-    <button type="button" class="status-pill" :class="state.tone">{{ state.text }}</button>
+    <button type="button" class="status-pill" :class="state.tone">
+      <i v-if="state.tone === 'ready'" class="fm-live-dot" aria-hidden="true"></i>{{ state.text }}
+    </button>
   </el-tooltip>
 </template>
 
@@ -103,7 +105,7 @@ const state = computed(() => {
   cursor: help;
   white-space: nowrap;
 }
-.status-pill::before {
+.status-pill:not(.ready)::before {
   content: '';
   inline-size: 5px;
   block-size: 5px;

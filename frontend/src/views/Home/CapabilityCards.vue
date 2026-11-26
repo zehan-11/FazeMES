@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import AnimatedNumber from '@/components/AnimatedNumber.vue'
 import { ArrowRight, Connection, Files, View } from '@element-plus/icons-vue'
 import { useUserStore } from '@/store/modules/user'
 import { FaceApi } from '@/api/mes/face'
@@ -43,11 +44,12 @@ const cards = computed(() =>
   ].filter((card) => card.allowed)
 )
 
-type Metric = { value: string; detail: string }
+type Metric = { value: string; detail: string; live?: boolean }
 async function faceMetric(): Promise<Metric> {
   const face = await FaceApi.status()
   return {
     value: face.enrolled ? '已录入 · 已开启' : '未录入',
+    live: face.enrolled,
     detail: '人脸比对服务' + (face.ready ? '已就绪' : '未就绪')
   }
 }
@@ -120,11 +122,12 @@ onBeforeUnmount(() => {
 </script>
 
 <template>
-  <section v-if="cards.length" class="capabilities" aria-label="阶段二能力直达">
+  <section v-if="cards.length" v-spotlight class="capabilities" aria-label="阶段二能力直达">
     <button
-      v-for="card in cards"
+      v-for="(card, i) in cards"
       :key="card.key"
-      class="capability"
+      class="capability fm-spotlight fm-stagger"
+      :style="{ '--i': i }"
       :class="card.key"
       type="button"
       @click="router.push(card.path)"
@@ -134,9 +137,11 @@ onBeforeUnmount(() => {
       ></span>
       <span class="capability-copy"
         ><span>{{ card.title }}</span
-        ><strong>{{ metrics[card.key]?.value }}</strong
-        ><small>{{ metrics[card.key]?.detail }}</small></span
-      >
+        ><strong
+          ><i v-if="metrics[card.key]?.live" class="fm-live-dot" aria-hidden="true"></i
+          ><AnimatedNumber :value="metrics[card.key]?.value ?? ''" /></strong
+        ><small><AnimatedNumber :value="metrics[card.key]?.detail ?? ''" /></small
+      ></span>
       <el-icon class="open-feature"><ArrowRight /></el-icon>
     </button>
   </section>
@@ -158,9 +163,8 @@ onBeforeUnmount(() => {
   padding: 17px;
   border: 1px solid var(--fm-line);
   border-radius: var(--fm-panel-radius);
-  background:
-    linear-gradient(135deg, color-mix(in srgb, var(--accent) 7%, transparent), transparent 72%),
-    var(--fm-card);
+  background: var(--fm-card-glass);
+  backdrop-filter: var(--fm-card-filter);
   box-shadow:
     inset 0 1px var(--fm-highlight),
     var(--fm-shadow);
@@ -178,7 +182,6 @@ onBeforeUnmount(() => {
 .capability:hover,
 .capability:focus-visible {
   border-color: var(--fm-focus);
-  transform: translateY(-1px);
 }
 .feature-icon {
   display: grid;
@@ -196,6 +199,9 @@ onBeforeUnmount(() => {
   font-size: 13px;
 }
 .capability-copy strong {
+  display: flex;
+  align-items: center;
+  gap: 8px;
   font-size: clamp(16px, 1.3vw, 20px);
   font-variant-numeric: tabular-nums;
 }

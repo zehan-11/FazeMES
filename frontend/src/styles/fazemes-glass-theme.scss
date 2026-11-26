@@ -1,47 +1,79 @@
 @use './glass-elements';
+@use './glass-motion';
 
 /* Workspace surfaces and Element Plus share these tokens, including overlays teleported to body. */
-:root {
-  --fm-base: #0a0f1e;
-  --fm-depth: #020618;
-  --fm-surface: #0f1b30;
-  --fm-raised: #192b45;
-  --fm-card: rgb(13 25 48 / 72%);
-  --fm-overlay: rgb(13 25 46 / 92%);
-  --fm-slot: rgb(6 13 28 / 65%);
-  --fm-header: rgb(12 22 41 / 91%);
+:root,
+.fm-face-login-dialog {
+  --fm-base: #102347;
+  --fm-depth: #0b1730;
+  --fm-surface: #182f56;
+  --fm-raised: #24436b;
+  --fm-curtain: linear-gradient(135deg, #0b1730 0%, #102347 48%, #0c1c3a 100%);
+  --fm-aurora-blue: rgba(37, 130, 255, 0.26);
+  --fm-aurora-cyan: rgba(14, 195, 224, 0.2);
+  --fm-aurora-indigo: rgba(99, 132, 255, 0.16);
+  --fm-dot-ink: #97caff;
+  --fm-card: rgb(24 46 88 / 50%);
+  --fm-card-glass: linear-gradient(180deg, rgba(30, 56, 104, 0.56), rgba(17, 35, 70, 0.44));
+  --fm-card-filter: blur(14px) saturate(155%);
+  --fm-chrome-filter: blur(18px) saturate(165%);
+  --fm-overlay-filter: blur(22px) saturate(180%);
+  --fm-overlay: rgba(20, 42, 82, 0.78);
+  --fm-slot: rgba(8, 18, 40, 0.55);
+  --fm-header: rgba(14, 30, 62, 0.62);
   --fm-header-tint: #14294a;
   --fm-menu-tint: #0d1526;
-  --fm-line: rgb(96 165 250 / 16%);
-  --fm-divider: rgb(96 165 250 / 10%);
-  --fm-strong-line: rgb(123 176 245 / 34%);
-  --fm-highlight: rgb(189 222 255 / 8%);
-  --fm-text: #e6edf5;
-  --fm-secondary: #aab8cc;
-  --fm-muted: #94a3b8;
-  --fm-table-label: #8ca3c7;
-  --fm-table-head: #13233c;
-  --fm-table-fixed: #101d32;
-  --fm-hover: rgb(67 131 226 / 14%);
-  --fm-stripe: rgb(131 170 228 / 4%);
-  --fm-blue-ink: #99c8ff;
-  --fm-focus: #3b82f6;
+  --fm-chrome-line: rgba(147, 197, 255, 0.16);
+  --fm-line: rgba(148, 197, 255, 0.2);
+  --fm-divider: rgb(148 197 255 / 13%);
+  --fm-strong-line: rgba(148, 197, 255, 0.24);
+  --fm-highlight: rgba(255, 255, 255, 0.24);
+  --fm-overlay-highlight: rgba(255, 255, 255, 0.28);
+  --fm-text: #f1f6ff;
+  --fm-secondary: #a9c2e6;
+  --fm-muted: #7390ba;
+  --fm-table-label: #c8ddfb;
+  --fm-table-head: rgba(38, 72, 132, 0.42);
+  --fm-table-fixed: #1b345a;
+  --fm-hover: rgba(56, 189, 248, 0.1);
+  --fm-stripe: rgb(159 201 245 / 4%);
+  --fm-blue-ink: #a9d7ff;
+  --fm-focus: #38bdf8;
+  --fm-focus-halo: color-mix(in srgb, var(--fm-focus) 18%, transparent);
+  --fm-press-scale: 0.96;
   --fm-action: #2563eb;
-  --fm-scroll: #324865;
+  --fm-primary-glass: linear-gradient(135deg, var(--el-color-primary) 0%, #0ea5e9 100%);
+  --fm-secondary-button: rgb(119 176 245 / 10%);
+  --fm-spotlight: rgba(96, 185, 255, 0.22);
+  --fm-scroll: #45648d;
   --fm-dot: rgb(121 172 240 / 10%);
   --fm-halo: rgb(37 99 235 / 14%);
   --fm-cyan-halo: rgb(21 117 150 / 11%);
-  --fm-shadow: 0 4px 16px rgb(1 6 18 / 15%);
-  --fm-float-shadow: 0 18px 50px rgb(0 4 20 / 36%);
-  --fm-scrim: rgb(2 6 24 / 61%);
+  --fm-shadow: 0 8px 28px rgba(3, 12, 32, 0.28);
+  --fm-float-shadow: 0 18px 50px rgb(2 12 34 / 36%);
+  --fm-scrim: rgb(4 16 40 / 56%);
   --fm-ease: cubic-bezier(0.4, 0, 0.2, 1);
   --fm-motion: 180ms var(--fm-ease);
   --fm-panel-radius: 13px;
-  --fm-tone-success: #83dbc3;
-  --fm-tone-warning: #f2c777;
-  --fm-tone-danger: #f0a8ae;
+  --fm-tone-success: #34e8a8;
+  --fm-tone-warning: #fbbf54;
+  --fm-tone-danger: #ff7b89;
+  --fm-danger-hover: #ffa0aa;
 }
-html.light {
+html.light,
+html.light .fm-face-login-dialog {
+  --fm-curtain: linear-gradient(135deg, #eef5ff, #e8f1fd 48%, #eaf6f9);
+  --fm-card-glass: linear-gradient(180deg, rgb(255 255 255 / 85%), rgb(237 246 255 / 72%));
+  --fm-aurora-blue: rgb(74 146 235 / 19%);
+  --fm-aurora-cyan: rgb(78 187 195 / 13%);
+  --fm-aurora-indigo: rgb(123 143 223 / 12%);
+  --fm-dot-ink: #7e9fc6;
+  --fm-chrome-line: rgb(60 104 161 / 20%);
+  --fm-overlay-highlight: rgb(255 255 255 / 98%);
+  --fm-secondary-button: rgb(130 178 236 / 12%);
+  --fm-spotlight: rgb(95 162 241 / 18%);
+  --fm-focus: #2576c7;
+  --fm-danger-hover: #922638;
   --fm-base: #f4f7fb;
   --fm-depth: #e9eff7;
   --fm-surface: #f8fafd;
@@ -75,7 +107,53 @@ html.light {
   --fm-tone-danger: #a53745;
 }
 
-html:root:is(.dark, .light) {
+// The sign-in form and its teleported controls retain their own established palette.
+:root:where(:has(.v-login)):not(.light) {
+  --fm-base: #0a0f1e;
+  --fm-depth: #020618;
+  --fm-surface: #0f1b30;
+  --fm-raised: #192b45;
+  --fm-card: rgb(13 25 48 / 72%);
+  --fm-overlay: rgb(13 25 46 / 92%);
+  --fm-slot: rgb(6 13 28 / 65%);
+  --fm-header: rgb(12 22 41 / 91%);
+  --fm-line: rgb(96 165 250 / 16%);
+  --fm-divider: rgb(96 165 250 / 10%);
+  --fm-strong-line: rgb(123 176 245 / 34%);
+  --fm-highlight: rgb(189 222 255 / 8%);
+  --fm-text: #e6edf5;
+  --fm-secondary: #aab8cc;
+  --fm-muted: #94a3b8;
+  --fm-table-label: #8ca3c7;
+  --fm-table-head: #13233c;
+  --fm-table-fixed: #101d32;
+  --fm-hover: rgb(67 131 226 / 14%);
+  --fm-stripe: rgb(131 170 228 / 4%);
+  --fm-blue-ink: #99c8ff;
+  --fm-scroll: #324865;
+  --fm-shadow: 0 4px 16px rgb(1 6 18 / 15%);
+  --fm-float-shadow: 0 18px 50px rgb(0 4 20 / 36%);
+  --fm-scrim: rgb(2 6 24 / 61%);
+  --fm-tone-success: #83dbc3;
+  --fm-tone-warning: #f2c777;
+  --fm-tone-danger: #f0a8ae;
+}
+:root:where(:has(.v-login)):is(.light, .dark) {
+  --fm-card-glass: var(--fm-card);
+  --fm-card-filter: none;
+  --fm-overlay-filter: blur(15px);
+  --fm-overlay-highlight: var(--fm-highlight);
+  --fm-secondary-button: var(--fm-slot);
+  --fm-focus: #3b82f6;
+  --fm-focus-halo: rgb(59 130 246 / 14%);
+  --fm-press-scale: 0.97;
+  --fm-primary-glass: linear-gradient(
+    125deg, var(--el-color-primary), color-mix(in srgb, var(--el-color-primary) 65%, #0033ab)
+  );
+}
+
+html:root:is(.dark, .light),
+html:is(.dark, .light) .fm-face-login-dialog {
   --el-color-primary: var(--fm-action);
   --el-bg-color: var(--fm-surface);
   --el-bg-color-page: var(--fm-base);
@@ -104,29 +182,35 @@ html:root:is(.dark, .light) {
   --el-box-shadow: var(--fm-float-shadow);
   --app-content-bg-color: var(--fm-base);
   --login-bg-color: var(--fm-base);
-  --top-header-bg-color: color-mix(in srgb, var(--fm-header) 94%, var(--fm-header-tint));
+  --top-header-bg-color: var(--fm-header);
   --top-header-hover-color: var(--fm-hover);
   --top-header-text-color: var(--fm-secondary);
   --top-tool-border-color: var(--fm-line);
-  --left-menu-bg-color: color-mix(in srgb, var(--fm-menu-tint) 91%, transparent);
+  --left-menu-bg-color: var(--fm-header);
   --left-menu-bg-light-color: transparent;
   --left-menu-bg-active-color: rgb(71 145 255 / 17%);
   --left-menu-collapse-bg-active-color: var(--left-menu-bg-active-color);
-  --left-menu-text-color: #b3c4db;
-  --left-menu-text-active-color: #dfedff;
-  --left-menu-border-color: var(--fm-line);
-  --logo-title-text-color: #e6edf5;
+  --left-menu-text-color: var(--fm-secondary);
+  --left-menu-text-active-color: var(--fm-text);
+  --left-menu-border-color: var(--fm-chrome-line);
+  --logo-title-text-color: var(--fm-text);
   --el-scrollbar-bg-color: var(--fm-scroll);
   --el-scrollbar-hover-bg-color: var(--fm-muted);
 }
-html:root.dark {
+html:root.dark,
+html.dark .fm-face-login-dialog {
+  --el-color-success: #34e8a8;
+  --el-color-warning: #fbbf54;
+  --el-color-danger: #ff7b89;
+  --el-color-error: #ff7b89;
+  --el-color-info: #98abc5;
+}
+html:root.dark:where(:has(.v-login)) {
   --el-color-success: #65cba7;
   --el-color-warning: #e6b563;
   --el-color-danger: #e49099;
   --el-color-error: #e49099;
-  --el-color-info: #98abc5;
 }
-.v-layout,
 .v-login {
   background-color: var(--fm-base);
   background-image:
@@ -195,7 +279,9 @@ html:root.dark {
   color: var(--fm-blue-ink);
 }
 .fm-workspace .mes-assistant-page.fm-panel {
-  background: var(--fm-card);
+  // Leave the page-sized backing clear enough for the document cards to sample the light below.
+  background: rgb(from var(--fm-card) r g b / 16%);
+  backdrop-filter: none;
 }
 .fm-workspace .assistant-method--segmented {
   display: inline-flex;
@@ -218,12 +304,18 @@ html:root.dark {
 }
 .v-layout .layout-border__right::after,
 .v-layout .layout-border__bottom::after {
-  background-color: var(--fm-line);
+  background-color: var(--fm-chrome-line);
 }
 .v-layout .v-tool-header {
   min-width: 0;
   padding: 0 clamp(6px, 1.1vw, 18px);
-  background: var(--top-header-bg-color);
+  background-color: var(--top-header-bg-color);
+  background-image: linear-gradient(
+    105deg,
+    transparent 30%,
+    color-mix(in srgb, var(--fm-header-tint) 14%, transparent)
+  );
+  backdrop-filter: var(--fm-chrome-filter);
 }
 .fm-header-path,
 .fm-header-actions {
@@ -295,9 +387,24 @@ html:root.dark {
 }
 
 .v-layout .v-menu__vertical,
-.v-layout .v-tab-menu {
-  background-image: linear-gradient(175deg, rgb(29 56 94 / 28%), transparent 65%);
-  box-shadow: inset -1px 0 rgb(102 171 246 / 15%);
+.v-layout .v-tab-menu,
+.v-layout .v-logo {
+  background-color: var(--left-menu-bg-color);
+  background-image: linear-gradient(
+    170deg,
+    color-mix(in srgb, var(--fm-menu-tint) 16%, transparent),
+    transparent 65%
+  );
+  box-shadow: inset -1px 0 var(--fm-chrome-line);
+  backdrop-filter: var(--fm-chrome-filter);
+}
+.v-layout .fm-layout-frame > .layout-border__bottom {
+  background-color: var(--top-header-bg-color);
+  backdrop-filter: var(--fm-chrome-filter);
+}
+.v-layout .fm-layout-frame > .layout-border__bottom :is(.v-tool-header, .v-logo) {
+  background: transparent;
+  backdrop-filter: none;
 }
 .v-menu__vertical .el-menu {
   background: transparent;

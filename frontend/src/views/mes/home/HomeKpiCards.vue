@@ -1,6 +1,12 @@
 <template>
-  <div class="kpi-grid mb-16px">
-    <el-card v-for="item in cards" :key="item.label" shadow="never">
+  <div v-spotlight class="kpi-grid mb-16px">
+    <el-card
+      v-for="(item, i) in cards"
+      :key="item.label"
+      class="fm-spotlight fm-stagger"
+      :style="{ '--i': i }"
+      shadow="never"
+    >
       <div class="kpi-heading">
         <div class="kpi-label">
           <Icon :icon="item.icon" :size="20" :color="item.color" />
@@ -14,13 +20,16 @@
           >查看</el-link
         >
       </div>
-      <div class="kpi-value" :style="{ color: item.color }">{{ item.value }}</div>
+      <div class="kpi-value" :style="{ color: item.color }"
+        ><AnimatedNumber :value="item.value"
+      /></div>
       <div class="kpi-hint">{{ item.hint }}</div>
     </el-card>
   </div>
 </template>
 
 <script setup lang="ts">
+import AnimatedNumber from '@/components/AnimatedNumber.vue'
 import type { MesHomeSummaryVO } from '@/api/mes/home'
 import { formatQuantity, quantityUnits } from '@/utils/mesQuantity'
 

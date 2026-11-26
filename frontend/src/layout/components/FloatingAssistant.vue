@@ -104,16 +104,18 @@ watch(
         ><Assistant embedded :visible="open" @context="rememberContext"
       /></div>
     </div>
-    <button
-      ref="trigger"
-      type="button"
-      class="ai-trigger"
-      :aria-controls="mounted ? 'workbench-ai-panel' : undefined"
-      :aria-expanded="open"
-      @click="toggle"
+    <span class="ai-beacon">
+      <button
+        ref="trigger"
+        type="button"
+        class="ai-trigger"
+        :aria-controls="mounted ? 'workbench-ai-panel' : undefined"
+        :aria-expanded="open"
+        @click="toggle"
+      >
+        <el-icon><ChatDotRound /></el-icon><span>AI 助手</span>
+      </button></span
     >
-      <el-icon><ChatDotRound /></el-icon><span>AI 助手</span>
-    </button>
   </aside>
 </template>
 
@@ -139,15 +141,47 @@ watch(
   padding: 9px 16px;
   border: 1px solid var(--fm-strong-line);
   border-radius: 999px;
-  background: linear-gradient(115deg, #265dc9, #2447ae);
+  background: var(--fm-primary-glass);
+  transition: transform var(--fm-motion);
   color: #fff;
   font: inherit;
   font-weight: 600;
   cursor: pointer;
   box-shadow: var(--fm-float-shadow);
 }
-.ai-trigger:hover {
-  background: linear-gradient(115deg, #286be3, #2751c6);
+.ai-beacon {
+  position: relative;
+  display: inline-flex;
+  border-radius: 999px;
+}
+.ai-beacon::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border: 1px solid var(--fm-focus);
+  border-radius: inherit;
+  pointer-events: none;
+  opacity: 0;
+}
+@media (prefers-reduced-motion: no-preference) {
+  .ai-beacon::before {
+    animation: ai-beacon-pulse 3.6s ease-out infinite;
+  }
+}
+@keyframes ai-beacon-pulse {
+  0%,
+  25% {
+    opacity: 0;
+    transform: scale(1);
+  }
+  38% {
+    opacity: 0.45;
+  }
+  85%,
+  100% {
+    opacity: 0;
+    transform: scale(1.13, 1.25);
+  }
 }
 .floating-panel {
   display: flex;
@@ -159,8 +193,8 @@ watch(
   background: var(--fm-overlay);
   box-shadow:
     var(--fm-float-shadow),
-    inset 0 1px var(--fm-highlight);
-  backdrop-filter: blur(15px);
+    inset 0 1px var(--fm-overlay-highlight);
+  backdrop-filter: var(--fm-overlay-filter);
   overflow: hidden;
 }
 .floating-heading,
