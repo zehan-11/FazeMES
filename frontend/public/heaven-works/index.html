@@ -158,27 +158,6 @@
         .part-card[data-state='short'] small {
           color: var(--warm);
         }
-        .head {
-          position: absolute;
-          top: 17px;
-          left: 22px;
-          pointer-events: none;
-        }
-        .head h1 {
-          font: 700 clamp(25px, 2.55vw, 42px)/1 var(--cjk);
-          letter-spacing: -0.045em;
-          margin: 0;
-        }
-        .head h1 em {
-          font-style: normal;
-          color: #a5d7e0;
-        }
-        .head p {
-          margin: 5px 0 0;
-          letter-spacing: 0.12em;
-          color: #b9c9d6;
-          font-size: 13px;
-        }
         .controls {
           position: absolute;
           top: 17px;
@@ -423,11 +402,6 @@
           font-size: 10px;
           color: var(--mute);
         }
-        .foot a {
-          pointer-events: auto;
-          color: var(--mute);
-          text-decoration: none;
-        }
         .mobile-nav {
           display: none;
         }
@@ -501,17 +475,6 @@
           display: none;
         }
         @media (max-width: 860px), (max-aspect-ratio: 1/1) {
-          .head {
-            top: 10px;
-            left: 12px;
-          }
-          .head h1 {
-            font-size: 24px;
-          }
-          .head p {
-            font-size: 10px;
-            margin-top: 2px;
-          }
           .controls {
             top: 10px;
             right: 9px;
@@ -554,9 +517,6 @@
             bottom: 44px;
             left: 10px;
             right: 10px;
-          }
-          .foot a {
-            font-size: 8px;
           }
           .loom {
             visibility: hidden;
@@ -607,16 +567,8 @@
               ><main class="mid" id="mid"
                 ><div class="loom" id="loom" aria-label="风扇部件"></div></main></div></div></div
       ></div>
-      <header class="head"
-        ><h1>Faze<em>MES</em></h1
-        ><p>生产智能协同中心</p></header
-      >
       <nav class="controls" aria-label="场景控制"
-        ><button class="btn" data-act="mode">视角 · <b data-f="mode">环绕</b></button
-        ><button class="btn demo-control" data-act="parts">逐件装配</button
         ><button class="btn demo-control" data-act="inspect">看完整风扇</button
-        ><button class="btn" id="trace-example">协同示例</button
-        ><button class="btn" id="sample-top">缺料示例</button
         ><button class="btn" id="stage-mode" hidden>查看零件模型</button
         ><button class="btn" id="back" hidden>返回装配演示</button
         ><button class="btn" data-act="full" data-f="full">全屏</button></nav
@@ -659,7 +611,7 @@
             </select></label><button class="chip" id="knowledge-settings" hidden>知识库与检索设置</button></details>
             <button class="btn" id="choose">选择工单</button
             ><button class="btn primary" id="ask">发送给总 Agent</button></div
-          ><p id="offline-note">在 FazeMES 协同大屏提问，或点右上角体验缺料示例。</p></section
+          ><p id="offline-note">请进入 FazeMES 的 Agent 协同页提问。</p></section
         >
         <section class="group"
           ><h3 id="context-title">装配演示</h3><p id="run-question">台式电风扇 · 七部件装配</p
@@ -688,10 +640,8 @@
         ><button class="btn" id="next">下一件</button
         ><button class="btn" id="replay">重播装配</button></section
       >
-      <div class="foot"
-        ><span id="assembly-state">准备装配</span
-        ><a href="./LICENSE" target="_blank" rel="noopener">视觉引擎 © 赛博老爸 · 许可</a></div
-      ><nav class="mobile-nav"
+      <div class="foot"><span id="assembly-state">准备装配</span></div>
+      <nav class="mobile-nav"
         ><button class="btn" id="toggle-chat">智能问答</button
         ><button class="btn" id="toggle-evidence">本轮依据</button></nav
       ><div class="glfail" id="glFail" hidden

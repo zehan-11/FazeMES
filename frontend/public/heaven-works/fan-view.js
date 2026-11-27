@@ -449,8 +449,6 @@
     else focus(type, index, true)
   })
   el('master-label').onclick = () => focus('master', 0, true)
-  el('trace-example').onclick = reportExample
-  el('sample-top').onclick = sampleData
   el('back').onclick = () => {
     if (access) command('reset')
     demo()
@@ -458,7 +456,6 @@
   el('prev').onclick = () => inspect(partIndex - 1)
   el('next').onclick = () => inspect(partIndex + 1)
   el('replay').onclick = demo
-  shadow.querySelector('[data-act=parts]').onclick = () => inspect(0)
   shadow.querySelector('[data-act=inspect]').addEventListener('click', () => {
     el('part-inspector').hidden = true
   })
