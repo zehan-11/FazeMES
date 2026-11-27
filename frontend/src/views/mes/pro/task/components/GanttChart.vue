@@ -242,6 +242,23 @@ defineExpose({ loadData })
 </script>
 
 <style>
+/* DHTMLX resolves its derived colors on :root, including its body-mounted tooltips. */
+html.dark:has(.fm-workspace .gantt_container) {
+  --dhx-gantt-base-colors-background: var(--fm-surface);
+  --dhx-gantt-base-colors-background-alt: var(--fm-raised);
+  --dhx-gantt-base-colors-text-base: var(--fm-text);
+  --dhx-gantt-base-colors-text-light: var(--fm-secondary);
+  --dhx-gantt-base-colors-icons: var(--fm-muted);
+  --dhx-gantt-base-colors-border: var(--fm-line);
+  --dhx-gantt-base-colors-border-light: var(--fm-divider);
+  --dhx-gantt-base-colors-select: var(--fm-raised);
+  --dhx-gantt-base-colors-hover-color: var(--fm-raised);
+  --dhx-gantt-tooltip-background: var(--fm-overlay);
+  --dhx-gantt-tooltip-color: var(--fm-text);
+  --fm-gantt-weekend: var(--dhx-gantt-offtime-background);
+  --fm-gantt-row-emphasis: var(--dhx-gantt-base-colors-select);
+}
+
 /* 今天标记线 */
 .gantt_marker.today {
   background-color: #f44;
@@ -265,19 +282,19 @@ defineExpose({ loadData })
 
 /* 周末背景色 */
 .weekend {
-  background: #f0f0f0 !important;
+  background: var(--fm-gantt-weekend, #f0f0f0) !important;
 }
 
 /* 行悬浮高亮 */
 .gantt_grid_data .gantt_row:hover,
 .gantt_grid_data .gantt_row.odd:hover {
-  background-color: #f3f1fe !important;
+  background-color: var(--fm-gantt-row-emphasis, #f3f1fe) !important;
 }
 
 /* 选中行高亮 */
 .gantt_grid_data .gantt_row.gantt_selected,
 .gantt_grid_data .gantt_row.odd.gantt_selected,
 .gantt_task_row.gantt_selected {
-  background-color: #f3f1fe !important;
+  background-color: var(--fm-gantt-row-emphasis, #f3f1fe) !important;
 }
 </style>

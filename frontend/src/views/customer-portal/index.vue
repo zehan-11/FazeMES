@@ -433,6 +433,30 @@ onMounted(() => {
 </script>
 
 <style scoped lang="scss">
+html.dark .customer-portal:has(> .portal-shell) {
+  color: var(--fm-text);
+  background: var(--fm-skylight), var(--fm-curtain);
+  .portal-header, .portal-nav {
+    background: var(--fm-sidebar);
+    border-color: var(--fm-line);
+  }
+  .product-card, .request-card, .production-order {
+    background: var(--fm-card-glass);
+    border-color: var(--fm-line);
+    box-shadow: inset 0 1px var(--fm-highlight);
+  }
+  .product-placeholder, .review-feedback { background: var(--fm-slot); }
+  .portal-nav button.active { background: var(--fm-raised); color: var(--fm-text); }
+  .portal-brand { color: var(--fm-text); }
+  .product-placeholder, .portal-nav button, .workspace-heading p, .portal-brand em,
+  .nav-note, .portal-nav > p, .specification, .product-description, .order-dates,
+  .request-line small, .customer-note, .reference-price small, .review-feedback small {
+    color: var(--fm-secondary);
+  }
+  .product-footer > span, .reference-price, .review-feedback > strong { color: var(--fm-tone-success); }
+  .request-line { border-color: var(--fm-divider); }
+}
+
 .customer-portal {
   min-height: 100vh;
   color: #1b293d;

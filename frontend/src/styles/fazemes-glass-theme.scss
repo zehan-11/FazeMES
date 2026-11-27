@@ -151,6 +151,61 @@ html.light .fm-face-login-dialog {
   --fm-tone-danger: #a53745;
 }
 
+// The full-page assistant is the visual reference. Its tabs share one surface and their
+// popovers teleport to body, so select the palette on the document that owns the visible view.
+html.dark:has(.fm-workspace, .customer-portal > .portal-shell):not(:has(.fm-workspace .mes-assistant-page:not(.is-embedded))) {
+  --fm-base: #102959;
+  --fm-depth: #0c2145;
+  --fm-curtain: linear-gradient(145deg, var(--fm-base), #193967 42%, #132e55 76%, var(--fm-depth));
+  --fm-skylight: radial-gradient(ellipse 60% 45% at 88% 4%, rgb(158 199 235 / 21%), rgb(99 150 202 / 8%) 45%, transparent 75%);
+  --fm-sea-glow: radial-gradient(ellipse 62% 58% at 4% 98%, rgb(72 122 184 / 17%), transparent 74%);
+
+  // These stops composite into the muted blue range of the assistant's quick-question cards.
+  --fm-tile-top: rgb(70 107 161 / 78%);
+  --fm-tile-bottom: rgb(47 82 132 / 78%);
+  --fm-tile-line: rgb(155 186 225 / 32%);
+  --fm-tile-hover-top: rgb(78 116 166 / 82%);
+  --fm-tile-hover-bottom: rgb(54 90 141 / 78%);
+  --fm-tile-hover-line: rgb(144 196 230 / 62%);
+  --fm-card: rgb(62 92 136 / 62%);
+  --fm-card-over: rgb(164 193 226 / 5%);
+  --fm-card-filter: blur(14px);
+  --fm-overlay-filter: blur(20px);
+  --fm-surface: #224370;
+  --fm-raised: #304f79;
+  --fm-slot: rgb(16 34 65 / 78%);
+  --fm-overlay: rgb(27 49 80 / 94%);
+  --fm-highlight: rgb(213 231 251 / 24%);
+  --fm-rim-core: #c9deee;
+  --fm-rim-ice: rgb(151 198 228 / 44%);
+  --fm-rim-bloom: rgb(161 196 224 / 15%);
+  --fm-spotlight: rgb(138 193 231 / 15%);
+  --fm-secondary: #bfd1e7;
+  --fm-muted: #abc3df;
+  // Pinned headers slide above other column labels and need a solid tint.
+  --fm-table-head: #29476f;
+  --fm-table-label: #e9f2ff;
+  --fm-table-fixed: #2c4b76;
+  --fm-table-hover: rgb(144 182 224 / 14%);
+
+  :is(.task-list > .task-button, .sop-documents > .sop-document) {
+    background: var(--fm-card-glass);
+    border-color: var(--fm-line);
+    &:is(.selected, .active) {
+      background: var(--fm-raised);
+      border-color: var(--fm-tile-hover-line);
+    }
+  }
+  .el-tabs--border-card {
+    background: var(--fm-card-glass);
+    border-color: var(--fm-line);
+  }
+  .el-tabs--border-card > .el-tabs__header {
+    background: var(--fm-slot);
+    border-color: var(--fm-line);
+  }
+}
+
 // The sign-in form and its teleported controls retain their own established palette.
 :root:where(:has(.v-login)):not(.light) {
   --fm-base: #0a0f1e;

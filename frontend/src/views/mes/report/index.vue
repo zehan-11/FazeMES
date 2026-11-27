@@ -979,7 +979,7 @@ onBeforeUnmount(() => {
   </div>
 </template>
 
-<style scoped>
+<style scoped lang="scss">
 .visual-report-studio {
   display: flex;
   height: calc(100vh - 145px);
@@ -1656,6 +1656,45 @@ onBeforeUnmount(() => {
   margin-right: 14px;
   font-size: 11px;
   color: var(--el-text-color-secondary);
+}
+
+/* The editor chrome follows the workspace. The printable paper has its own colors. */
+html.dark .visual-report-studio {
+  background: var(--fm-card-glass);
+  .studio-dock, .property-panel, .workspace-strip, .workspace-status {
+    background: var(--fm-surface);
+  }
+  .component-palette button, .template-card {
+    background: var(--fm-card-glass);
+    border-color: var(--fm-line);
+  }
+  .component-palette button:hover, .layer-list button.active, .template-categories button.active,
+  .saved-report.active, .component-palette b, .binding-source {
+    background: var(--fm-raised);
+    color: var(--fm-blue-ink);
+  }
+  .dock-tabs button.active, .property-tabs button.active, .template-badge, .saved-report b {
+    color: var(--fm-blue-ink);
+  }
+  .template-thumbnail {
+    background: var(--fm-slot);
+    color: var(--fm-muted);
+  }
+  .designer-workspace, .zoom-controls button {
+    background: var(--fm-slot);
+  }
+  .canvas-scroll {
+    background-image: radial-gradient(var(--fm-line) 0.8px, transparent 0.8px);
+  }
+  .zoom-controls button, .zoom-controls, .dataset-label, .command-identity small, .save-state,
+  .workspace-status small, .property-title span, .property-footer button {
+    color: var(--fm-secondary);
+  }
+}
+html.dark .paper-preview-scroll { background: var(--fm-slot); }
+html.dark .version-entry {
+  background: var(--fm-card-glass);
+  &.active { background: var(--fm-raised); }
 }
 
 @media (width <= 1300px) {

@@ -604,6 +604,33 @@ onBeforeUnmount(() => {
   color-scheme: dark;
 }
 
+html.dark .production-screen {
+  --screen-cyan: var(--fm-blue-ink);
+  --screen-muted: var(--fm-secondary);
+  --screen-line: var(--fm-line);
+  --el-text-color-primary: var(--fm-text);
+  --el-text-color-regular: var(--fm-secondary);
+  --el-text-color-placeholder: var(--fm-muted);
+  --el-fill-color-blank: var(--fm-slot);
+  --el-border-color: var(--fm-strong-line);
+
+  color: var(--fm-text);
+  background: var(--fm-skylight), var(--fm-curtain);
+
+  .screen-panel { background: var(--fm-card-glass); }
+  .panel-heading, .order-table th { background: var(--fm-surface); }
+  .panel-heading { border-left-color: var(--fm-tile-hover-line); }
+  .panel-heading h2, .order-table th { color: var(--fm-table-label); }
+  .map-panel .panel-heading { background: transparent; }
+  .order-table td { color: var(--fm-text); border-color: var(--fm-table-rule); }
+  .order-table tbody tr:nth-child(even) { background: var(--fm-hover); }
+  .screen-empty, .map-count, .topology-station { color: var(--fm-secondary); }
+  .station-node, :deep(.el-select__wrapper), :deep(.el-input__wrapper) { background: var(--fm-slot); }
+  :deep(.el-select__wrapper), :deep(.el-input__wrapper) { box-shadow: inset 0 0 0 1px var(--fm-strong-line); }
+  :deep(.el-progress-bar__outer) { background: var(--fm-surface); }
+  :deep(.el-input__inner), :deep(.el-progress__text) { color: var(--fm-secondary); }
+}
+
 .production-screen * {
   box-sizing: border-box;
 }
@@ -1391,5 +1418,18 @@ onBeforeUnmount(() => {
   --el-border-color: #245064;
   --el-border-color-light: #173744;
   --el-border-color-lighter: #173744;
+}
+
+html.dark :is(.production-screen-popper, .production-screen-drawer) {
+  --el-bg-color: var(--fm-surface);
+  --el-bg-color-overlay: var(--fm-overlay);
+  --el-fill-color-blank: var(--fm-surface);
+  --el-fill-color-light: var(--fm-raised);
+  --el-text-color-primary: var(--fm-text);
+  --el-text-color-regular: var(--fm-secondary);
+  --el-text-color-secondary: var(--fm-muted);
+  --el-border-color: var(--fm-strong-line);
+  --el-border-color-light: var(--fm-line);
+  --el-border-color-lighter: var(--fm-divider);
 }
 </style>
