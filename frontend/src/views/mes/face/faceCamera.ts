@@ -42,6 +42,11 @@ export function createFaceCamera(
           return
         }
         stream = next
+        for (const track of next.getTracks()) {
+          track.onended = () => {
+            if (current === generation) stop()
+          }
+        }
         video.srcObject = next
         await video.play()
         if (disposed || current !== generation) {

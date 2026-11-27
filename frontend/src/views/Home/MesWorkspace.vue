@@ -104,34 +104,6 @@
       </el-col>
     </el-row>
 
-    <el-card shadow="never" class="mb-16px fm-stagger">
-      <template #header>
-        <div class="section-header">
-          <span>全部业务</span>
-          <span class="secondary">根据当前账号的菜单权限显示</span>
-        </div>
-      </template>
-      <el-empty v-if="!moduleGroups.length" description="当前账号尚未分配业务菜单，请联系管理员" />
-      <div v-else class="module-grid">
-        <div v-for="group in moduleGroups" :key="group.path" class="module-group">
-          <h2>
-            <Icon :icon="group.icon || 'ep:folder-opened'" :size="20" />
-            {{ group.title }}
-          </h2>
-          <div class="module-links">
-            <el-link
-              v-for="link in group.links"
-              :key="link.path"
-              type="primary"
-              :underline="false"
-              @click="navigate(link.path)"
-            >
-              {{ link.title }}
-            </el-link>
-          </div>
-        </div>
-      </div>
-    </el-card>
     <p class="attribution">FazeMES · 所有统计来自当前企业数据库</p>
   </div>
 </template>
@@ -193,20 +165,6 @@ const statistics = computed(() =>
   statisticDefinitions.filter((stat) => checkPermi([stat.permission]))
 )
 const canLoadData = computed(() => statistics.value.length > 0 || canQueryHomeStatistics.value)
-
-const moduleGroups = computed(() =>
-  permissionStore.getRouters
-    .filter((route) => !route.meta?.hidden && route.path.startsWith('/mes/'))
-    .map((route) => ({
-      title: String(route.meta?.title || route.name || ''),
-      icon: route.meta?.icon,
-      path: route.path,
-      links: collectNavigationPages([route])
-        .filter((page) => page.path !== '/index')
-        .map((page) => ({ title: String(page.meta?.title || page.name || ''), path: page.path }))
-    }))
-    .filter((group) => group.links.length > 0)
-)
 
 const authorizedPages = computed(() => collectNavigationPages(permissionStore.getRouters))
 const destinations = computed<Record<string, string>>(() =>
@@ -330,7 +288,6 @@ h1 {
 }
 
 .welcome p,
-.secondary,
 .stat-hint,
 .attribution {
   color: var(--el-text-color-secondary);
@@ -357,35 +314,8 @@ h1 {
 }
 
 .stat-hint,
-.secondary,
 .attribution {
   font-size: 12px;
-}
-
-.module-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
-  gap: 20px;
-}
-
-.module-group {
-  padding: 18px;
-  border: 1px solid var(--el-border-color-lighter);
-  border-radius: 8px;
-}
-
-.module-group h2 {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  margin: 0 0 16px;
-  font-size: 16px;
-}
-
-.module-links {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 12px 16px;
 }
 
 .attribution {

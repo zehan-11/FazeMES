@@ -37,12 +37,11 @@ function harness() {
     () => video,
     (value) => states.push(value)
   )
-  const stream = () => ({
-    stops: 0,
-    getTracks() {
-      return [{ stop: () => this.stops++ }]
-    }
-  })
+  const stream = () => {
+    const media = { stops: 0, getTracks: () => [track] }
+    const track = { stop: () => media.stops++, onended: null }
+    return media
+  }
   return { camera, requests, states, video, draw, stream }
 }
 test('camera is requested only on explicit start and capture stays in memory at bounded resolution', async () => {
@@ -114,4 +113,21 @@ test('camera playback and permission failures clear streams and expose a usable 
   h.requests[2].reject({ name: 'NotAllowedError' })
   await denied
   assert.match(h.states.at(-1).message, /权限被拒绝.*密码登录/)
+})
+
+test('losing the active camera ends preview without disturbing a replacement stream', async () => {
+  const h = harness()
+  const first = h.stream()
+  const pending = h.camera.start()
+  h.requests[0].resolve(first)
+  await pending
+  const replacement = h.stream()
+  const retry = h.camera.start()
+  h.requests[1].resolve(replacement)
+  await retry
+  first.getTracks()[0].onended()
+  assert.equal(h.states.at(-1).ready, true)
+  replacement.getTracks()[0].onended()
+  assert.equal(h.states.at(-1).ready, false)
+  assert.equal(h.video.srcObject, null)
 })

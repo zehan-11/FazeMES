@@ -58,12 +58,12 @@ onBeforeUnmount(() => {
     class="fm-face-login-dialog fm-optical-rim"
     :model-value="modelValue"
     title="本人人脸登录"
-    width="min(600px, 94vw)"
+    width="min(656px, 94vw)"
     destroy-on-close
     append-to-body
     @update:model-value="emit('update:modelValue', $event)"
   >
-    <p
+    <p class="face-login-account"
       >核验账号：<strong>{{ username }}</strong
       >。请使用已录入的本人人脸；本次画面仅送至本地服务处理。</p
     >
@@ -84,10 +84,66 @@ onBeforeUnmount(() => {
   </el-dialog>
 </template>
 <style scoped>
+.face-login-account {
+  margin: 0 0 12px;
+}
 .face-login-note {
   margin: 16px 0 0;
   font-size: 12px;
   line-height: 1.7;
   color: var(--el-text-color-secondary);
+}
+</style>
+
+<style>
+/* This dialog is teleported to body. The camera sets is-live after video.play() resolves. */
+:root .el-dialog.fm-face-login-dialog {
+  --face-lamp-width: clamp(16px, 5vw, 36px);
+  border-radius: calc(var(--face-lamp-width) + 18px);
+  margin-block: clamp(16px, 4vh, 52px);
+  padding: calc(14px + var(--face-lamp-width));
+}
+
+.fm-face-login-dialog .el-dialog__headerbtn {
+  top: var(--face-lamp-width);
+  right: var(--face-lamp-width);
+}
+
+.fm-face-login-dialog::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: 3;
+  border-radius: inherit;
+  border: var(--face-lamp-width) solid #fffefa;
+  box-shadow:
+    inset 0 0 4px 1px rgb(255 255 255 / 65%),
+    inset 0 0 16px rgb(255 253 247 / 32%),
+    0 0 6px 1px rgb(255 255 255 / 55%),
+    0 0 28px 4px rgb(255 253 247 / 28%);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 180ms ease-out;
+}
+.fm-face-login-dialog:has(.face-capture.is-live)::before {
+  opacity: 1;
+  transition-duration: 450ms;
+}
+
+.fm-face-login-dialog .face-capture.is-live .camera-frame::before,
+.fm-face-login-dialog .face-capture.is-live .camera-frame::after,
+.fm-face-login-dialog .face-capture.is-live .face-guide::after,
+.fm-face-login-dialog .face-capture.is-live .fm-card-optics {
+  display: none;
+}
+.fm-face-login-dialog .face-capture.is-live .face-guide {
+  border-color: rgb(227 246 255 / 56%);
+  box-shadow: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .fm-face-login-dialog::before {
+    transition: none;
+  }
 }
 </style>
