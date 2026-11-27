@@ -36,7 +36,7 @@
       </el-descriptions>
       <el-table :data="cost.lines" border>
         <el-table-column prop="itemCode" label="物料编码" min-width="130" />
-        <el-table-column prop="itemName" label="物料名称" min-width="130" />
+        <el-table-column :formatter="$catalogCell" prop="itemName" label="物料名称" min-width="130" />
         <el-table-column prop="originSalesCode" label="原销售出库单" min-width="150" />
         <el-table-column prop="originTransactionId" label="原流水ID" width="100" />
         <el-table-column label="退货行数量" min-width="140"

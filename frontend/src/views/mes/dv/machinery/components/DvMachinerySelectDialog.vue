@@ -42,7 +42,7 @@
                 <el-option
                   v-for="item in workshopList"
                   :key="item.id"
-                  :label="item.name"
+                  :label="$catalogLabel(item.name)"
                   :value="item.id"
                 />
               </el-select>
@@ -90,10 +90,10 @@
               </template>
             </el-table-column>
             <el-table-column label="设备编码" align="center" prop="code" width="120" />
-            <el-table-column label="设备名称" align="left" prop="name" min-width="120" />
+            <el-table-column label="设备名称" align="left" :formatter="$catalogCell" prop="name" min-width="120" />
             <el-table-column label="品牌" align="left" prop="brand" min-width="120" />
-            <el-table-column label="规格型号" align="left" prop="specification" min-width="120" />
-            <el-table-column label="所属车间" align="center" prop="workshopName" width="120" />
+            <el-table-column label="规格型号" align="left" :formatter="$catalogCell" prop="specification" min-width="120" />
+            <el-table-column label="所属车间" align="center" :formatter="$catalogCell" prop="workshopName" width="120" />
             <el-table-column label="设备状态" align="center" prop="status" width="100">
               <template #default="scope">
                 <dict-tag :type="DICT_TYPE.MES_DV_MACHINERY_STATUS" :value="scope.row.status" />

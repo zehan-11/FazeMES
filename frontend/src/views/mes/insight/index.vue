@@ -9,14 +9,14 @@
         <el-button :loading="busy" @click="refresh">刷新当前数据</el-button>
       </div>
       <div class="metrics" v-if="risks">
-        <div
-          ><small>未结工单</small><strong>{{ risks.summary.open }}</strong></div
+        <div class="fm-interactive-card"
+          ><small>未结工单</small><strong><AnimatedNumber :value="risks.summary.open" /></strong></div
         >
-        <div
-          ><small>高风险工单</small><strong class="danger">{{ risks.summary.high }}</strong></div
+        <div class="fm-interactive-card"
+          ><small>高风险工单</small><strong class="danger"><AnimatedNumber :value="risks.summary.high" /></strong></div
         >
-        <div
-          ><small>交期尚不能估算</small><strong>{{ risks.summary.unknown }}</strong></div
+        <div class="fm-interactive-card"
+          ><small>交期尚不能估算</small><strong><AnimatedNumber :value="risks.summary.unknown" /></strong></div
         >
         <div class="metric-note"
           >规则估算 · 实时业务依据<small>更新于 {{ fmt(risks.generatedAt) }}</small></div
@@ -67,7 +67,7 @@
                     :data="row.materials"
                     size="small"
                     empty-text="没有工单物料需求，齐套状态未知"
-                    ><el-table-column prop="itemName" label="物料" /><el-table-column
+                    ><el-table-column :formatter="$catalogCell" prop="itemName" label="物料" /><el-table-column
                       prop="outstandingQuantity"
                       label="尚需数量" /><el-table-column
                       prop="availableQuantity"
@@ -80,7 +80,7 @@
                     ><el-table-column prop="code" label="任务编码" /><el-table-column
                       prop="stationName"
                       label="工作站"
-                    /><el-table-column prop="processName" label="工序" /><el-table-column
+                    /><el-table-column :formatter="$catalogCell" prop="processName" label="工序" /><el-table-column
                       prop="remainingMinutes"
                       label="估算剩余分钟"
                     /><el-table-column label="计划开始"
@@ -91,7 +91,7 @@
               </template></el-table-column
             >
             <el-table-column prop="code" label="工单" min-width="130" /><el-table-column
-              prop="productName"
+              :formatter="$catalogCell" prop="productName"
               label="产品"
               min-width="120"
             />
@@ -659,6 +659,7 @@
 </template>
 
 <script setup lang="ts">
+import AnimatedNumber from '@/components/AnimatedNumber.vue'
 import JevSettingsDialog from './JevSettingsDialog.vue'
 import BusinessAssistant from './BusinessAssistant.vue'
 import JevIncidentAssist from './JevIncidentAssist.vue'
@@ -956,7 +957,7 @@ onMounted(async () => {
 .eyebrow {
   font-size: 11px;
   letter-spacing: 1.4px;
-  color: #368a96;
+  color: var(--fm-blue-ink);
 }
 
 h1 {
@@ -988,6 +989,15 @@ p {
   gap: 20px;
 }
 
+.metrics > .fm-interactive-card {
+  min-width: 0;
+  padding: 12px clamp(10px, 1.2vw, 18px);
+  border: 1px solid var(--fm-line);
+  border-radius: var(--fm-panel-radius);
+  background: var(--fm-card-glass);
+  box-shadow: inset 0 1px var(--fm-highlight);
+  transition: --fm-tile-emphasis var(--fm-motion);
+}
 .metrics small {
   display: block;
   font-size: 12px;

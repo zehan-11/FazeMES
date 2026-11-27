@@ -46,22 +46,22 @@ const trendChartOptions = computed<EChartsOption>(() => ({
       type: 'line',
       smooth: true,
       data: rows.value.map((row) => Number(row.quantity)),
-      itemStyle: { color: '#409eff' },
-      areaStyle: { color: 'rgba(64,158,255,0.15)' }
+      itemStyle: { color: '#568aef' },
+      areaStyle: { color: 'rgba(86,138,239,0.15)' }
     },
     {
       name: '合格品',
       type: 'line',
       smooth: true,
       data: rows.value.map((row) => Number(row.qualifiedQuantity)),
-      itemStyle: { color: '#67c23a' }
+      itemStyle: { color: '#30a98c' }
     },
     {
       name: '不良品',
       type: 'line',
       smooth: true,
       data: rows.value.map((row) => Number(row.unqualifiedQuantity)),
-      itemStyle: { color: '#f56c6c' }
+      itemStyle: { color: '#dc8793' }
     }
   ]
 }))

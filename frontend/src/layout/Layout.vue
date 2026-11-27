@@ -2,6 +2,8 @@
 import { computed, defineComponent, unref } from 'vue'
 import { useAppStore } from '@/store/modules/app'
 import { Backtop } from '@/components/Backtop'
+import AmbientParticles from './components/AmbientParticles.vue'
+import FloatingAssistant from './components/FloatingAssistant.vue'
 import { Setting } from '@/layout/components/Setting'
 import { useRenderLayout } from './components/useRenderLayout'
 import { useDesign } from '@/hooks/web/useDesign'
@@ -56,18 +58,22 @@ export default defineComponent({
           'w-[100%] h-[100%] relative'
         ]}
       >
-        {mobile.value && !collapse.value ? (
-          <div
-            class="absolute left-0 top-0 z-99 h-full w-full bg-[var(--el-color-black)] opacity-30"
-            onClick={handleClickOutside}
-          ></div>
-        ) : undefined}
+        <AmbientParticles />
+        <div class="fm-layout-frame">
+          {mobile.value && !collapse.value ? (
+            <div
+              class="absolute left-0 top-0 z-99 h-full w-full bg-[var(--el-color-black)] opacity-30"
+              onClick={handleClickOutside}
+            ></div>
+          ) : undefined}
 
-        {renderLayout()}
+          {renderLayout()}
 
-        <Backtop></Backtop>
+          <Backtop></Backtop>
+          <FloatingAssistant />
 
-        <Setting></Setting>
+          <Setting></Setting>
+        </div>
       </section>
     )
   }
@@ -78,6 +84,7 @@ export default defineComponent({
 $prefix-cls: #{$namespace}-layout;
 
 .#{$prefix-cls} {
-  background-color: var(--app-content-bg-color);
+  isolation: isolate;
+  background-color: var(--fm-base);
 }
 </style>

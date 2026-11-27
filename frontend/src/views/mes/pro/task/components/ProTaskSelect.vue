@@ -27,10 +27,10 @@
         <div v-if="selectedItem" class="leading-6">
           <div>任务编号：{{ selectedItem.code }}</div>
           <div>任务名称：{{ selectedItem.name || '-' }}</div>
-          <div>工序：{{ selectedItem.processName || '-' }}</div>
-          <div>工作站：{{ selectedItem.workstationName || '-' }}</div>
-          <div>物料：{{ selectedItem.itemName || '-' }}</div>
-          <div>规格：{{ selectedItem.itemSpecification || '-' }}</div>
+          <div>工序：{{ $catalogLabel(selectedItem.processName) || '-' }}</div>
+          <div>工作站：{{ $catalogLabel(selectedItem.workstationName) || '-' }}</div>
+          <div>物料：{{ $catalogLabel(selectedItem.itemName) || '-' }}</div>
+          <div>规格：{{ $catalogLabel(selectedItem.itemSpecification) || '-' }}</div>
         </div>
       </template>
       <el-input

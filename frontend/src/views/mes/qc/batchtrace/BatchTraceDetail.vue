@@ -8,10 +8,10 @@
         {{ detailData.itemCode }}
       </el-descriptions-item>
       <el-descriptions-item label="物资名称">
-        {{ detailData.itemName }}
+        {{ $catalogLabel(detailData.itemName) }}
       </el-descriptions-item>
       <el-descriptions-item label="规格型号" :span="3">
-        {{ detailData.itemSpecification }}
+        {{ $catalogLabel(detailData.itemSpecification) }}
       </el-descriptions-item>
       <el-descriptions-item label="采购订单编号">
         {{ detailData.purchaseOrderCode }}

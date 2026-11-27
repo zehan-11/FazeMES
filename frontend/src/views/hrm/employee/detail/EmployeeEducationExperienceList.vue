@@ -31,7 +31,7 @@
       width="120"
       :formatter="dateFormatter2"
     />
-    <el-table-column label="教学方式" prop="teachingMethods" width="110">
+    <el-table-column label="授课方式" prop="teachingMethods" width="110">
       <template #default="{ row }">
         {{ formatEmployeeTeachingMethod(row.teachingMethods) }}
       </template>

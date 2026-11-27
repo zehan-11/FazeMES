@@ -22,7 +22,7 @@
       class="!w-1/1"
       @change="handleChange"
     >
-      <el-option v-for="item in filteredList" :key="item.id" :label="item.name" :value="item.id">
+      <el-option v-for="item in filteredList" :key="item.id" :label="$catalogLabel(item.name)" :value="item.id">
         <div class="flex items-center gap-8px">
           <span>{{ item.name }}</span>
           <el-tag v-if="isQualityQuarantineWarehouse(item.code)" size="small" type="danger"

@@ -51,7 +51,7 @@
             <el-option
               v-for="item in subjectOptions"
               :key="item.id"
-              :label="item.name"
+              :label="$catalogLabel(item.name)"
               :value="item.id"
             />
           </el-select>

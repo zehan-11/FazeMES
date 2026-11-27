@@ -3,7 +3,7 @@
   <ContentWrap>
     <el-alert
       title="自行生产流程：保存工单 → 确认工单 → 排产、领料 → 工位工作台作业与报工"
-      description="草稿工单请先点击“确认工单”；确认后可使用行内的“去排产”和“生产领料”继续操作。"
+      description="草稿工单可在「更多工单操作」中确认。自行生产工单确认后可去排产，也可从更多操作进入生产领料。"
       type="info"
       show-icon
       :closable="false"
@@ -111,6 +111,9 @@
       default-expand-all
       :tree-props="{ children: 'children', hasChildren: 'hasChildren' }"
     >
+      <template v-if="loading" #empty>
+        <GlassSkeleton label="正在加载工单" />
+      </template>
       <el-table-column label="工单编码" prop="code" width="220" fixed="left">
         <template #default="scope">
           <el-button link type="primary" @click="openForm('detail', scope.row.id)">
@@ -118,7 +121,7 @@
           </el-button>
         </template>
       </el-table-column>
-      <el-table-column label="工单名称" align="center" prop="name" min-width="150" />
+      <el-table-column label="工单名称" align="center" :formatter="$catalogCell" prop="name" min-width="150" />
       <el-table-column label="工单类型" align="center" prop="type" width="100">
         <template #default="scope">
           <dict-tag :type="DICT_TYPE.MES_PRO_WORK_ORDER_TYPE" :value="scope.row.type" />
@@ -134,8 +137,8 @@
       </el-table-column>
       <el-table-column label="来源单据编号" align="center" prop="orderSourceCode" width="140" />
       <el-table-column label="产品编码" align="center" prop="productCode" width="120" />
-      <el-table-column label="产品名称" align="center" prop="productName" min-width="120" />
-      <el-table-column label="规格型号" align="center" prop="productSpecification" width="120" />
+      <el-table-column label="产品名称" align="center" :formatter="$catalogCell" prop="productName" min-width="120" />
+      <el-table-column label="规格型号" align="center" :formatter="$catalogCell" prop="productSpecification" width="120" />
       <el-table-column label="单位" align="center" prop="unitMeasureName" width="80" />
       <el-table-column label="工单数量" align="center" prop="quantity" width="100" />
       <el-table-column label="已生产数量" align="center" prop="quantityProduced" width="100" />
@@ -160,135 +163,53 @@
         :formatter="dateFormatter"
         width="180"
       />
-      <el-table-column label="操作" align="center" width="500" fixed="right">
-        <template #default="scope">
-          <el-button
-            link
-            type="primary"
-            v-hasPermi="['mes:cost:query']"
-            @click="openCostCenter(router, { workorderId: scope.row.id })"
-            >成本</el-button
-          >
-          <el-button
-            link
-            type="primary"
-            v-hasPermi="['mes:kitting:query']"
-            @click="router.push({ path: '/mes/kitting', query: { workOrderId: scope.row.id } })"
-            >齐套</el-button
-          >
-          <!-- 草稿状态：编辑、确认、删除 -->
-          <el-button
-            link
-            type="primary"
-            @click="openForm('update', scope.row.id)"
-            v-hasPermi="['mes:pro-work-order:update']"
-            v-if="scope.row.status === MesProWorkOrderStatusEnum.PREPARE"
-          >
-            编辑
-          </el-button>
-          <el-button
-            v-if="scope.row.status === MesProWorkOrderStatusEnum.PREPARE"
-            v-hasPermi="['mes:pro-work-order:update']"
-            link
-            type="warning"
-            @click="openForm('confirm', scope.row.id)"
-          >
-            确认工单
-          </el-button>
-          <el-button
-            link
-            type="danger"
-            @click="handleDelete(scope.row.id)"
-            v-hasPermi="['mes:pro-work-order:delete']"
-            v-if="scope.row.status === MesProWorkOrderStatusEnum.PREPARE"
-          >
-            删除
-          </el-button>
-          <template
-            v-if="
-              scope.row.status === MesProWorkOrderStatusEnum.CONFIRMED &&
-              scope.row.type === MesProWorkOrderTypeEnum.SELF
-            "
-          >
+      <el-table-column label="操作" align="center" width="205" fixed="right">
+        <template #default="{ row }">
+          <div class="order-actions">
             <el-button
-              v-hasPermi="['mes:pro-task:create']"
-              link
-              type="primary"
-              @click="router.push({ path: '/mes/pro/task', query: { workOrderId: scope.row.id } })"
-            >
-              去排产
-            </el-button>
-            <el-button
-              v-hasPermi="['mes:wm-product-issue:query']"
-              link
-              type="primary"
-              @click="
-                router.push({ path: '/mes/wm/product-issue', query: { workOrderId: scope.row.id } })
+              v-if="
+                row.status === MesProWorkOrderStatusEnum.CONFIRMED &&
+                row.type === MesProWorkOrderTypeEnum.SELF
               "
+              v-hasPermi="['mes:pro-task:create']"
+              size="small"
+              plain
+              type="primary"
+              @click="router.push({ path: '/mes/pro/task', query: { workOrderId: row.id } })"
+              >去排产</el-button
             >
-              生产领料
-            </el-button>
-          </template>
-          <!-- 已确认 + 自行生产：新增子工单 -->
-          <el-button
-            link
-            type="primary"
-            @click="handleAddChild(scope.row)"
-            v-hasPermi="['mes:pro-work-order:create']"
-            v-if="
-              scope.row.status === MesProWorkOrderStatusEnum.CONFIRMED &&
-              scope.row.type === MesProWorkOrderTypeEnum.SELF
-            "
-          >
-            子工单
-          </el-button>
-          <el-button
-            v-if="scope.row.status === MesProWorkOrderStatusEnum.CONFIRMED"
-            v-hasPermi="['mes:pro-work-order:update']"
-            link
-            type="warning"
-            @click="lossClosureRef?.open(scope.row.id)"
-          >
-            损耗结案
-          </el-button>
-          <el-button
-            v-if="scope.row.status === MesProWorkOrderStatusEnum.FINISHED"
-            v-hasPermi="['mes:pro-work-order:query']"
-            link
-            type="primary"
-            @click="lossClosureRef?.open(scope.row.id, true)"
-          >
-            损耗记录
-          </el-button>
-          <!-- 已确认状态：完成、取消 -->
-          <el-button
-            link
-            type="success"
-            @click="openForm('finish', scope.row.id)"
-            v-hasPermi="['mes:pro-work-order:update']"
-            v-if="scope.row.status === MesProWorkOrderStatusEnum.CONFIRMED"
-          >
-            工单完工
-          </el-button>
-          <el-button
-            link
-            type="warning"
-            @click="handleCancel(scope.row.id)"
-            v-hasPermi="['mes:pro-work-order:update']"
-            v-if="scope.row.status === MesProWorkOrderStatusEnum.CONFIRMED"
-          >
-            取消
-          </el-button>
-          <!-- 工单条码 -->
-          <!-- DONE @芋艿：这里应该是打印；后面在跟进把；（AI 未修复原因：需要对接打印功能，标注为后续处理，需人工介入） -->
-          <el-button
-            link
-            type="primary"
-            @click="handleBarcode(scope.row)"
-            v-hasPermi="['mes:pro-work-order:query']"
-          >
-            条码
-          </el-button>
+            <el-button
+              v-if="row.status === MesProWorkOrderStatusEnum.PREPARE"
+              v-hasPermi="['mes:pro-work-order:update']"
+              size="small"
+              plain
+              type="primary"
+              @click="openForm('update', row.id)"
+              >编辑</el-button
+            >
+            <el-button
+              v-hasPermi="['mes:kitting:query']"
+              size="small"
+              plain
+              @click="router.push({ path: '/mes/kitting', query: { workOrderId: row.id } })"
+              >齐套</el-button
+            >
+            <el-dropdown v-if="moreActions(row).length" trigger="click">
+              <el-button size="small" round aria-label="更多工单操作">···</el-button>
+              <template #dropdown
+                ><el-dropdown-menu>
+                  <el-dropdown-item
+                    v-for="action in moreActions(row)"
+                    :key="action.label"
+                    :class="{ 'order-destructive': action.destructive }"
+                    @click="action.run()"
+                  >
+                    {{ action.label }}
+                  </el-dropdown-item>
+                </el-dropdown-menu></template
+              >
+            </el-dropdown>
+          </div>
         </template>
       </el-table-column>
     </el-table>
@@ -309,9 +230,11 @@
 </template>
 
 <script setup lang="ts">
+import GlassSkeleton from '@/components/GlassSkeleton.vue'
 import { dateFormatter, dateFormatter2 } from '@/utils/formatTime'
 import { DICT_TYPE, getIntDictOptions } from '@/utils/dict'
 import download from '@/utils/download'
+import { checkPermi } from '@/utils/permission'
 import { handleTree } from '@/utils/tree'
 import { ProWorkOrderApi, ProWorkOrderVO } from '@/api/mes/pro/workorder'
 import { openCostCenter } from '@/views/mes/cost/navigation'
@@ -351,6 +274,70 @@ const queryFormRef = ref() // 搜索的表单
 const formRef = ref() // 表单弹窗
 const lossClosureRef = ref<InstanceType<typeof LossClosureDialog>>()
 const barcodeDetailRef = ref() // 条码详情弹窗
+
+function moreActions(row: ProWorkOrderVO) {
+  const draft = row.status === MesProWorkOrderStatusEnum.PREPARE
+  const confirmed = row.status === MesProWorkOrderStatusEnum.CONFIRMED
+  const selfProduction = confirmed && row.type === MesProWorkOrderTypeEnum.SELF
+  return [
+    {
+      label: '成本',
+      permission: 'mes:cost:query',
+      run: () => openCostCenter(router, { workorderId: row.id })
+    },
+    {
+      label: '确认工单',
+      when: draft,
+      permission: 'mes:pro-work-order:update',
+      run: () => openForm('confirm', row.id)
+    },
+    {
+      label: '生产领料',
+      when: selfProduction,
+      permission: 'mes:wm-product-issue:query',
+      run: () => router.push({ path: '/mes/wm/product-issue', query: { workOrderId: row.id } })
+    },
+    {
+      label: '子工单',
+      when: selfProduction,
+      permission: 'mes:pro-work-order:create',
+      run: () => handleAddChild(row)
+    },
+    {
+      label: '损耗结案',
+      when: confirmed,
+      permission: 'mes:pro-work-order:update',
+      run: () => lossClosureRef.value?.open(row.id)
+    },
+    {
+      label: '损耗记录',
+      when: row.status === MesProWorkOrderStatusEnum.FINISHED,
+      permission: 'mes:pro-work-order:query',
+      run: () => lossClosureRef.value?.open(row.id, true)
+    },
+    {
+      label: '工单完工',
+      when: confirmed,
+      permission: 'mes:pro-work-order:update',
+      run: () => openForm('finish', row.id)
+    },
+    { label: '条码', permission: 'mes:pro-work-order:query', run: () => handleBarcode(row) },
+    {
+      label: '取消',
+      when: confirmed,
+      permission: 'mes:pro-work-order:update',
+      destructive: true,
+      run: () => handleCancel(row.id)
+    },
+    {
+      label: '删除',
+      when: draft,
+      permission: 'mes:pro-work-order:delete',
+      destructive: true,
+      run: () => handleDelete(row.id)
+    }
+  ].filter((action) => action.when !== false && checkPermi([action.permission]))
+}
 
 /** 查询列表（分页 + 前端 handleTree 拼接树） */
 const getList = async () => {
@@ -434,3 +421,17 @@ onMounted(() => {
   getList()
 })
 </script>
+
+<style scoped>
+.order-actions {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+.order-actions :deep(.el-button) {
+  margin: 0;
+}
+.order-destructive {
+  color: var(--fm-tone-danger);
+}
+</style>

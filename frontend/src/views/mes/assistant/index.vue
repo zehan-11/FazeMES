@@ -1,13 +1,30 @@
 <template>
   <KnowledgeLaunchOverlay v-if="moduleIntro && tab !== 'graph'" @done="moduleIntro = false" />
-  <section class="mes-assistant-page" :class="{ 'is-graph': tab === 'graph' }">
-    <el-tag
-      class="model-status"
-      :type="modelStatus?.configured ? 'success' : 'info'"
-      :title="modelLabel"
+  <section
+    class="mes-assistant-page"
+    :class="{
+      'is-graph': tab === 'graph',
+      'is-works': tab === 'works',
+      'is-embedded': embedded,
+      'fm-panel': !embedded && tab !== 'graph',
+      'fm-optical-rim': !embedded && tab === 'knowledge'
+    }"
+  >
+    <header class="assistant-nav"
+      ><div class="nav-scroll">
+        <GlassSegmented v-model="tab" label="助手功能" :options="navigationChoices" />
+      </div>
+      <el-tag
+        class="model-status"
+        :type="modelStatus?.configured ? 'success' : 'info'"
+        :title="modelLabel"
+        :aria-label="modelLabel"
+      >
+        {{
+          modelStatus?.configured ? modelStatus.model : modelStatus ? '模型未配置' : '模型状态未知'
+        }}
+      </el-tag></header
     >
-      {{ modelLabel }}
-    </el-tag>
     <el-alert
       v-if="error"
       :title="error"
@@ -16,32 +33,50 @@
       :closable="false"
       class="assistant-alert"
     />
-    <el-tabs v-model="tab" class="assistant-tabs">
-      <el-tab-pane v-if="canKnowledge || canManage" label="知识图谱" name="graph">
-        <KnowledgeGraph v-if="tab === 'graph'" ref="graphView" @open-document="preview" />
-      </el-tab-pane>
-      <el-tab-pane v-if="canBusiness" label="业务 Agent" name="business">
-        <BusinessAssistant :active="tab === 'business'" @navigate="openBusinessAnalysis" />
-      </el-tab-pane>
-      <el-tab-pane v-if="canBusiness || canChat || canKnowledge" label="Agent 协同" name="works">
-        <FanWorksWorkbench
-          v-if="tab === 'works'"
-          @knowledge-settings="worksScopeOpen = true"
-          :ask-knowledge="sendKnowledgeQuestion"
-          :knowledge-scope="{
-            knowledgeBaseIds: selectedBases,
-            mode: retrievalMode,
-            documentStrategy,
-            hops: retrievalHops
-          }"
+    <div class="assistant-tabs">
+      <FanWorksWorkbench
+        v-if="tab === 'works'"
+        :visible="!embedded || visible"
+        :prefer-knowledge="fromLibrary"
+        :ask-knowledge="sendKnowledgeQuestion"
+        :knowledge-scope="{
+          knowledgeBaseIds: selectedBases,
+          mode: retrievalMode,
+          documentStrategy,
+          hops: retrievalHops
+        }"
+        @knowledge-settings="worksScopeOpen = true"
+      />
+      <section
+        v-if="!embedded && (canKnowledge || canManage) && tab === 'graph'"
+        class="graph-pane"
+        aria-label="知识图谱"
+      >
+        <KnowledgeGraph ref="graphView" @open-document="preview" />
+      </section>
+      <section v-if="canBusiness" v-show="tab === 'business'" aria-label="业务 Agent">
+        <BusinessAssistant
+          :active="tab === 'business' && (!embedded || visible)"
+          :compact="embedded"
+          :initial-id="requestedTab === 'business' ? requestedSession : undefined"
+          @conversation="businessId = $event"
+          @navigate="openBusinessAnalysis"
         />
-      </el-tab-pane>
-      <el-tab-pane v-if="canChat || canKnowledge" label="知识助手" name="chat">
+      </section>
+      <section v-if="canChat || canKnowledge" v-show="tab === 'chat'" aria-label="知识助手">
         <div class="assistant-layout" :class="{ 'assistant-without-sidebar': !canChat }">
-          <aside class="assistant-sidebar" v-if="canChat">
+          <aside class="assistant-sidebar" v-if="canChat && !embedded">
             <el-button type="primary" plain :disabled="sending" @click="newSession"
               >新建会话</el-button
             >
+            <div v-if="sessionId" class="session-tools">
+              <el-button text size="small" :disabled="sending" @click="renameSession"
+                >重命名</el-button
+              >
+              <el-button text size="small" :disabled="sending" @click="removeSession"
+                >删除会话</el-button
+              >
+            </div>
             <div class="assistant-session-list">
               <button
                 v-for="item in sessions"
@@ -58,44 +93,24 @@
             </div>
           </aside>
           <main class="assistant-chat">
-            <div class="assistant-chat-toolbar">
-              <KnowledgeScopeControls
-                v-model:selected-bases="selectedBases"
-                v-model:retrieval-mode="retrievalMode"
-                v-model:document-strategy="documentStrategy"
-                v-model:retrieval-hops="retrievalHops"
-                :bases="bases"
-                :sending="sending"
-              />
-              <DifyAssistant v-if="canChat && canKnowledge" @journey="openJourney" />
-              <el-button plain @click="openJourney()">预览流程示例</el-button>
-              <el-button v-if="sessionId" text :disabled="sending" @click="renameSession"
-                >重命名</el-button
-              >
-              <el-button
-                v-if="sessionId"
-                text
-                type="danger"
-                :disabled="sending"
-                @click="removeSession"
-                >删除会话</el-button
-              >
-            </div>
             <el-alert
-              v-if="!modelStatus?.configured"
+              v-if="modelStatus && !modelStatus.configured"
               title="模型未配置：可以检索真实文档和查看引用，不会生成或伪造模型答复。管理员可在“模型配置”接入服务。"
               type="info"
               :closable="false"
               show-icon
             />
             <div class="assistant-messages" ref="messagesElement" v-loading="historyLoading">
-              <div v-if="!messages.length && !searchResult" class="assistant-welcome"
-                ><h3>从一份真实文档开始</h3
-                ><p>上传并发布工艺规范、设备手册或质量文件，再提问并核对来源。</p
-                ><p>支持检索与多轮对话；会话仅对当前用户可见。</p></div
+              <div
+                v-if="!messages.length && !searchResult && !historyLoading"
+                class="assistant-welcome"
               >
+                <h3>从知识库里找答案</h3>
+                <p>选择一个问题，或输入设备、故障和工艺名称。答案可回到原文核对。</p>
+                <PromptGrid :items="knowledgePrompts" :disabled="sending" @pick="usePrompt" />
+              </div>
               <article
-                v-for="(item, messageIndex) in messages"
+                v-for="(item, messageIndex) in visibleMessages"
                 :key="item.id"
                 class="assistant-message"
                 :class="item.role"
@@ -171,10 +186,11 @@
                 </div>
                 <el-button
                   v-if="item.role === 'assistant' || item.status !== 'ANSWERED'"
-                  link
-                  type="primary"
-                  @click="openMessageJourney(item, messageIndex)"
-                  >查看本次问答流程</el-button
+                  class="journey-pill"
+                  round
+                  size="small"
+                  @click="openMessageJourney(item, messageIndex + firstMessage)"
+                  ><i aria-hidden="true"></i>查看问答流程预览</el-button
                 >
               </article>
               <el-button
@@ -187,16 +203,11 @@
               <EvidenceResults v-if="searchResult" :result="searchResult" />
             </div>
             <div class="assistant-composer">
-              <p v-if="retrievalMode !== 'GRAPH'" class="assistant-field-help">
-                语义或综合检索会调用已配置的Embedding平台处理本次问题。相似度用于排序，请结合原文核对。
-              </p>
-              <p v-if="retrievalMode !== 'DOCUMENT'" class="assistant-field-help"
-                >可先检索核对实体、关系和来源，再发送提问生成带引用的答复。</p
-              >
               <el-input
+                ref="questionInput"
                 v-model="question"
                 type="textarea"
-                :rows="3"
+                :autosize="{ minRows: 2, maxRows: 5 }"
                 maxlength="4000"
                 show-word-limit
                 :placeholder="
@@ -207,259 +218,268 @@
                 :disabled="sending"
                 @keydown.ctrl.enter.prevent="send"
               />
-              <div class="assistant-composer-actions"
-                ><span>{{ chatNotice }}</span
-                ><el-button
-                  :loading="searching"
-                  :disabled="sending || !question.trim() || question.length > 1000"
-                  @click="search"
-                  >检索证据</el-button
-                ><el-button
-                  v-if="canChat && canKnowledge"
+              <div class="composer-toolbar">
+                <el-popover trigger="click" :width="308" placement="top-start">
+                  <template #reference
+                    ><button
+                      class="tool-pill"
+                      type="button"
+                      :disabled="sending"
+                      aria-label="检索模式"
+                      >模式 ·
+                      {{ retrievalChoices.find((x) => x.value === retrievalMode)?.label }} ⌄</button
+                    ></template
+                  >
+                  <GlassSegmented
+                    v-model="retrievalMode"
+                    label="检索模式"
+                    :options="retrievalChoices"
+                    :disabled="sending"
+                  />
+                  <el-select
+                    v-if="retrievalMode !== 'DOCUMENT'"
+                    v-model="retrievalHops"
+                    class="mt-8px"
+                    aria-label="图谱检索跳数"
+                    :disabled="sending"
+                  >
+                    <el-option label="一跳关系" :value="1" /><el-option
+                      label="两跳关系"
+                      :value="2"
+                    />
+                  </el-select>
+                </el-popover>
+                <el-popover trigger="click" :width="275" placement="top-start">
+                  <template #reference
+                    ><button
+                      class="tool-pill"
+                      type="button"
+                      :disabled="sending"
+                      aria-label="知识库范围"
+                      >范围 ·
+                      {{ selectedBases.length ? selectedBases.length + ' 个库' : '全部可见' }}
+                      ⌄</button
+                    ></template
+                  >
+                  <el-select
+                    v-model="selectedBases"
+                    multiple
+                    clearable
+                    collapse-tags
+                    placeholder="全部可访问的已发布知识库"
+                    aria-label="检索知识库范围"
+                  >
+                    <el-option
+                      v-for="base in bases"
+                      :key="base.id"
+                      :label="$catalogLabel(base.name)"
+                      :value="base.id"
+                    />
+                  </el-select>
+                </el-popover>
+                <el-popover
+                  v-if="retrievalMode !== 'GRAPH'"
+                  trigger="click"
+                  :width="230"
+                  placement="top-start"
+                >
+                  <template #reference
+                    ><button
+                      class="tool-pill"
+                      type="button"
+                      :disabled="sending"
+                      aria-label="文档检索策略"
+                      >策略 · {{ strategyLabels[documentStrategy] }} ⌄</button
+                    ></template
+                  >
+                  <GlassSegmented
+                    v-model="documentStrategy"
+                    label="文档检索策略"
+                    :options="strategyChoices"
+                    :disabled="sending"
+                  />
+                  <p class="popover-note"
+                    >综合和语义策略会调用已配置的 Embedding 服务处理本次问题。</p
+                  >
+                </el-popover>
+                <el-popover trigger="click" :width="240" placement="top-start">
+                  <template #reference
+                    ><button class="tool-pill" type="button" aria-label="历史轮次显示范围"
+                      >历史 · {{ historyRounds ? historyRounds + ' 轮' : '全部' }} ⌄</button
+                    ></template
+                  >
+                  <GlassSegmented
+                    v-model="historyRounds"
+                    label="历史轮次显示范围"
+                    :options="historyChoices"
+                  />
+                  <p class="popover-note">选择对话中显示的轮次。模型上下文由服务端管理。</p>
+                </el-popover>
+                <div class="composer-submit">
+                  <el-button
+                    v-if="canKnowledge"
+                    size="small"
+                    :loading="searching"
+                    :disabled="sending || !question.trim() || question.length > 1000"
+                    @click="search"
+                    >检索证据</el-button
+                  >
+                  <el-button
+                    v-if="canChat && canKnowledge"
+                    size="small"
+                    type="primary"
+                    :loading="sending"
+                    :disabled="!question.trim() || searching || historyLoading"
+                    @click="send"
+                    >发送提问</el-button
+                  >
+                </div>
+              </div>
+              <small v-if="chatNotice" class="composer-notice" role="status">{{
+                chatNotice
+              }}</small>
+            </div>
+            <div v-if="!embedded" class="chat-extras">
+              <DifyAssistant v-if="canChat && canKnowledge" @journey="openJourney" />
+              <el-button text size="small" @click="openJourney()">预览问答流程</el-button>
+            </div>
+            <el-button
+              v-else-if="sessionId"
+              text
+              size="small"
+              :disabled="sending"
+              @click="newSession"
+              >新建问答</el-button
+            >
+          </main>
+        </div>
+      </section>
+
+      <section
+        v-if="!embedded && (canKnowledge || canManage)"
+        v-show="tab === 'knowledge'"
+        aria-label="RAG知识库"
+      >
+        <div class="library">
+          <div class="library-toolbar">
+            <div class="library-scope"
+              ><el-icon aria-hidden="true"><Lock /></el-icon>
+              <GlassSegmented
+                v-model="libraryScope"
+                label="知识库访问范围"
+                :options="scopeChoices"
+              />
+            </div>
+            <div class="library-tools">
+              <GlassSegmented v-model="libraryView" label="文档视图" :options="viewChoices" />
+              <el-button :icon="Share" @click="tab = 'graph'">知识图谱</el-button>
+              <el-button
+                v-if="currentBase?.canManage"
+                type="primary"
+                v-magnetic
+                :icon="Upload"
+                @click="openUpload()"
+                >上传文档</el-button
+              >
+            </div>
+          </div>
+          <div class="library-base">
+            <el-select
+              :model-value="knowledgeBaseId"
+              aria-label="当前知识库"
+              placeholder="选择知识库"
+              :disabled="!scopedBases.length"
+              @change="selectBase"
+            >
+              <el-option
+                v-for="base in scopedBases"
+                :key="base.id"
+                :label="$catalogLabel(base.name)"
+                :value="base.id"
+              />
+            </el-select>
+            <span v-if="currentBase" class="base-meta"
+              >{{ currentBase.canManage ? '可维护' : '只读' }} ·
+              {{ currentBase.documentCount }} 份文档</span
+            >
+            <el-button v-if="libraryScope === 'PERSONAL' || canConfig" text @click="editBase()"
+              >新建知识库</el-button
+            >
+            <el-dropdown v-if="currentBase?.canManage" trigger="click">
+              <el-button text aria-label="知识库管理">管理</el-button>
+              <template #dropdown
+                ><el-dropdown-menu>
+                  <el-dropdown-item @click="editBase(currentBase)">编辑知识库</el-dropdown-item>
+                  <el-dropdown-item @click="removeBase">删除知识库</el-dropdown-item>
+                </el-dropdown-menu></template
+              >
+            </el-dropdown>
+          </div>
+          <template v-if="currentBase">
+            <p v-if="currentBase.description" class="base-description">{{
+              $catalogLabel(currentBase.description)
+            }}</p>
+            <div class="library-coverage" role="status">
+              <span
+                ><strong>{{ indexSummary.ready }} / {{ indexSummary.published }}</strong>
+                份已发布文档可语义检索
+                <template v-if="indexSummary.pending">
+                  · {{ indexSummary.pending }} 份处理中</template
+                >
+                <template v-if="indexSummary.needsAttention">
+                  · {{ indexSummary.needsAttention }} 份待索引</template
+                >
+                <template v-if="indexSummary.removing">
+                  · {{ indexSummary.removing }} 份待清理</template
+                >
+              </span>
+              <div
+                ><el-button text size="small" :loading="documentsLoading" @click="loadDocuments()"
+                  >刷新状态</el-button
+                >
+                <el-button
+                  v-if="canKnowledge"
+                  link
                   type="primary"
-                  :loading="sending"
-                  :disabled="!question.trim() || searching"
-                  @click="send"
-                  >发送提问</el-button
+                  :disabled="sending || !indexSummary.published"
+                  @click="searchCurrentBase"
+                  >用 Agent 查询此库</el-button
                 ></div
               >
             </div>
-          </main>
+            <DocumentCollection
+              :documents="documents"
+              :view="libraryView"
+              :manage="currentBase.canManage"
+              :loading="documentsLoading"
+              :submitting="vectorSubmitting"
+              @preview="preview"
+              @action="runDocumentAction"
+            />
+            <details class="library-guide"
+              ><summary>支持的文件格式与建图说明</summary>
+              <p
+                >支持 TXT、MD、CSV、DOCX 和文本型 PDF，单份最多 5 MB。扫描 PDF 需先
+                OCR。审核发布后，系统会处理向量并从中文手册中识别部件、故障原因和处理措施。</p
+              >
+              <p
+                >例如「电机由轴承和转子组成」。也支持箭头关系及「源实体、关系、目标实体」三列
+                CSV。无法识别时会显示「未识别关系」。</p
+              >
+              <a href="/templates/knowledge-relations.md" download>下载关系文档模板</a>
+            </details>
+          </template>
+          <el-empty
+            v-else
+            :description="
+              libraryScope === 'PERSONAL' ? '还没有个人知识库' : '暂无获授权的企业规则库'
+            "
+            :image-size="72"
+          />
         </div>
-      </el-tab-pane>
+      </section>
 
-      <el-tab-pane v-if="canKnowledge || canManage" label="RAG知识库" name="knowledge">
-        <div class="assistant-knowledge-layout">
-          <aside class="assistant-sidebar"
-            ><el-button v-if="canKnowledge || canManage" type="primary" plain @click="editBase()"
-              >新建知识库</el-button
-            ><template v-for="kind in ['PERSONAL', 'RULES']" :key="kind">
-              <p v-if="bases.some((base) => base.libraryType === kind)" class="mt-16px mb-8px">{{
-                kind === 'PERSONAL' ? '我的个人知识库' : '企业规则库'
-              }}</p>
-              <button
-                v-for="base in bases.filter((item) => item.libraryType === kind)"
-                :key="base.id"
-                type="button"
-                class="assistant-session"
-                :class="{ active: knowledgeBaseId === base.id }"
-                @click="selectBase(base.id)"
-              >
-                <span>{{ base.name }}</span
-                ><small
-                  >{{ base.documentCount }} 份文档 · {{ base.canManage ? '可维护' : '只读' }}</small
-                >
-              </button> </template
-            ><el-empty v-if="!bases.length" description="暂无知识库" :image-size="60"
-          /></aside>
-          <section class="assistant-documents">
-            <template v-if="currentBase">
-              <div class="assistant-document-heading"
-                ><div
-                  ><h3>{{ currentBase.name }}</h3
-                  ><p>{{ currentBase.description || '暂无知识库描述' }}</p></div
-                ><div v-if="currentBase.canManage"
-                  ><el-button @click="editBase(currentBase)">编辑</el-button
-                  ><el-button type="danger" plain @click="removeBase">删除知识库</el-button
-                  ><el-button type="primary" @click="openUpload()">上传文档</el-button></div
-                ></div
-              >
-              <div class="assistant-index-overview" aria-label="文档向量覆盖">
-                <div>
-                  <strong>文档向量覆盖</strong>
-                  <p role="status" aria-atomic="true">
-                    {{ indexSummary.ready }} /
-                    {{ indexSummary.published }} 份已发布文档可用于语义检索
-                    <template v-if="indexSummary.pending">
-                      · {{ indexSummary.pending }} 份正在处理</template
-                    >
-                    <template v-if="indexSummary.needsAttention">
-                      · {{ indexSummary.needsAttention }} 份待建立或重试</template
-                    >
-                    <template v-if="indexSummary.removing">
-                      · {{ indexSummary.removing }} 份旧向量待清理</template
-                    >
-                  </p>
-                </div>
-                <div class="assistant-index-actions">
-                  <el-button :loading="documentsLoading" @click="loadDocuments()"
-                    >刷新状态</el-button
-                  >
-                  <el-button
-                    v-if="canKnowledge"
-                    type="primary"
-                    plain
-                    :disabled="sending || !indexSummary.ready"
-                    @click="searchCurrentBase"
-                  >
-                    在此库语义检索
-                  </el-button>
-                </div>
-              </div>
-              <el-alert
-                title="支持 TXT / MD / CSV、DOCX 和文本型 PDF（最多 5MB）。上传后请审核并发布。发布后自动处理向量，入库完成即可语义检索。扫描 PDF 需先 OCR。"
-                type="info"
-                show-icon
-                :closable="false"
-              />
-              <el-collapse class="mt-12px">
-                <el-collapse-item title="普通手册与关系文件如何建图" name="graph-format">
-                  <p
-                    >上传普通中文设备手册并发布后，会自动识别常见的部件组成、故障原因和处理措施。</p
-                  >
-                  <pre>
-这台电风扇配有一台电机。
-电机由轴承和转子组成。
-轴承异响可能由润滑不足引起。</pre
-                  >
-                  <p
-                    >建图抽取在本地执行。系统也支持箭头关系和“源实体、关系、目标实体”三列表格或
-                    CSV。未匹配到支持的句式或格式时，文档会显示“未识别关系”。</p
-                  >
-                  <a href="/templates/knowledge-relations.md" download>下载关系文档模板</a>
-                </el-collapse-item>
-              </el-collapse>
-              <el-table
-                :data="documents"
-                v-loading="documentsLoading"
-                class="assistant-document-table"
-                empty-text="当前知识库没有可见文档"
-                row-key="id"
-              >
-                <el-table-column
-                  prop="title"
-                  label="文档标题"
-                  min-width="180"
-                  show-overflow-tooltip
-                />
-                <el-table-column prop="fileType" label="格式" width="80" />
-                <el-table-column prop="version" label="版本" width="70" />
-                <el-table-column prop="chunkCount" label="分块" width="75" />
-                <el-table-column label="状态" width="90"
-                  ><template #default="{ row }"
-                    ><el-tag :type="row.status === 'PUBLISHED' ? 'success' : 'info'">{{
-                      row.status === 'PUBLISHED' ? '已发布' : '草稿'
-                    }}</el-tag></template
-                  ></el-table-column
-                >
-                <el-table-column label="知识图谱" min-width="180">
-                  <template #default="{ row }">
-                    <el-tag
-                      :type="
-                        row.graphStatus === 'SYNCED'
-                          ? 'success'
-                          : ['ERROR', 'INVALID'].includes(row.graphStatus)
-                            ? 'danger'
-                            : 'info'
-                      "
-                      >{{ graphStatusText(row.graphStatus) }}</el-tag
-                    >
-                    <div
-                      >{{ row.graphEntityCount || 0 }} 个实体 ·
-                      {{ row.graphRelationCount || 0 }} 条关系</div
-                    >
-                    <small v-if="row.graphError">{{ row.graphError }}</small>
-                  </template>
-                </el-table-column>
-                <el-table-column label="文档向量" min-width="200">
-                  <template #default="{ row }">
-                    <el-tag
-                      :type="
-                        row.vectorStatus === 'INDEXED'
-                          ? 'success'
-                          : ['ERROR', 'CONFIG_CHANGED', 'STALE'].includes(row.vectorStatus)
-                            ? 'danger'
-                            : 'info'
-                      "
-                    >
-                      {{ vectorStatusText(row.vectorStatus, row.vectorAction) }}
-                    </el-tag>
-                    <div v-if="row.vectorUsable"
-                      >当前版本 v{{ row.vectorIndexedVersion }} 已入库</div
-                    >
-                    <div v-else-if="row.vectorAction === 'REMOVE'"
-                      >旧向量已失效，正在等待清理完成</div
-                    >
-                    <div v-if="row.vectorChunkCount"
-                      >{{ row.vectorCompletedChunks }} / {{ row.vectorChunkCount }} 个片段</div
-                    >
-                    <el-progress
-                      v-if="row.vectorAction === 'INDEX' && row.vectorChunkCount > 0"
-                      :percentage="
-                        Math.min(
-                          100,
-                          Math.round((row.vectorCompletedChunks / row.vectorChunkCount) * 100)
-                        )
-                      "
-                      :show-text="false"
-                      :aria-label="`${row.title}向量处理进度`"
-                    />
-                    <small v-if="row.vectorModel"
-                      >{{ row.vectorModel }} · {{ row.vectorDimensions }} 维</small
-                    >
-                    <div v-if="row.vectorError"
-                      ><small>{{ row.vectorError }}</small></div
-                    >
-                    <el-button
-                      v-if="currentBase.canManage && row.status === 'PUBLISHED'"
-                      link
-                      type="primary"
-                      :disabled="
-                        ['PENDING', 'PROCESSING'].includes(row.vectorStatus) ||
-                        vectorSubmitting.has(row.id)
-                      "
-                      @click="rebuildDocumentVectors(row)"
-                    >
-                      {{
-                        row.vectorStatus === 'NOT_INDEXED'
-                          ? '建立向量索引'
-                          : row.vectorStatus === 'INDEXED'
-                            ? '重新建立索引'
-                            : '重试向量入库'
-                      }}
-                    </el-button>
-                  </template>
-                </el-table-column>
-                <el-table-column label="操作" min-width="400"
-                  ><template #default="{ row }"
-                    ><el-button link type="primary" @click="preview(row.id)">原文与分块</el-button
-                    ><el-button link @click="downloadDocument(row)">下载</el-button
-                    ><el-button
-                      v-if="currentBase.canManage"
-                      link
-                      type="primary"
-                      @click="openUpload(row)"
-                      >更新文件</el-button
-                    ><el-button v-if="currentBase.canManage" link @click="showVersions(row)"
-                      >历史版本</el-button
-                    ><el-button
-                      v-if="currentBase.canManage"
-                      link
-                      type="primary"
-                      @click="publishDocument(row)"
-                      >{{ row.status === 'PUBLISHED' ? '撤回' : '发布' }}</el-button
-                    ><el-button
-                      v-if="currentBase.canManage"
-                      link
-                      :disabled="row.graphStatus === 'PENDING'"
-                      @click="rebuildDocumentGraph(row)"
-                      >重新建图</el-button
-                    ><el-button
-                      v-if="currentBase.canManage"
-                      link
-                      type="danger"
-                      @click="removeDocument(row)"
-                      >删除</el-button
-                    ></template
-                  ></el-table-column
-                >
-              </el-table> </template
-            ><el-empty v-else description="选择或新建知识库" />
-          </section>
-        </div>
-      </el-tab-pane>
-
-      <el-tab-pane v-if="canConfig" label="模型配置" name="config">
+      <section v-if="!embedded && canConfig" v-show="tab === 'config'" aria-label="模型配置">
         <div class="assistant-config">
           <el-alert
             title="本项目不设置模型计费、次数或Token累计配额；模型平台自身额度仍以服务商为准。关键词检索不调用模型；语义检索和Embedding测试会调用已配置的平台。"
@@ -617,8 +637,8 @@
             :closable="false"
           />
         </div>
-      </el-tab-pane>
-    </el-tabs>
+      </section>
+    </div>
   </section>
 
   <el-dialog
@@ -718,7 +738,12 @@
       ></template
     ></el-dialog
   >
-  <el-dialog v-model="citationVisible" title="可追溯引用" width="min(820px, 92vw)">
+  <el-dialog
+    :append-to-body="embedded"
+    v-model="citationVisible"
+    title="可追溯引用"
+    width="min(820px, 92vw)"
+  >
     <template v-if="activeCitation">
       <h3>{{ activeCitation.title }}</h3>
       <p v-if="activeCitation.relation"
@@ -782,7 +807,7 @@
     append-to-body
     :body-style="{ padding: '0' }"
   >
-    <FanWorksReplay v-if="journeyData" :record="journeyData" />
+    <FanWorksReplay v-if="journeyVisible && journeyData" :record="journeyData" />
     <WorkflowJourney v-if="journeyVisible" :journey="journeyData" @source="openJourneySource" />
   </el-dialog>
   <el-dialog
@@ -806,7 +831,7 @@
       ><el-button type="primary" @click="worksScopeOpen = false">完成</el-button></template
     >
   </el-dialog>
-  <el-dialog v-model="previewVisible" title="原文与分块" width="85%"
+  <el-dialog :append-to-body="embedded" v-model="previewVisible" title="原文与分块" width="85%"
     ><div v-loading="previewLoading" v-if="previewDocument"
       ><h3>{{ previewDocument.title }} · v{{ previewDocument.version }}</h3
       ><p
@@ -866,6 +891,13 @@ import {
 import DifyAssistant from './DifyAssistant.vue'
 import WorkflowJourney from './WorkflowJourney.vue'
 import { messageJourney, searchJourney, type Journey, type JourneySource } from './workflowJourney'
+import GlassSegmented from '@/components/GlassSegmented.vue'
+import { Lock, Share, Upload } from '@element-plus/icons-vue'
+import SuccessMark from '@/components/SuccessMark.vue'
+import KnowledgeScopeControls from './KnowledgeScopeControls.vue'
+import DocumentCollection from './DocumentCollection.vue'
+import PromptGrid from './PromptGrid.vue'
+import type { DocumentAction } from './DocumentMenu.vue'
 import EvidenceResults from './EvidenceResults.vue'
 import AnswerText from './AnswerText.vue'
 import KnowledgeLaunchOverlay from './KnowledgeLaunchOverlay.vue'
@@ -877,7 +909,6 @@ import {
 } from '@/api/mes/assistant/evidence'
 import { checkPermi } from '@/utils/permission'
 import { formatAssistantTime as time } from './assistantTime'
-import KnowledgeScopeControls from './KnowledgeScopeControls.vue'
 import BusinessAssistant from '@/views/mes/insight/BusinessAssistant.vue'
 
 const FanWorksWorkbench = defineAsyncComponent(() => import('./FanWorksWorkbench.vue'))
@@ -885,6 +916,10 @@ const FanWorksReplay = defineAsyncComponent(() => import('./FanWorksReplay.vue')
 const KnowledgeGraph = defineAsyncComponent(() => import('@/views/mes/graph/KnowledgeGraph.vue'))
 
 defineOptions({ name: 'MesAssistant' })
+const props = withDefaults(defineProps<{ embedded?: boolean; visible?: boolean }>(), {
+  embedded: false,
+  visible: true
+})
 
 const journeyVisible = ref(false)
 const journeyData = ref<Journey>()
@@ -914,7 +949,7 @@ onActivated(() => {
   if (!wasDeactivated) return
   wasDeactivated = false
   if (tab.value === 'graph') void graphView.value?.replayLaunch()
-  else moduleIntro.value = tab.value !== 'works' && !reducedMotion.matches
+  else moduleIntro.value = !props.embedded && tab.value !== 'works' && !reducedMotion.matches
 })
 
 const canChat = checkPermi(['mes:assistant:chat'])
@@ -925,23 +960,38 @@ const canBusiness = computed(
   () => checkPermi(['mes:insight:query']) && checkPermi(['mes:insight:chat'])
 )
 const assistantRoute = useRoute()
-const availableTabs = [
-  (canKnowledge || canManage) && 'graph',
-  canBusiness.value && 'business',
-  (canChat || canKnowledge) && 'chat',
-  (canBusiness.value || canChat || canKnowledge) && 'works',
-  (canKnowledge || canManage) && 'knowledge',
-  canConfig.value && 'config'
-].filter((item): item is string => Boolean(item))
-const requestedTab = assistantRoute.query.tab
-const tab = ref(
-  typeof requestedTab === 'string' && availableTabs.includes(requestedTab)
-    ? requestedTab
-    : (availableTabs[0] ?? 'config')
+const navigationChoices = [
+  { value: 'works', label: 'Agent 协同', show: canBusiness.value || canKnowledge || canChat },
+  { value: 'graph', label: '知识图谱', show: !props.embedded && (canKnowledge || canManage) },
+  { value: 'business', label: '业务 Agent', show: canBusiness.value },
+  { value: 'chat', label: '知识助手', show: canKnowledge || (!props.embedded && canChat) },
+  { value: 'knowledge', label: 'RAG 知识库', show: !props.embedded && (canKnowledge || canManage) },
+  { value: 'config', label: '模型配置', show: !props.embedded && canConfig.value }
+].filter((item) => item.show)
+const requestedTab = props.embedded ? 'works' : assistantRoute.query.tab
+const hasTab = (value: unknown): value is string =>
+  navigationChoices.some((item) => item.value === value)
+const tab = ref(hasTab(requestedTab) ? requestedTab : (navigationChoices[0]?.value ?? 'config'))
+watch(
+  () => assistantRoute.query.tab,
+  (value) => {
+    if (!props.embedded && assistantRoute.path === '/mes/assistant' && hasTab(value))
+      tab.value = value
+  }
 )
 
+const emit = defineEmits<{ context: [tab: string, sessionId?: number] }>()
+const sessionParam = Number(assistantRoute.query.session)
+const requestedSession =
+  !props.embedded && Number.isSafeInteger(sessionParam) && sessionParam > 0
+    ? sessionParam
+    : undefined
+const businessId = ref<number>()
+
 const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)')
-const moduleIntro = ref(tab.value !== 'graph' && tab.value !== 'works' && !reducedMotion.matches)
+const moduleIntro = ref(
+  !props.embedded && tab.value !== 'graph' && tab.value !== 'works' && !reducedMotion.matches
+)
 watch(tab, () => {
   moduleIntro.value = false
 })
@@ -955,23 +1005,125 @@ const modelStatus = ref<ModelStatus>()
 const modelLabel = computed(() =>
   modelStatus.value?.configured
     ? modelStatus.value.provider + ' · ' + modelStatus.value.model + '（凭据已配置）'
-    : '模型尚未配置'
+    : modelStatus.value
+      ? '模型尚未配置'
+      : '模型状态未知'
 )
 const bases = ref<KnowledgeBase[]>([])
-const selectedBases = ref<number[]>([])
+const fromLibrary = ref(false)
 const worksScopeOpen = ref(false)
+const selectedBases = ref<number[]>([])
+const libraryScope = ref<KnowledgeBase['libraryType']>('PERSONAL')
+const scopeChoices = [
+  { value: 'PERSONAL', label: '个人隐私库（仅本人可见）' },
+  { value: 'RULES', label: '企业规则库（按角色授权）' }
+] as const
+const viewChoices = [
+  { value: 'cards', label: '卡片' },
+  { value: 'list', label: '列表' }
+] as const
+const libraryView = ref<'cards' | 'list'>('cards')
+const scopedBases = computed(() =>
+  bases.value.filter((base) => base.libraryType === libraryScope.value)
+)
 const knowledgeBaseId = ref<number>()
+function alignBase() {
+  if (!scopedBases.value.some((base) => base.id === knowledgeBaseId.value)) {
+    documents.value = []
+    knowledgeBaseId.value = scopedBases.value[0]?.id
+  }
+}
+function runDocumentAction(command: DocumentAction, doc: KnowledgeDocument) {
+  const handlers = {
+    download: downloadDocument,
+    update: openUpload,
+    versions: showVersions,
+    publish: publishDocument,
+    vector: rebuildDocumentVectors,
+    graph: rebuildDocumentGraph,
+    delete: removeDocument
+  }
+  if (command === 'download' || currentBase.value?.canManage) void handlers[command](doc)
+}
 const currentBase = computed(() => bases.value.find((base) => base.id === knowledgeBaseId.value))
 const sessions = ref<AssistantSession[]>([])
 const sessionId = ref<number>()
+watch(
+  [tab, () => (tab.value === 'business' ? businessId.value : sessionId.value)],
+  ([activeTab, id]) => emit('context', activeTab, id),
+  { immediate: true }
+)
+let sessionRequest = 0
 const messages = ref<AssistantMessage[]>([])
 const question = ref('')
+const questionInput = ref<{ focus: () => void }>()
+function usePrompt(value: string) {
+  question.value = value
+  questionInput.value?.focus()
+}
+const knowledgePrompts = [
+  {
+    title: '点检异常怎么处理？',
+    detail: '查找点检规范和处置顺序',
+    question: '设备点检发现异常时，应如何处理？'
+  },
+  {
+    title: '设备由哪些部件组成？',
+    detail: '沿设备关系核对部件',
+    question: '手册中的电风扇由哪些部件组成？'
+  },
+  {
+    title: '轴承为什么会异响？',
+    detail: '追溯故障原因与依据',
+    question: '轴承异响有哪些可能原因？'
+  },
+  {
+    title: '检修前要做哪些准备？',
+    detail: '核对安全条件和操作要求',
+    question: '检修设备前有哪些安全准备要求？'
+  },
+  {
+    title: '如何判断检验合格？',
+    detail: '定位质量标准的原文',
+    question: '质量文件中有哪些检验合格条件？'
+  },
+  {
+    title: '润滑维护有哪些要求？',
+    detail: '查找周期、方法与出处',
+    question: '设备手册对润滑维护有哪些要求？'
+  }
+]
 const chatNotice = ref('')
+const historyRounds = ref(0)
+const historyChoices = [
+  { value: 3, label: '3 轮' },
+  { value: 6, label: '6 轮' },
+  { value: 0, label: '全部' }
+]
+const firstMessage = computed(() => {
+  if (!historyRounds.value) return 0
+  let remaining = historyRounds.value
+  for (let i = messages.value.length - 1; i >= 0; i--) {
+    if (messages.value[i].role === 'user' && --remaining === 0) return i
+  }
+  return 0
+})
+const visibleMessages = computed(() => messages.value.slice(firstMessage.value))
+const strategyChoices = [
+  { value: 'LEXICAL', label: '关键词' },
+  { value: 'SEMANTIC', label: '语义' },
+  { value: 'COMBINED', label: '综合' }
+] as const
 const sending = ref(false)
 const searching = ref(false)
 const historyLoading = ref(false)
 const searchResult = ref<EvidenceSearchResult>()
 const modeLabels = { DOCUMENT: '文档问答', GRAPH: '图谱问答', HYBRID: '混合问答' }
+const retrievalChoices = [
+  { value: 'DOCUMENT', label: '文档 RAG' },
+  { value: 'GRAPH', label: '图谱 GraphRAG' },
+  { value: 'HYBRID', label: '混合' }
+] as const
 const retrievalMode = ref<RetrievalMode>('DOCUMENT')
 const documentStrategy = ref<DocumentStrategy>('COMBINED')
 const strategyLabels = { LEXICAL: '关键词', SEMANTIC: '语义', COMBINED: '综合' }
@@ -1094,8 +1246,7 @@ async function scrollMessages() {
 async function loadBases() {
   if (!canKnowledge && !canManage) return
   bases.value = await AssistantApi.bases()
-  if (!bases.value.some((base) => base.id === knowledgeBaseId.value))
-    knowledgeBaseId.value = bases.value[0]?.id
+  alignBase()
   selectedBases.value = selectedBases.value.filter((id) =>
     bases.value.some((base) => base.id === id)
   )
@@ -1105,6 +1256,8 @@ async function loadSessions() {
 }
 async function newSession() {
   if (sending.value) return
+  ++sessionRequest
+  historyLoading.value = false
   ++evidenceRequest
   searching.value = false
   sessionId.value = undefined
@@ -1114,21 +1267,23 @@ async function newSession() {
   question.value = ''
 }
 async function openSession(id: number) {
+  const request = ++sessionRequest
   ++evidenceRequest
   searching.value = false
   historyLoading.value = true
   error.value = ''
   try {
     const session = await AssistantApi.session(id)
+    if (request !== sessionRequest) return
     sessionId.value = id
     messages.value = session.messages || []
     searchResult.value = undefined
     chatNotice.value = ''
     await scrollMessages()
   } catch (exception) {
-    failure(exception, '会话加载失败')
+    if (request === sessionRequest) failure(exception, '会话加载失败')
   } finally {
-    historyLoading.value = false
+    if (request === sessionRequest) historyLoading.value = false
   }
 }
 async function renameSession() {
@@ -1156,7 +1311,7 @@ async function removeSession() {
   }
 }
 async function sendKnowledgeQuestion(content: string, mode: RetrievalMode = retrievalMode.value) {
-  if (!canChat || !canKnowledge || sending.value || searching.value) {
+  if (!canChat || !canKnowledge || historyLoading.value || sending.value || searching.value) {
     throw new Error('当前知识会话暂时无法发送问题。')
   }
   sending.value = true
@@ -1178,7 +1333,7 @@ async function sendKnowledgeQuestion(content: string, mode: RetrievalMode = retr
       const session = await AssistantApi.session(target)
       if (sessionId.value === target) messages.value = session.messages || []
     }
-    await loadSessions()
+    if (!props.embedded) await loadSessions()
     await scrollMessages()
     return result
   } finally {
@@ -1186,7 +1341,14 @@ async function sendKnowledgeQuestion(content: string, mode: RetrievalMode = retr
   }
 }
 async function send() {
-  if (!canChat || !canKnowledge || sending.value || searching.value || !question.value.trim())
+  if (
+    !canChat ||
+    !canKnowledge ||
+    historyLoading.value ||
+    sending.value ||
+    searching.value ||
+    !question.value.trim()
+  )
     return
   try {
     await sendKnowledgeQuestion(question.value.trim())
@@ -1220,6 +1382,14 @@ async function search() {
     if (request === evidenceRequest) searching.value = false
   }
 }
+watch(
+  libraryScope,
+  () => {
+    alignBase()
+    void loadDocuments()
+  },
+  { flush: 'sync' }
+)
 async function selectBase(id: number) {
   if (knowledgeBaseId.value !== id) documents.value = []
   knowledgeBaseId.value = id
@@ -1243,35 +1413,14 @@ function searchCurrentBase() {
   if (!currentBase.value || sending.value) return
   selectedBases.value = [currentBase.value.id]
   retrievalMode.value = 'DOCUMENT'
-  documentStrategy.value = 'SEMANTIC'
-  tab.value = 'chat'
+  documentStrategy.value = indexSummary.value.ready ? 'COMBINED' : 'LEXICAL'
+  fromLibrary.value = true
+  tab.value = 'works'
 }
 let documentPoll: ReturnType<typeof setTimeout> | undefined
 let documentRequest = 0
 let assistantDisposed = false
 const vectorSubmitting = reactive(new Set<number>())
-const vectorStatusText = (status: string, action?: string) => {
-  if (action === 'REMOVE')
-    return (
-      { PENDING: '等待移除旧向量', PROCESSING: '正在移除旧向量', ERROR: '旧向量清理失败' }[
-        status
-      ] || '旧向量已失效'
-    )
-  return (
-    {
-      NOT_INDEXED: '尚未建立索引',
-      READY: '待发布',
-      PENDING: '等待入库',
-      PROCESSING: '正在处理',
-      INDEXED: '已入库',
-      ERROR: '入库失败',
-      WAITING_CONFIG: '等待模型配置',
-      CONFIG_CHANGED: '模型配置已变更',
-      STALE: '文件状态已变更',
-      REMOVED: '已移除'
-    }[status] || '尚未建立索引'
-  )
-}
 async function rebuildDocumentVectors(document: KnowledgeDocument) {
   if (vectorSubmitting.has(document.id)) return
   vectorSubmitting.add(document.id)
@@ -1285,17 +1434,6 @@ async function rebuildDocumentVectors(document: KnowledgeDocument) {
     vectorSubmitting.delete(document.id)
   }
 }
-const graphStatusText = (status: string) =>
-  ({
-    NOT_INDEXED: '尚未建图',
-    READY: '待发布',
-    EMPTY: '未识别关系',
-    PENDING: '等待同步',
-    SYNCED: '已同步',
-    ERROR: '同步失败',
-    INVALID: '关系格式待检查',
-    REMOVED: '已移除'
-  })[status] || '尚未建图'
 async function loadDocuments(background = false) {
   clearTimeout(documentPoll)
   const request = ++documentRequest,
@@ -1342,6 +1480,7 @@ watch(tab, (value) => {
   if (value === 'knowledge') void loadDocuments()
 })
 onBeforeUnmount(() => {
+  ++sessionRequest
   ++evidenceRequest
   assistantDisposed = true
   ++documentRequest
@@ -1353,7 +1492,7 @@ function editBase(base?: KnowledgeBase) {
   baseForm.id = base?.id
   baseForm.name = base?.name || ''
   baseForm.description = base?.description || ''
-  baseForm.libraryType = base?.libraryType || 'PERSONAL'
+  baseForm.libraryType = base?.libraryType || (canConfig.value ? libraryScope.value : 'PERSONAL')
   baseForm.readerRoleIds = [...(base?.readerRoleIds || [])]
   if (canConfig.value) {
     rolesLoading.value = true
@@ -1368,7 +1507,10 @@ async function saveBase() {
   if (!baseForm.name.trim()) return ElMessage.warning('请输入知识库名称')
   baseSaving.value = true
   try {
-    knowledgeBaseId.value = await AssistantApi.saveBase({ ...baseForm, name: baseForm.name.trim() })
+    const savedId = await AssistantApi.saveBase({ ...baseForm, name: baseForm.name.trim() })
+    libraryScope.value = baseForm.libraryType
+    if (knowledgeBaseId.value !== savedId) documents.value = []
+    knowledgeBaseId.value = savedId
     baseVisible.value = false
     await loadBases()
     await loadDocuments()
@@ -1443,11 +1585,13 @@ async function uploadDocument() {
           uploadFile.value
         )
       : await AssistantApi.upload(knowledgeBaseId.value, uploadTitle.value, uploadFile.value)
-    ElMessage.success(
-      target
+    ElMessage.success({
+      message: target
         ? '新版本已保存为草稿，旧版向量和图谱进入清理队列。请审核后重新发布。'
-        : `解析完成，生成${result.chunkCount}个片段，请审核后发布`
-    )
+        : `解析完成，生成${result.chunkCount}个片段，请审核后发布`,
+      icon: SuccessMark,
+      customClass: 'fm-success-toast'
+    })
     uploadVisible.value = false
     uploadTitle.value = ''
     uploadFile.value = undefined
@@ -1633,10 +1777,19 @@ async function testEmbeddingConfig() {
 }
 onMounted(async () => {
   try {
-    modelStatus.value = await AssistantApi.status()
-    await Promise.all([loadBases(), loadSessions()])
-    await loadDocuments()
-    if (canConfig.value) {
+    await Promise.all([
+      checkPermi(['mes:assistant:query'])
+        ? AssistantApi.status().then((status) => {
+            modelStatus.value = status
+          })
+        : undefined,
+      loadBases(),
+      props.embedded ? undefined : loadSessions()
+    ])
+    if (canChat && (tab.value === 'chat' || tab.value === 'works') && requestedSession)
+      await openSession(requestedSession)
+    if (!props.embedded && tab.value === 'knowledge') await loadDocuments()
+    if (!props.embedded && canConfig.value) {
       configLoading.value = true
       Object.assign(config, await AssistantApi.modelConfig())
       Object.assign(embedding, await AssistantApi.embeddingConfig())
@@ -1665,103 +1818,159 @@ onMounted(async () => {
   padding: 0;
 }
 .mes-assistant-page {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
-  grid-template-rows: 42px auto auto;
   min-width: 0;
-  background: var(--el-bg-color);
+  color: var(--fm-text);
 }
 .mes-assistant-page.is-graph {
+  background-color: #020618;
+  display: flex;
   flex: 1 1 0;
   min-height: 0;
-  grid-template-rows: 42px auto minmax(0, 1fr);
+  flex-direction: column;
 }
-.mes-assistant-page > .assistant-tabs {
-  display: contents;
-  --el-tabs-header-height: 42px;
-}
-.mes-assistant-page :deep(.assistant-tabs > .el-tabs__header) {
-  grid-area: 1 / 1;
-  min-width: 0;
-  height: 42px;
-  margin: 0;
-  padding-inline: 10px 4px;
-}
-.mes-assistant-page :deep(.assistant-tabs > .el-tabs__content) {
-  grid-area: 3 / 1 / 4 / -1;
-  min-width: 0;
+.is-graph .assistant-tabs {
+  flex: 1 1 0;
   min-height: 0;
 }
-.mes-assistant-page:not(.is-graph) :deep(.assistant-tabs > .el-tabs__content) {
-  padding: 10px;
-}
-.mes-assistant-page :deep(#pane-graph) {
+.graph-pane {
   height: 100%;
 }
-.model-status {
-  grid-area: 1 / 2;
-  align-self: center;
-  justify-self: end;
-  margin-inline: 6px 10px;
-  max-width: min(40vw, 26em);
+.assistant-nav {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  min-width: 0;
+  padding: 5px 12px;
+  border-bottom: 1px solid var(--fm-divider);
+  background: var(--fm-card);
+}
+.nav-scroll {
+  min-width: 0;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+.nav-scroll > .fm-segmented {
+  width: max-content;
+  max-width: none;
+}
+.nav-scroll :deep(.fm-segmented__option span) {
+  padding: 4px 10px;
   white-space: nowrap;
+}
+.model-status {
+  min-width: 42px;
+  max-width: min(25%, 15em);
 }
 .model-status :deep(.el-tag__content) {
   overflow: hidden;
   text-overflow: ellipsis;
+  white-space: nowrap;
 }
-.mes-assistant-page > .assistant-alert {
-  grid-area: 2 / 1 / 3 / -1;
+.assistant-alert {
+  margin: 4px 0;
 }
-
-.assistant-chat-toolbar,
-.assistant-document-heading,
-.assistant-composer-actions {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
+.mes-assistant-page:not(.is-graph) > .assistant-tabs {
+  padding: clamp(10px, 1.5vw, 22px);
+}
+.works-knowledge-settings {
+  display: grid;
   gap: 12px;
 }
-
-.assistant-document-heading h3 {
-  margin: 0 0 6px;
+.is-works.mes-assistant-page > .assistant-tabs {
+  padding: 0;
 }
-
-.assistant-document-heading p,
-.assistant-welcome p,
-.assistant-search-result p,
-.assistant-field-help {
-  font-size: 13px;
-  color: var(--el-text-color-secondary);
-}
-
-.assistant-alert {
-  margin: 12px 0;
-}
-
-.assistant-layout,
-.assistant-knowledge-layout {
+.assistant-layout {
   display: grid;
-  grid-template-columns: 240px minmax(0, 1fr);
-  min-height: 580px;
-  gap: 20px;
+  grid-template-columns: clamp(150px, 16%, 220px) minmax(0, 1fr);
+  gap: 18px;
 }
-
-.assistant-without-sidebar {
+.assistant-without-sidebar,
+.is-embedded .assistant-layout {
   grid-template-columns: minmax(0, 1fr);
 }
-
 .assistant-sidebar {
   min-width: 0;
-  padding-right: 16px;
-  border-right: 1px solid var(--el-border-color-lighter);
+  padding-right: 14px;
+  border-right: 1px solid var(--fm-line);
 }
-
 .assistant-sidebar > .el-button {
   width: 100%;
-  margin-bottom: 16px;
+  margin-bottom: 10px;
 }
-
+.session-tools,
+.chat-extras {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+.session-tools {
+  margin-bottom: 7px;
+}
+.library {
+  display: grid;
+  min-width: 0;
+  gap: 13px;
+}
+.library-toolbar,
+.library-tools,
+.library-scope,
+.library-base,
+.library-coverage {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.library-toolbar,
+.library-coverage {
+  justify-content: space-between;
+}
+.library-tools .el-button,
+.library-base .el-button {
+  margin: 0;
+}
+.library-scope {
+  color: var(--fm-blue-ink);
+  flex-wrap: nowrap;
+}
+.library-base .el-select {
+  width: min(260px, 100%);
+}
+.base-meta,
+.base-description,
+.library-guide,
+.library-coverage {
+  font-size: 13px;
+  color: var(--fm-secondary);
+}
+.base-description {
+  margin: -4px 0 0;
+  overflow-wrap: anywhere;
+}
+.library-coverage {
+  padding: 7px 12px;
+  border: 1px solid var(--fm-line);
+  border-radius: 10px;
+  background: var(--fm-slot);
+}
+.library-coverage strong {
+  color: var(--fm-blue-ink);
+  font-variant-numeric: tabular-nums;
+}
+.library-guide {
+  border-top: 1px solid var(--fm-divider);
+  padding-top: 12px;
+  line-height: 1.65;
+}
+.library-guide summary {
+  cursor: pointer;
+  width: fit-content;
+}
+.library-guide a {
+  color: var(--fm-blue-ink);
+}
 .assistant-session-list {
   max-height: 600px;
   overflow: auto;
@@ -1806,32 +2015,121 @@ onMounted(async () => {
   gap: 12px;
 }
 
-.assistant-chat-toolbar {
-  justify-content: flex-start;
-  flex-wrap: wrap;
-}
-
-.works-knowledge-settings {
-  display: grid;
-  gap: 14px;
-}
-.works-knowledge-settings :deep(label) {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-}
-
 .assistant-messages {
-  height: 480px;
-  padding: 8px 12px 16px 0;
+  min-height: 190px;
+  height: clamp(265px, 49dvh, 640px);
+  padding: 2px 5px 4px 0;
   overflow: auto;
+  scrollbar-gutter: stable;
 }
-
 .assistant-welcome {
-  padding: 80px 24px;
-  text-align: center;
+  max-width: 1200px;
+  margin-inline: auto;
+  padding: 13px 0 12px;
 }
-
+.assistant-welcome h3 {
+  margin: 0 0 6px;
+  font-size: 22px;
+  line-height: 1.4;
+}
+.assistant-welcome p {
+  margin: 0 0 16px;
+  color: var(--fm-secondary);
+  line-height: 1.6;
+}
+.assistant-composer {
+  padding: 9px 12px;
+  border: 1px solid var(--fm-strong-line);
+  border-radius: 16px;
+  background: var(--fm-overlay);
+  box-shadow:
+    inset 0 1px var(--fm-highlight),
+    var(--fm-shadow);
+  backdrop-filter: blur(14px);
+}
+.assistant-composer:focus-within {
+  border-color: var(--fm-focus);
+}
+.assistant-composer :deep(.el-textarea__inner) {
+  background: transparent;
+  box-shadow: none;
+  padding: 7px 5px;
+}
+.composer-toolbar,
+.composer-submit {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+}
+.composer-toolbar {
+  padding-top: 7px;
+}
+.composer-submit {
+  margin-left: auto;
+}
+.composer-submit .el-button {
+  margin: 0;
+}
+.tool-pill {
+  display: inline-flex;
+  align-items: center;
+  min-height: 28px;
+  padding: 3px 9px;
+  font: inherit;
+  font-size: 12px;
+  color: var(--fm-secondary);
+  border: 1px solid var(--fm-line);
+  border-radius: 999px;
+  background: var(--fm-slot);
+  cursor: pointer;
+}
+.tool-pill:hover,
+.tool-pill:focus-visible {
+  color: var(--fm-blue-ink);
+  border-color: var(--fm-focus);
+}
+.popover-note,
+.composer-notice {
+  display: block;
+  margin: 7px 0 0;
+  font-size: 12px;
+  color: var(--fm-muted);
+  line-height: 1.6;
+}
+.chat-extras {
+  justify-content: flex-end;
+}
+.chat-extras :deep(.el-button) {
+  min-height: 24px;
+  height: auto;
+  padding: 4px 8px;
+  font-size: 12px;
+}
+.journey-pill {
+  gap: 6px;
+  margin-top: 9px;
+  color: var(--fm-tone-success);
+}
+.journey-pill i {
+  display: inline-block;
+  width: 6px;
+  height: 6px;
+  margin-right: 6px;
+  border-radius: 50%;
+  background: var(--fm-tone-success);
+  animation: journey-pulse 2.6s ease-out infinite;
+}
+@keyframes journey-pulse {
+  50% {
+    box-shadow: 0 0 0 4px color-mix(in srgb, var(--fm-tone-success) 15%, transparent);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .journey-pill i {
+    animation: none;
+  }
+}
 .assistant-message {
   padding: 16px;
   margin: 12px 0;
@@ -1886,6 +2184,15 @@ onMounted(async () => {
   gap: 7px;
 }
 
+.assistant-citations button {
+  border-radius: 12px;
+  background: var(--fm-slot);
+  border-color: var(--fm-line);
+}
+.assistant-citations button:hover {
+  border-color: var(--fm-focus);
+  color: var(--fm-blue-ink);
+}
 .assistant-citations span,
 .assistant-search-card small {
   font-size: 12px;
@@ -1902,60 +2209,6 @@ onMounted(async () => {
   overflow: hidden;
   line-height: 1.7;
   white-space: pre-wrap;
-}
-
-.assistant-composer-actions {
-  margin-top: 10px;
-  justify-content: flex-end;
-  flex-wrap: wrap;
-}
-
-.assistant-composer-actions > span {
-  min-width: 180px;
-  font-size: 12px;
-  color: var(--el-text-color-secondary);
-  flex: 1;
-}
-
-.assistant-documents {
-  min-width: 0;
-}
-
-.assistant-document-heading {
-  margin-bottom: 16px;
-  flex-wrap: wrap;
-}
-
-.assistant-index-overview {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px 20px;
-  margin-bottom: 12px;
-  padding: 14px 16px;
-  border: 1px solid var(--el-border-color-light);
-  border-radius: 8px;
-}
-
-.assistant-index-overview p {
-  margin: 6px 0 0;
-  color: var(--el-text-color-regular);
-}
-
-.assistant-index-actions {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-}
-
-.assistant-index-actions :deep(.el-button) {
-  min-height: 44px;
-  margin: 0;
-}
-
-.assistant-document-table {
-  margin-top: 16px;
 }
 
 .assistant-config {
@@ -2003,22 +2256,88 @@ onMounted(async () => {
   border-bottom: 1px solid var(--el-border-color-lighter);
 }
 
-@media (width <= 960px) {
-  .assistant-layout,
-  .assistant-knowledge-layout {
+.is-embedded .assistant-nav {
+  padding: 4px 1px 7px;
+  background: transparent;
+}
+.is-embedded.mes-assistant-page > .assistant-tabs {
+  padding: 9px 0 0;
+}
+.is-embedded .assistant-messages {
+  height: clamp(130px, 32dvh, 290px);
+  min-height: 0;
+}
+.is-embedded .assistant-welcome {
+  padding: 2px 0 8px;
+}
+.is-embedded .assistant-welcome h3 {
+  font-size: 17px;
+}
+.is-embedded .assistant-welcome p {
+  margin-bottom: 8px;
+  font-size: 12px;
+}
+.is-embedded .assistant-chat {
+  gap: 7px;
+}
+@media (max-width: 850px) {
+  .assistant-layout {
     grid-template-columns: 1fr;
   }
-
   .assistant-sidebar {
-    max-height: 200px;
-    padding: 0 0 12px;
-    overflow: auto;
-    border-right: 0;
-    border-bottom: 1px solid var(--el-border-color-lighter);
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 0 0 6px;
+    border: 0;
+    border-bottom: 1px solid var(--fm-line);
   }
-
+  .assistant-sidebar > .el-button {
+    width: auto;
+    margin: 0;
+  }
+  .assistant-session-list {
+    display: flex;
+    gap: 4px;
+    overflow-x: auto;
+    max-height: 64px;
+  }
+  .assistant-session {
+    flex: none;
+    max-width: 145px;
+    padding: 4px 8px;
+    margin: 0;
+  }
+  .assistant-session-list :deep(.el-empty) {
+    display: none;
+  }
   .assistant-messages {
-    height: 450px;
+    height: clamp(245px, 42dvh, 470px);
+  }
+}
+@media (max-width: 550px) {
+  .library-toolbar {
+    align-items: stretch;
+  }
+  .library-scope {
+    width: 100%;
+  }
+  .library-tools {
+    gap: 5px;
+  }
+  .library-scope :deep(.fm-segmented__option span) {
+    font-size: 12px;
+    padding: 5px 6px;
+  }
+  .assistant-nav {
+    gap: 4px;
+    padding-inline: 5px;
+  }
+  .model-status {
+    max-width: 74px;
+  }
+  .composer-submit {
+    margin-left: 0;
   }
 }
 </style>

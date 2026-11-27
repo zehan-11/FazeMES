@@ -64,8 +64,8 @@
         </template>
       </el-table-column>
       <el-table-column label="物料编码" align="center" prop="itemCode" min-width="130" />
-      <el-table-column label="物料名称" align="center" prop="itemName" min-width="150" />
-      <el-table-column label="规格型号" align="center" prop="specification" width="130" />
+      <el-table-column label="物料名称" align="center" :formatter="$catalogCell" prop="itemName" min-width="150" />
+      <el-table-column label="规格型号" align="center" :formatter="$catalogCell" prop="specification" width="130" />
       <el-table-column label="待检数量" align="center" prop="quantity" width="100" />
       <el-table-column label="单位" align="center" prop="unitName" width="80" />
       <el-table-column label="操作" align="center" fixed="right" width="130">

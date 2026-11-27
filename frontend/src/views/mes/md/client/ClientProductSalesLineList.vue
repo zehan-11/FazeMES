@@ -9,8 +9,8 @@
           </el-button>
         </template>
       </el-table-column>
-      <el-table-column label="物料名称" align="center" prop="itemName" />
-      <el-table-column label="规格型号" align="center" prop="specification" />
+      <el-table-column label="物料名称" align="center" :formatter="$catalogCell" prop="itemName" />
+      <el-table-column label="规格型号" align="center" :formatter="$catalogCell" prop="specification" />
       <el-table-column label="单位" align="center" prop="unitMeasureName" />
       <el-table-column label="出库数量" align="center" prop="quantity" />
       <el-table-column label="批次号" align="center" prop="batchCode" />

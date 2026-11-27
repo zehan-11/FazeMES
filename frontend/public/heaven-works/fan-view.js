@@ -516,6 +516,10 @@
     }
     if (lastAccess?.orderCode !== access?.orderCode && access?.orderCode && !el('question').value)
       el('question').value = '这张工单缺哪些物料？为什么仓库有货仍会缺料？'
+    if (access?.preferKnowledge && !el('reference').dataset.scoped) {
+      el('reference').value = 'knowledge'
+      el('reference').dataset.scoped = 'true'
+    }
     el('knowledge-settings').hidden = !access?.canKnowledge
     el('source-settings').hidden = !!access?.customer
     Array.from(el('reference').options).forEach((o) => {

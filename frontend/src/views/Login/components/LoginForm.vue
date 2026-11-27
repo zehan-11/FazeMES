@@ -5,6 +5,7 @@
     :model="loginData.loginForm"
     :rules="LoginRules"
     class="login-form"
+    :class="{ 'fm-invalid': badPassword }"
     label-position="top"
     label-width="120px"
     size="large"
@@ -39,6 +40,7 @@
         <el-form-item prop="password">
           <el-input
             v-model="loginData.loginForm.password"
+            @input="badPassword = false"
             :placeholder="t('login.passwordPlaceholder')"
             :prefix-icon="iconLock"
             show-password
@@ -171,6 +173,7 @@ const { currentRoute, push } = useRouter()
 const permissionStore = usePermissionStore()
 const redirect = ref<string>('')
 const loginLoading = ref(false)
+const badPassword = ref(false)
 const faceLoginOpen = ref(false)
 const verify = ref()
 const captchaType = ref('blockPuzzle') // blockPuzzle 滑块 clickWord 点击文字 pictureWord 文字验证码
@@ -261,6 +264,7 @@ const getTenantByWebsite = async () => {
 const loading = ref() // ElLoading.service 返回的实例
 // 登录
 const handleLogin = async (params: any) => {
+  badPassword.value = false
   loginLoading.value = true
   try {
     await getTenantId()
@@ -294,6 +298,9 @@ const handleLogin = async (params: any) => {
     } else {
       await push({ path: redirect.value || permissionStore.addRouters[0].path })
     }
+  } catch (error) {
+    badPassword.value = error instanceof Error && error.message.includes('账号密码不正确')
+    throw error
   } finally {
     loginLoading.value = false
     loading.value?.close()

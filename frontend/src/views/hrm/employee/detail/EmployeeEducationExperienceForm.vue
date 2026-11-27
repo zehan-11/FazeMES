@@ -41,12 +41,12 @@
           value-format="x"
         />
       </el-form-item>
-      <el-form-item label="教学方式">
+      <el-form-item label="授课方式">
         <el-select
           v-model="formData.teachingMethods"
           class="!w-1/1"
           clearable
-          placeholder="请选择教学方式"
+          placeholder="请选择授课方式"
         >
           <el-option
             v-for="item in HrmEmployeeTeachingMethodOptions"

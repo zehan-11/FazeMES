@@ -19,7 +19,7 @@
         <el-table-column prop="name" label="名称" min-width="180" />
         <el-table-column
           v-if="table.module === 'WORKORDER'"
-          prop="productName"
+          :formatter="$catalogCell" prop="productName"
           label="产品"
           min-width="160"
         />
@@ -79,6 +79,7 @@
     <el-dialog
       v-model="visible"
       title="Agent 业务执行确认"
+      append-to-body
       width="min(720px,95vw)"
       :close-on-click-modal="false"
       :close-on-press-escape="!executing"

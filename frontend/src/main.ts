@@ -21,6 +21,7 @@ import { setupFormCreate } from '@/plugins/formCreate'
 
 // 引入全局样式
 import '@/styles/index.scss'
+import '@/styles/fazemes-glass-theme.scss'
 
 // 引入动画
 import '@/plugins/animate.css'
@@ -30,8 +31,12 @@ import router, { setupRouter } from '@/router'
 
 // 指令
 import { setupAuth, setupMountedFocus } from '@/directives'
+import { vTactile, vMagnetic } from '@/directives/tactile'
+import { vTechCard } from '@/directives/techCard'
+import { vSpotlight } from '@/directives/spotlight'
 
 import { createApp } from 'vue'
+import { catalogCell, catalogLabel } from '@/utils/catalogLabel'
 
 import App from './App.vue'
 
@@ -56,6 +61,8 @@ window.addEventListener('vite:preloadError', (event) => {
 // 创建实例
 const setupAll = async () => {
   const app = createApp(App)
+  app.config.globalProperties.$catalogLabel = catalogLabel
+  app.config.globalProperties.$catalogCell = catalogCell
 
   await setupI18n(app)
 
@@ -72,6 +79,10 @@ const setupAll = async () => {
   // directives 指令
   setupAuth(app)
   setupMountedFocus(app)
+  app.directive('spotlight', vSpotlight)
+  app.directive('tech-card', vTechCard)
+  app.directive('tactile', vTactile)
+  app.directive('magnetic', vMagnetic)
 
   // wangEditor 插件注册
   setupWangEditorPlugin()

@@ -107,16 +107,16 @@
         <el-table-column label="任务编号" align="center" prop="code" width="180" />
         <el-table-column label="任务名称" align="left" prop="name" min-width="140" />
         <el-table-column label="工作站编码" align="center" prop="workstationCode" width="140" />
-        <el-table-column label="工作站名称" align="center" prop="workstationName" width="140" />
-        <el-table-column label="工序" align="center" prop="processName" width="120" />
+        <el-table-column label="工作站名称" align="center" :formatter="$catalogCell" prop="workstationName" width="140" />
+        <el-table-column label="工序" align="center" :formatter="$catalogCell" prop="processName" width="120" />
         <el-table-column label="是否质检" align="center" prop="checkFlag" width="100">
           <template #default="scope">
             <dict-tag :type="DICT_TYPE.INFRA_BOOLEAN_STRING" :value="scope.row.checkFlag" />
           </template>
         </el-table-column>
         <el-table-column label="物料编码" align="center" prop="itemCode" width="140" />
-        <el-table-column label="物料名称" align="center" prop="itemName" width="140" />
-        <el-table-column label="规格型号" align="center" prop="itemSpecification" width="120" />
+        <el-table-column label="物料名称" align="center" :formatter="$catalogCell" prop="itemName" width="140" />
+        <el-table-column label="规格型号" align="center" :formatter="$catalogCell" prop="itemSpecification" width="120" />
         <el-table-column label="排产数量" align="center" prop="quantity" width="100" />
         <el-table-column label="已生产数量" align="center" prop="producedQuantity" width="110" />
         <el-table-column label="开始生产时间" align="center" prop="startTime" width="170">

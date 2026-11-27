@@ -26,7 +26,7 @@
           <div>编号：{{ selectedItem.code }}</div>
           <div>工单：{{ selectedItem.workOrderCode || '-' }}</div>
           <div>批次：{{ selectedItem.batchCode || '-' }}</div>
-          <div>产品：{{ selectedItem.itemName || '-' }}</div>
+          <div>产品：{{ $catalogLabel(selectedItem.itemName) || '-' }}</div>
         </div>
       </template>
       <el-input

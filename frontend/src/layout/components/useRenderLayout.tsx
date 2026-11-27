@@ -112,9 +112,7 @@ export const useRenderLayout = () => {
                 ]}
               ></ToolHeader>
 
-              {tagsView.value ? (
-                <TagsView class="layout-border__top layout-border__bottom"></TagsView>
-              ) : undefined}
+              <TagsView class="layout-border__top layout-border__bottom"></TagsView>
             </div>
 
             <AppView></AppView>
@@ -171,21 +169,19 @@ export const useRenderLayout = () => {
                 }
               ]}
             >
-              {tagsView.value ? (
-                <TagsView
-                  class={[
-                    'layout-border__bottom absolute',
-                    {
-                      '!fixed top-0 left-0 z-10': fixedHeader.value,
-                      'w-[calc(100%-var(--left-menu-min-width))] !left-[var(--left-menu-min-width)] mt-[var(--logo-height)]':
-                        collapse.value && fixedHeader.value,
-                      'w-[calc(100%-var(--left-menu-max-width))] !left-[var(--left-menu-max-width)] mt-[var(--logo-height)]':
-                        !collapse.value && fixedHeader.value
-                    }
-                  ]}
-                  style="transition: width var(--transition-time-02), left var(--transition-time-02);"
-                ></TagsView>
-              ) : undefined}
+              <TagsView
+                class={[
+                  'layout-border__bottom absolute',
+                  {
+                    '!fixed top-0 left-0 z-10': fixedHeader.value,
+                    'w-[calc(100%-var(--left-menu-min-width))] !left-[var(--left-menu-min-width)] mt-[var(--logo-height)]':
+                      collapse.value && fixedHeader.value,
+                    'w-[calc(100%-var(--left-menu-max-width))] !left-[var(--left-menu-max-width)] mt-[var(--logo-height)]':
+                      !collapse.value && fixedHeader.value
+                  }
+                ]}
+                style="transition: width var(--transition-time-02), left var(--transition-time-02);"
+              ></TagsView>
 
               <AppView></AppView>
             </ElScrollbar>
@@ -225,17 +221,15 @@ export const useRenderLayout = () => {
               }
             ]}
           >
-            {tagsView.value ? (
-              <TagsView
-                class={[
-                  'layout-border__bottom layout-border__top relative',
-                  {
-                    '!fixed w-full top-[var(--top-tool-height)] left-0': fixedHeader.value
-                  }
-                ]}
-                style="transition: width var(--transition-time-02), left var(--transition-time-02);"
-              ></TagsView>
-            ) : undefined}
+            <TagsView
+              class={[
+                'layout-border__bottom layout-border__top relative',
+                {
+                  '!fixed w-full top-[var(--top-tool-height)] left-0': fixedHeader.value
+                }
+              ]}
+              style="transition: width var(--transition-time-02), left var(--transition-time-02);"
+            ></TagsView>
 
             <AppView></AppView>
           </ElScrollbar>
@@ -294,29 +288,27 @@ export const useRenderLayout = () => {
                 }
               ]}
             >
-              {tagsView.value ? (
-                <TagsView
-                  class={[
-                    'relative layout-border__bottom',
-                    {
-                      '!fixed top-0 left-0 z-10': fixedHeader.value,
-                      'w-[calc(100%-var(--tab-menu-min-width))] !left-[var(--tab-menu-min-width)] mt-[var(--logo-height)]':
-                        collapse.value &&
-                        fixedHeader.value &&
-                        (!fixedTwoColumnMenu || !showTwoColumnExtraMenu),
-                      'w-[calc(100%-var(--tab-menu-max-width))] !left-[var(--tab-menu-max-width)] mt-[var(--logo-height)]':
-                        !collapse.value &&
-                        fixedHeader.value &&
-                        (!fixedTwoColumnMenu || !showTwoColumnExtraMenu),
-                      'w-[calc(100%-var(--tab-menu-min-width)-var(--left-menu-max-width))] !left-[calc(var(--tab-menu-min-width)+var(--left-menu-max-width))] mt-[var(--logo-height)]':
-                        collapse.value && fixedHeader.value && showTwoColumnExtraMenu,
-                      'w-[calc(100%-var(--tab-menu-max-width)-var(--left-menu-max-width))] !left-[calc(var(--tab-menu-max-width)+var(--left-menu-max-width))] mt-[var(--logo-height)]':
-                        !collapse.value && fixedHeader.value && showTwoColumnExtraMenu
-                    }
-                  ]}
-                  style="transition: width var(--transition-time-02);"
-                ></TagsView>
-              ) : undefined}
+              <TagsView
+                class={[
+                  'relative layout-border__bottom',
+                  {
+                    '!fixed top-0 left-0 z-10': fixedHeader.value,
+                    'w-[calc(100%-var(--tab-menu-min-width))] !left-[var(--tab-menu-min-width)] mt-[var(--logo-height)]':
+                      collapse.value &&
+                      fixedHeader.value &&
+                      (!fixedTwoColumnMenu || !showTwoColumnExtraMenu),
+                    'w-[calc(100%-var(--tab-menu-max-width))] !left-[var(--tab-menu-max-width)] mt-[var(--logo-height)]':
+                      !collapse.value &&
+                      fixedHeader.value &&
+                      (!fixedTwoColumnMenu || !showTwoColumnExtraMenu),
+                    'w-[calc(100%-var(--tab-menu-min-width)-var(--left-menu-max-width))] !left-[calc(var(--tab-menu-min-width)+var(--left-menu-max-width))] mt-[var(--logo-height)]':
+                      collapse.value && fixedHeader.value && showTwoColumnExtraMenu,
+                    'w-[calc(100%-var(--tab-menu-max-width)-var(--left-menu-max-width))] !left-[calc(var(--tab-menu-max-width)+var(--left-menu-max-width))] mt-[var(--logo-height)]':
+                      !collapse.value && fixedHeader.value && showTwoColumnExtraMenu
+                  }
+                ]}
+                style="transition: width var(--transition-time-02);"
+              ></TagsView>
 
               <AppView></AppView>
             </ElScrollbar>

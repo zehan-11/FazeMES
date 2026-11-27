@@ -74,7 +74,7 @@
         :show-overflow-tooltip="true"
       />
       <el-table-column
-        label="内容样例"
+        label="编码格式"
         align="center"
         prop="contentExample"
         :show-overflow-tooltip="true"

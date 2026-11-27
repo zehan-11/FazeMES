@@ -594,7 +594,7 @@ $prefix-cls: #{$namespace}-menu;
     .#{$elNamespace}-menu-item {
       &:hover {
         color: var(--left-menu-text-active-color) !important;
-        background-color: var(--left-menu-bg-color) !important;
+        background-color: rgb(71 145 255 / 12%) !important;
       }
     }
 
@@ -614,8 +614,8 @@ $prefix-cls: #{$namespace}-menu;
 
     // 设置子菜单的背景颜色
     .#{$elNamespace}-menu {
-      .#{$elNamespace}-sub-menu__title,
-      .#{$elNamespace}-menu-item:not(.is-active) {
+      .#{$elNamespace}-sub-menu__title:not(:hover, :focus-visible),
+      .#{$elNamespace}-menu-item:not(.is-active, :hover, :focus-visible) {
         background-color: var(--left-menu-bg-light-color) !important;
       }
     }
@@ -625,7 +625,7 @@ $prefix-cls: #{$namespace}-menu;
   :deep(.#{$elNamespace}-menu--collapse) {
     width: var(--left-menu-min-width);
 
-    & > .is-active,
+    & > .#{$elNamespace}-menu-item.is-active,
     & > .is-active > .#{$elNamespace}-sub-menu__title {
       position: relative;
       background-color: var(--left-menu-collapse-bg-active-color) !important;
@@ -758,7 +758,7 @@ $prefix-cls: #{$namespace}-menu-popper;
   .el-menu-item {
     &:hover {
       color: var(--left-menu-text-active-color) !important;
-      background-color: var(--left-menu-bg-color) !important;
+      background-color: rgb(71 145 255 / 12%) !important;
     }
   }
 

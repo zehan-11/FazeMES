@@ -57,7 +57,7 @@
         <el-table-column prop="salesCode" label="原销售出库单" min-width="150" />
         <el-table-column prop="originTransactionId" label="原流水ID" width="100" />
         <el-table-column prop="itemCode" label="物料编码" min-width="130" />
-        <el-table-column prop="itemName" label="物料" min-width="130" />
+        <el-table-column :formatter="$catalogCell" prop="itemName" label="物料" min-width="130" />
         <el-table-column prop="batchCode" label="批次" min-width="150" />
         <el-table-column label="库存位置" min-width="180"
           ><template #default="{ row }">{{

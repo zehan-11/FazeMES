@@ -1,6 +1,6 @@
 <template>
   <section>
-    <FanWorksFrame :run="run" :access="access" @command="command" />
+    <FanWorksFrame v-if="visible !== false" :run="run" :access="access" @command="command" />
     <ProWorkOrderSelectDialog v-if="canQuery" ref="picker" :multiple="false" @selected="choose" />
   </section>
 </template>
@@ -60,6 +60,8 @@ import {
 import { difyJourney } from './workflowJourney'
 
 const props = defineProps<{
+  visible?: boolean
+  preferKnowledge?: boolean
   customer?: boolean
   askKnowledge?: (question: string, mode: RetrievalMode) => Promise<KnowledgeResponse>
   knowledgeScope?: KnowledgeScope
@@ -82,6 +84,7 @@ const access = computed(() => ({
   canQuery,
   canKnowledge,
   canDify,
+  preferKnowledge: props.preferKnowledge,
   canBusiness,
   canPrice,
   customer,
@@ -847,7 +850,10 @@ function command(request: SceneCommand) {
   else if (request.action === 'refresh' && lastKittingRequest) void ask(lastKittingRequest)
 }
 function start() {
-  if (!timer) timer = window.setInterval(() => void refresh(), 15000)
+  if (!timer)
+    timer = window.setInterval(() => {
+      if (props.visible !== false) void refresh()
+    }, 15000)
 }
 function stop() {
   window.clearInterval(timer)

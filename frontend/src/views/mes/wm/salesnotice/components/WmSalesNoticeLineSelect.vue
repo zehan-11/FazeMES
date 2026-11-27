@@ -25,8 +25,8 @@
       <template #content>
         <div v-if="selectedItem" class="leading-6">
           <div>物料编码：{{ selectedItem.itemCode }}</div>
-          <div>物料名称：{{ selectedItem.itemName }}</div>
-          <div>规格型号：{{ selectedItem.specification || '-' }}</div>
+          <div>物料名称：{{ $catalogLabel(selectedItem.itemName) }}</div>
+          <div>规格型号：{{ $catalogLabel(selectedItem.specification) || '-' }}</div>
           <div>通知计划：{{ selectedItem.noticeQuantity }}</div>
           <div>已发货：{{ selectedItem.shippedQuantity }}</div>
           <div>未过账占用：{{ selectedItem.reservedQuantity }}</div>

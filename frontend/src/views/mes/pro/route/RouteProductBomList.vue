@@ -5,7 +5,7 @@
       <el-tab-pane
         v-for="item in processList"
         :key="item.processId"
-        :label="item.processName"
+        :label="$catalogLabel(item.processName)"
         :name="String(item.processId)"
       />
     </el-tabs>
@@ -18,8 +18,8 @@
     <!-- 列表 -->
     <el-table v-loading="loading" :data="bomList" :stripe="true" :show-overflow-tooltip="true">
       <el-table-column label="BOM 物料编码" align="center" prop="itemCode" width="150" />
-      <el-table-column label="BOM 物料名称" align="center" prop="itemName" width="150" />
-      <el-table-column label="规格型号" align="center" prop="specification" width="150" />
+      <el-table-column label="BOM 物料名称" align="center" :formatter="$catalogCell" prop="itemName" width="150" />
+      <el-table-column label="规格型号" align="center" :formatter="$catalogCell" prop="specification" width="150" />
       <el-table-column label="单位" align="center" prop="unitName" width="80" />
       <el-table-column label="用料比例" align="center" prop="quantity" width="100" />
       <el-table-column label="备注" align="center" prop="remark" min-width="120" />

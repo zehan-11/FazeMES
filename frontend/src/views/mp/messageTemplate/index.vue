@@ -33,7 +33,7 @@
       <el-table-column label="公众号模板 ID" align="center" prop="templateId" width="200px" />
       <el-table-column label="标题" align="center" prop="title" width="150px" />
       <el-table-column label="模板内容" align="center" prop="content" />
-      <el-table-column label="模板示例" align="center" prop="example" width="200px" />
+      <el-table-column label="模板预览" align="center" prop="example" width="200px" />
       <el-table-column label="一级行业" align="center" prop="primaryIndustry" width="120px" />
       <el-table-column label="二级行业" align="center" prop="deputyIndustry" width="120px" />
       <el-table-column

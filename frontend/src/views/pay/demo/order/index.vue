@@ -152,7 +152,7 @@ const handlePay = (row: any) => {
 const handleRefund = async (row: any) => {
   const id = row.id
   try {
-    await message.confirm('是否确认退款编号为"' + id + '"的示例订单?')
+    await message.confirm('是否确认退款编号为"' + id + '"的订单？')
     await PayDemoApi.refundDemoOrder(id)
     await getList()
     message.success('发起退款成功！')

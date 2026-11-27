@@ -1,6 +1,7 @@
 <script lang="ts" setup>
 import type { EChartsOption } from 'echarts'
 import echarts from '@/plugins/echarts'
+import { glassChartTheme } from '@/plugins/echarts/glassChartTheme'
 import { debounce } from 'lodash-es'
 import 'echarts-wordcloud'
 import { propTypes } from '@/utils/propTypes'
@@ -31,20 +32,6 @@ const props = defineProps({
   notMerge: propTypes.bool.def(false)
 })
 
-const isDark = computed(() => appStore.getIsDark)
-
-const theme = computed(() => {
-  const echartTheme: boolean | string = unref(isDark) ? true : 'auto'
-
-  return echartTheme
-})
-
-const options = computed(() => {
-  return Object.assign(props.options, {
-    darkMode: unref(theme)
-  })
-})
-
 const elRef = ref<ElRef>()
 
 let echartRef: Nullable<echarts.ECharts> = null
@@ -63,13 +50,13 @@ const styles = computed(() => {
 
 const initChart = () => {
   if (unref(elRef) && props.options) {
-    echartRef = echarts.init(unref(elRef) as HTMLElement)
-    echartRef?.setOption(unref(options), props.notMerge)
+    echartRef = echarts.init(unref(elRef) as HTMLElement, glassChartTheme(appStore.getIsDark))
+    echartRef.setOption(props.options, props.notMerge)
   }
 }
 
 watch(
-  () => options.value,
+  () => props.options,
   (options) => {
     if (echartRef) {
       echartRef?.setOption(options, props.notMerge)
@@ -79,6 +66,11 @@ watch(
   {
     deep: true
   }
+)
+
+watch(
+  () => appStore.getIsDark,
+  (dark) => echartRef?.setTheme(glassChartTheme(dark))
 )
 
 const resizeHandler = debounce(() => {
@@ -105,6 +97,9 @@ onMounted(() => {
 
 onBeforeUnmount(() => {
   window.removeEventListener('resize', resizeHandler)
+  resizeHandler.cancel()
+  echartRef?.dispose()
+  echartRef = null
   unref(contentEl) &&
     (unref(contentEl) as Element).removeEventListener('transitionend', contentResizeHandler)
 })

@@ -57,8 +57,8 @@
     <el-table v-loading="loading" :data="list">
       <el-table-column label="批次编号" align="center" prop="code" />
       <el-table-column label="产品物料编码" align="center" prop="itemCode" />
-      <el-table-column label="产品物料名称" align="center" prop="itemName" />
-      <el-table-column label="规格型号" align="center" prop="itemSpecification" />
+      <el-table-column label="产品物料名称" align="center" :formatter="$catalogCell" prop="itemName" />
+      <el-table-column label="规格型号" align="center" :formatter="$catalogCell" prop="itemSpecification" />
       <el-table-column label="单位" align="center" prop="unitName" />
       <el-table-column label="供应商编码" align="center" prop="vendorCode" />
       <el-table-column label="供应商名称" align="center" prop="vendorName" />

@@ -14,8 +14,8 @@
     </el-button>
     <el-table v-loading="loading" :data="list" :stripe="true" :show-overflow-tooltip="true" border>
       <el-table-column label="产品物料编码" align="center" prop="itemCode" min-width="140" />
-      <el-table-column label="产品物料名称" align="center" prop="itemName" min-width="160" />
-      <el-table-column label="规格型号" align="center" prop="specification" min-width="120" />
+      <el-table-column label="产品物料名称" align="center" :formatter="$catalogCell" prop="itemName" min-width="160" />
+      <el-table-column label="规格型号" align="center" :formatter="$catalogCell" prop="specification" min-width="120" />
       <el-table-column label="单位名称" align="center" prop="unitMeasureName" width="90" />
       <el-table-column label="仓库" align="center" prop="warehouseName" min-width="120" />
       <el-table-column label="库区" align="center" prop="locationName" min-width="120" />

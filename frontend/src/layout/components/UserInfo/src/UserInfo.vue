@@ -71,12 +71,12 @@ const toFaceSettings = () => {
 
 <template>
   <ElDropdown class="custom-hover" :class="prefixCls" trigger="click">
-    <div class="flex items-center">
+    <button type="button" class="fm-account-trigger" :aria-label="`${userName}，个人设置`">
       <ElAvatar :src="avatar" alt="" class="w-[calc(var(--logo-height)-25px)] rounded-[50%]" />
       <span class="pl-[5px] text-14px text-[var(--top-header-text-color)] <lg:hidden">
         {{ userName }}
       </span>
-    </div>
+    </button>
     <template #dropdown>
       <ElDropdownMenu>
         <ElDropdownItem>

@@ -1,6 +1,6 @@
 <template>
   <div class="mes-workspace">
-    <el-card shadow="never" class="mb-16px">
+    <el-card shadow="never" class="mb-16px fm-stagger fm-optical-rim">
       <div class="welcome">
         <div>
           <div class="eyebrow">FazeMES / 生产执行</div>
@@ -10,22 +10,24 @@
         <div>
           <el-button
             v-if="checkPermi(['mes:insight:query'])"
+            v-magnetic
             type="primary"
             @click="router.push('/mes/insight')"
             >进入生产决策中心</el-button
           >
-          <el-button v-if="canLoadData" :loading="loading" @click="loadData">刷新数据</el-button>
+          <el-button v-if="canLoadData" :loading="loading" @click="refreshWorkspace">刷新数据</el-button>
         </div>
       </div>
     </el-card>
 
+    <CapabilityCards ref="capabilityCards" />
     <HomeShortcuts v-if="shortcuts.length" :items="shortcuts" @navigate="navigate" />
 
     <el-row v-if="statistics.length" :gutter="16" class="statistics">
-      <el-col v-for="stat in statistics" :key="stat.key" :xs="24" :sm="8">
-        <el-card v-loading="loading" shadow="never">
+      <el-col v-for="(stat, i) in statistics" :key="stat.key" :xs="24" :sm="8">
+        <el-card v-tech-card v-loading="loading" shadow="never" class="fm-interactive-card fm-stagger" :style="{ '--i': i }">
           <div class="stat-label">{{ stat.label }}</div>
-          <div class="stat-value">{{ counts[stat.key] ?? '—' }}</div>
+          <div class="stat-value"><AnimatedNumber :value="counts[stat.key]" /></div>
           <div class="stat-hint">{{ stat.hint }}</div>
         </el-card>
       </el-col>
@@ -80,8 +82,8 @@
           </template>
           <el-table v-loading="loading" :data="workOrders" empty-text="暂无生产工单">
             <el-table-column prop="code" label="工单编码" min-width="150" />
-            <el-table-column prop="name" label="工单名称" min-width="150" />
-            <el-table-column prop="productName" label="生产产品" min-width="130" />
+            <el-table-column :formatter="$catalogCell" prop="name" label="工单名称" min-width="150" />
+            <el-table-column :formatter="$catalogCell" prop="productName" label="生产产品" min-width="130" />
             <el-table-column prop="quantity" label="计划数量" width="100" align="right" />
             <el-table-column prop="quantityProduced" label="已生产" width="100" align="right" />
             <el-table-column label="状态" width="100" align="center">
@@ -102,7 +104,7 @@
       </el-col>
     </el-row>
 
-    <el-card shadow="never" class="mb-16px">
+    <el-card shadow="never" class="mb-16px fm-stagger">
       <template #header>
         <div class="section-header">
           <span>全部业务</span>
@@ -135,6 +137,7 @@
 </template>
 
 <script setup lang="ts">
+import AnimatedNumber from '@/components/AnimatedNumber.vue'
 import { MdItemApi } from '@/api/mes/md/item'
 import { MesHomeStatisticsApi, type MesHomeSummaryVO } from '@/api/mes/home'
 import { ProFeedbackApi } from '@/api/mes/pro/feedback'
@@ -149,6 +152,7 @@ import HomeAlertPanel from '@/views/mes/home/HomeAlertPanel.vue'
 import HomeProductionTrend from '@/views/mes/home/HomeProductionTrend.vue'
 import HomeWorkOrderChart from '@/views/mes/home/HomeWorkOrderChart.vue'
 import HomeShortcuts from '@/views/mes/home/HomeShortcuts.vue'
+import CapabilityCards from './CapabilityCards.vue'
 
 defineOptions({ name: 'Index' })
 
@@ -296,6 +300,11 @@ const loadData = async () => {
   }
 }
 
+const capabilityCards = ref<InstanceType<typeof CapabilityCards>>()
+function refreshWorkspace() {
+  void capabilityCards.value?.refresh()
+  void loadData()
+}
 onMounted(loadData)
 </script>
 

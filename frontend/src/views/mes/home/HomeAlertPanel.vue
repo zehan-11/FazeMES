@@ -93,6 +93,10 @@ const alertItems = computed(() =>
   white-space: normal;
 }
 
+.alert-item .el-tag--warning {
+  --fm-tone: var(--fm-champagne);
+  color: var(--fm-champagne);
+}
 .alert-hint {
   font-size: 12px;
   color: var(--el-text-color-secondary);

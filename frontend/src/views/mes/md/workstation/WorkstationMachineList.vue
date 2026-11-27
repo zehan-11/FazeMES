@@ -15,7 +15,7 @@
     <!-- 列表 -->
     <el-table v-loading="loading" :data="list" :stripe="true" :show-overflow-tooltip="true" border>
       <el-table-column label="设备编号" align="center" prop="machineryId" />
-      <el-table-column label="设备名称" align="center" prop="machineryName" />
+      <el-table-column label="设备名称" align="center" :formatter="$catalogCell" prop="machineryName" />
       <el-table-column label="数量" align="center" prop="quantity" width="100" />
       <el-table-column label="备注" align="center" prop="remark" />
       <el-table-column label="操作" align="center" width="80" v-if="!isDetail">

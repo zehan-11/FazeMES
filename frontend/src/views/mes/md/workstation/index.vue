@@ -86,10 +86,10 @@
           </el-link>
         </template>
       </el-table-column>
-      <el-table-column label="工作站名称" align="center" prop="name" min-width="150" />
+      <el-table-column label="工作站名称" align="center" :formatter="$catalogCell" prop="name" min-width="150" />
       <el-table-column label="工作站地点" align="center" prop="address" min-width="150" />
-      <el-table-column label="所在车间" align="center" prop="workshopName" min-width="120" />
-      <el-table-column label="所属工序" align="center" prop="processName" min-width="120" />
+      <el-table-column label="所在车间" align="center" :formatter="$catalogCell" prop="workshopName" min-width="120" />
+      <el-table-column label="所属工序" align="center" :formatter="$catalogCell" prop="processName" min-width="120" />
       <el-table-column label="状态" align="center" prop="status" min-width="100">
         <template #default="scope">
           <dict-tag :type="DICT_TYPE.COMMON_STATUS" :value="scope.row.status" />

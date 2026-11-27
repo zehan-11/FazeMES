@@ -33,7 +33,7 @@ const getSvgClass = computed(() => {
 </script>
 
 <template>
-  <ElIcon :class="prefixCls" :color="color" :size="size">
+  <ElIcon :data-icon="icon" :class="prefixCls" :color="color" :size="size">
     <svg v-if="isLocal" :class="getSvgClass">
       <use :xlink:href="symbolId" />
     </svg>

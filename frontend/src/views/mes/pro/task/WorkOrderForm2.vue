@@ -136,7 +136,7 @@
       <el-step
         v-for="(rp, index) in routeProcessList"
         :key="rp.processId"
-        :title="rp.processName"
+        :title="$catalogLabel(rp.processName)"
         class="cursor-pointer"
         @click="activeProcessStep = index"
       />

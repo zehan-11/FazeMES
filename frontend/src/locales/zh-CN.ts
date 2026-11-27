@@ -122,7 +122,7 @@ export default {
   },
   login: {
     welcome: '欢迎使用 FazeMES',
-    message: '生产执行管理示例环境',
+    message: '制造执行管理系统',
     tenantname: '租户名称',
     username: '用户名',
     password: '密码',
@@ -349,7 +349,7 @@ export default {
       errMsg503: '服务不可用，服务器暂时过载或维护!',
       errMsg504: '网络超时!',
       errMsg505: 'http版本不支持该请求!',
-      errMsg901: '演示模式，无法进行写操作!'
+      errMsg901: '当前环境为只读，无法保存更改。'
     },
     app: {
       logoutTip: '温馨提醒',

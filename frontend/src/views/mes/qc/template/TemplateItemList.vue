@@ -17,8 +17,8 @@
     <!-- 列表 -->
     <el-table v-loading="loading" :data="list" :stripe="true" :show-overflow-tooltip="true">
       <el-table-column label="物料编码" align="center" prop="itemCode" width="130" />
-      <el-table-column label="物料名称" align="center" prop="itemName" min-width="150" />
-      <el-table-column label="规格型号" align="center" prop="specification" min-width="130" />
+      <el-table-column label="物料名称" align="center" :formatter="$catalogCell" prop="itemName" min-width="150" />
+      <el-table-column label="规格型号" align="center" :formatter="$catalogCell" prop="specification" min-width="130" />
       <el-table-column label="计量单位" align="center" prop="unitMeasureName" width="100" />
       <el-table-column label="最低检测数" align="center" prop="quantityCheck" width="110" />
       <el-table-column label="最大不合格数" align="center" prop="quantityUnqualified" width="120">

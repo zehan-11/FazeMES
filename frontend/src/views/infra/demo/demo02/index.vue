@@ -174,7 +174,7 @@ const handleExport = async () => {
     // 发起导出
     exportLoading.value = true
     const data = await Demo02CategoryApi.exportDemo02Category(queryParams)
-    download.excel(data, '示例分类.xls')
+    download.excel(data, '分类.xls')
   } catch {
   } finally {
     exportLoading.value = false

@@ -11,7 +11,7 @@ export interface JourneySource {
 }
 
 export interface Journey {
-  origin: '示例数据' | '检索记录' | '会话记录' | 'Dify 运行记录'
+  origin: '流程预览' | '检索记录' | '会话记录' | 'Dify 运行记录'
   trace?: DifyRun
   question: string
   scope: string
@@ -21,9 +21,9 @@ export interface Journey {
 }
 
 export const exampleJourney: Journey = {
-  origin: '示例数据',
+  origin: '流程预览',
   question: '巡检发现设备异响，应该怎样记录？',
-  scope: '设备点检手册 · 示例知识库',
+  scope: '设备点检手册',
   sources: [
     {
       title: '设备点检手册',
@@ -45,7 +45,7 @@ export function difyJourney(trace: DifyRun): Journey {
   return {
     origin: 'Dify 运行记录',
     question: trace.question,
-    scope: 'Dify 项目教学手册',
+    scope: 'Dify 操作手册',
     sources: trace.sources,
     branch: '',
     result: trace.answer,

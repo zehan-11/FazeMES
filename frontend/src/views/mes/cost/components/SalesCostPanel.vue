@@ -12,7 +12,7 @@
   <el-alert v-if="error" :title="error" type="error" :closable="false" show-icon class="mb-16px" />
   <el-empty
     v-if="!sales && !loading"
-    description="选择真实销售出库单查看成交价格与对应成本；示例售价不会生成虚拟销售数据"
+    description="选择销售出库单，查看实际成交价格与对应成本。"
   />
   <div v-loading="loading">
     <template v-if="sales && header">
@@ -73,7 +73,7 @@
       <el-table :data="sales.lines" border>
         <el-table-column prop="lineId" label="行号" width="80" />
         <el-table-column prop="itemCode" label="产品编码" min-width="150" />
-        <el-table-column prop="itemName" label="产品名称" min-width="180" />
+        <el-table-column :formatter="$catalogCell" prop="itemName" label="产品名称" min-width="180" />
         <el-table-column label="数量" min-width="100"
           ><template #default="{ row }">{{ costNumber(row.quantity) }}</template></el-table-column
         >

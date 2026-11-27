@@ -126,7 +126,7 @@ const loginData = reactive({
   },
   loginForm: {
     uuid: '',
-    tenantName: '示例企业',
+    tenantName: import.meta.env.VITE_APP_DEFAULT_LOGIN_TENANT || '',
     mobileNumber: '',
     code: ''
   }

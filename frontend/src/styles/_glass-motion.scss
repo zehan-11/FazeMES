@@ -1,0 +1,235 @@
+// The atmosphere is a sibling of the interactive shell. Fixed descendants retain their viewport.
+.fm-layout-frame {
+  position: relative;
+  z-index: 1;
+  width: 100%;
+  height: 100%;
+}
+.fazemes-ambient-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  overflow: hidden;
+  contain: strict;
+  pointer-events: none;
+  background: var(--fm-skylight), var(--fm-sea-glow), var(--fm-curtain);
+}
+
+// Graph tabs may change without navigating. The hidden canvas releases its animation frame.
+.v-layout:has(.mes-assistant-page.is-graph, .mes-assistant-page.is-works:not(.is-embedded), .production-screen) .fazemes-ambient-backdrop,
+body:has(> .module-intro) .fazemes-ambient-backdrop {
+  display: none;
+}
+
+.glass-page-enter-active {
+  transition: opacity 160ms ease-out, transform 160ms var(--fm-ease);
+}
+.glass-page-enter-from {
+  opacity: 0.35;
+  transform: translateY(6px);
+}
+// Leave the outgoing page at full brightness until the incoming view is ready.
+.glass-page-leave-active {
+  transition: none;
+}
+.fm-workspace:has(> .mes-assistant-page.is-graph, > .production-screen) {
+  transition: none;
+  transform: none;
+  opacity: 1;
+}
+
+@scope (html:not(:has(.v-login)), .fm-face-login-dialog) to (.knowledge-graph) {
+  .fm-spotlight {
+    position: relative;
+    isolation: isolate;
+    overflow: clip;
+  }
+  @media (hover: hover) and (pointer: fine) and (prefers-reduced-motion: no-preference) {
+    .fm-spotlight::before {
+      content: '';
+      position: absolute;
+      z-index: -1;
+      left: 0;
+      top: 0;
+      width: 560px;
+      height: 560px;
+      pointer-events: none;
+      opacity: 0;
+      // Move a prepainted radial highlight. Changing the gradient itself would repaint on each move.
+      background: radial-gradient(280px circle at center, var(--fm-spotlight), transparent 65%);
+      transform: translate3d(calc(var(--spot-x, 0px) - 280px), calc(var(--spot-y, 0px) - 280px), 0);
+      transition: opacity 160ms ease;
+    }
+    .fm-spotlight.is-lit::before {
+      opacity: 1;
+    }
+    .fm-spotlight.is-lit:not(:disabled),
+    .el-button.fm-spotlight.is-lit:not(.is-disabled) {
+      transform: translateY(-3px);
+      border-color: var(--fm-active-card-border, color-mix(in srgb, var(--fm-focus) 65%, var(--fm-line)));
+    }
+  }
+  .fm-stagger {
+    animation: fm-card-arrive 360ms var(--fm-ease) backwards;
+    animation-delay: calc(var(--i, 0) * 45ms);
+  }
+  .fm-live-dot {
+    display: inline-block;
+    position: relative;
+    width: 6px;
+    height: 6px;
+    flex: 0 0 auto;
+    border-radius: 50%;
+    color: var(--fm-tone-success);
+    background: currentColor;
+    &::after {
+      content: '';
+      position: absolute;
+      inset: 0;
+      border: 1px solid currentColor;
+      border-radius: inherit;
+      animation: fm-signal 2.8s ease-out infinite;
+      pointer-events: none;
+    }
+  }
+
+  // A form action row may contain several primary/plain actions. Secondary actions keep their icons.
+  @scope (.el-form--inline, .toolbar, [class$="-toolbar"], .library-tools, .conversation-controls, .analysis-actions) to (.el-table, .el-dialog, .el-drawer) {
+    .el-button:not(.is-text, .is-link, .is-disabled, .is-loading) {
+      --fm-tool-fill: var(--fm-secondary-button);
+      --fm-tool-ink: var(--fm-text);
+      --fm-tool-edge: var(--fm-button-edge);
+      --fm-tool-shadow: inset 0 1px rgb(200 245 255 / 10%);
+      --fm-tool-hover-shadow: 0 0 12px rgb(34 211 238 / 18%);
+      --fm-tool-text-shadow: none;
+      --fm-tool-sheen: 0;
+      color: var(--fm-tool-ink);
+      border-color: var(--fm-tool-edge);
+      background: var(--fm-tool-fill);
+      box-shadow: inset 0 1px var(--fm-highlight);
+      &:hover {
+        border-color: var(--fm-blue-ink);
+      }
+      :is(.el-icon, .v-icon, svg) {
+        color: var(--fm-icon-tone, var(--fm-blue-ink));
+      }
+    }
+    .el-button--success {
+      --fm-icon-tone: var(--fm-tone-success);
+    }
+    .el-button--warning {
+      --fm-icon-tone: var(--fm-tone-warning);
+    }
+    .el-button--danger {
+      --fm-icon-tone: var(--fm-tone-danger);
+    }
+    .el-button--primary:not(.is-text, .is-link, .is-disabled, .is-loading) {
+      --fm-tool-fill: var(--fm-primary-glass);
+      --fm-tool-ink: var(--fm-primary-ink);
+      --fm-tool-edge: var(--fm-primary-edge);
+      --fm-tool-shadow: var(--fm-button-glow);
+      --fm-tool-hover-shadow: var(--fm-button-hover-glow);
+      --fm-tool-text-shadow: 0 0 8px rgb(125 245 255 / 45%);
+      --fm-tool-sheen: 1;
+      --fm-icon-tone: var(--fm-primary-ink);
+    }
+    // Suppress later primary buttons, including buttons in subsequent form items/action groups.
+    :is(.el-button--primary, :has(.el-button--primary))
+      ~ .el-button--primary:not(.is-text, .is-link, .is-disabled, .is-loading),
+    :is(.el-button--primary, :has(.el-button--primary))
+      ~ *
+      .el-button--primary:not(.is-text, .is-link, .is-disabled, .is-loading) {
+      --fm-tool-fill: var(--fm-secondary-button);
+      --fm-tool-ink: var(--fm-text);
+      --fm-tool-edge: var(--fm-button-edge);
+      --fm-tool-shadow: inset 0 1px rgb(200 245 255 / 10%);
+      --fm-tool-hover-shadow: 0 0 12px rgb(34 211 238 / 18%);
+      --fm-tool-text-shadow: none;
+      --fm-tool-sheen: 0;
+      --fm-icon-tone: var(--fm-blue-ink);
+    }
+  }
+
+  :is(.el-button--primary:not(.is-text, .is-link, .is-disabled, .is-loading), .ai-trigger) {
+    position: relative;
+    overflow: hidden;
+    &::after {
+      content: '';
+      position: absolute;
+      inset: -90% auto -90% -60%;
+      width: 27%;
+      background: linear-gradient(90deg, transparent 15%, rgb(255 255 255 / 30%), transparent 85%);
+      pointer-events: none;
+      opacity: 0;
+      transform: translateX(0) skewX(-45deg);
+    }
+    @media (hover: hover) and (prefers-reduced-motion: no-preference) {
+      &:hover::after {
+        animation: fm-sheen 0.55s ease;
+      }
+    }
+    &:active {
+      transform: scale(var(--fm-press-scale));
+    }
+  }
+}
+@keyframes fm-card-arrive {
+  from {
+    opacity: 0.72;
+    translate: 0 8px;
+  }
+  to {
+    opacity: 1;
+    translate: 0 0;
+  }
+}
+@keyframes fm-sheen {
+  0% {
+    opacity: 0;
+    transform: translateX(0) skewX(-45deg);
+  }
+  24% {
+    opacity: var(--fm-tool-sheen, 1);
+  }
+  100% {
+    opacity: 0;
+    transform: translateX(650%) skewX(-45deg);
+  }
+}
+@keyframes fm-signal {
+  0%,
+  18% {
+    opacity: 0;
+    transform: scale(1);
+  }
+  32% {
+    opacity: 0.64;
+  }
+  82%,
+  100% {
+    opacity: 0;
+    transform: scale(2.45);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  @scope (html:not(:has(.v-login)), .fm-face-login-dialog) to (.knowledge-graph) {
+    .fm-stagger, .fm-live-dot::after { animation: none; }
+    .fm-live-dot::after { opacity: 0; }
+  }
+  .ai-beacon::before {
+    animation: none;
+  }
+  .fm-live-dot::after,
+  .ai-beacon::before {
+    opacity: 0;
+  }
+  .glass-page-enter-active,
+  .glass-page-leave-active {
+    transition: none;
+  }
+  .glass-page-enter-from,
+  .glass-page-leave-to {
+    opacity: 1;
+    transform: none;
+  }
+}

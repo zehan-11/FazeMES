@@ -1,5 +1,5 @@
 <template>
-  <el-card shadow="never" class="mb-16px">
+  <el-card shadow="never" class="mb-16px fm-stagger">
     <template #header>
       <div class="shortcut-header">
         <span>岗位常用入口</span>
@@ -8,9 +8,11 @@
     </template>
     <div class="shortcuts">
       <el-button
-        v-for="item in items"
+        v-for="(item, i) in items"
         :key="item.path"
-        class="shortcut"
+        v-tech-card
+        class="shortcut fm-interactive-card fm-stagger"
+        :style="{ '--i': Math.min(i, 7) }"
         @click="emit('navigate', item.path)"
       >
         <Icon :icon="item.icon" :size="22" />
@@ -47,7 +49,11 @@ const emit = defineEmits<{ navigate: [path: string] }>()
   gap: 12px;
 }
 
-.shortcut {
+.shortcut.fm-tech-card {
+  background: var(--fm-card-glass);
+  border-color: var(--fm-line);
+  box-shadow: inset 0 1px var(--fm-highlight), var(--fm-shadow);
+  backdrop-filter: var(--fm-card-filter);
   height: 64px;
   margin: 0;
   font-size: 14px;

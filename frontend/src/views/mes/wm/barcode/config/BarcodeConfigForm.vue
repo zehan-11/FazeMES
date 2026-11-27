@@ -39,7 +39,7 @@
           class="!w-1/1"
         />
       </el-form-item>
-      <el-form-item label="内容样例" prop="contentExample">
+      <el-form-item label="编码格式" prop="contentExample">
         <el-input v-model="formData.contentExample" placeholder="如：WH-WH001" class="!w-1/1" />
       </el-form-item>
       <el-form-item label="自动生成" prop="autoGenerateFlag">

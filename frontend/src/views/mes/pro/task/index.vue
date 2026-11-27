@@ -86,7 +86,7 @@
           </el-button>
         </template>
       </el-table-column>
-      <el-table-column label="工单名称" align="center" prop="name" min-width="150" />
+      <el-table-column label="工单名称" align="center" :formatter="$catalogCell" prop="name" min-width="150" />
       <el-table-column label="工单来源" align="center" prop="orderSourceType" width="100">
         <template #default="scope">
           <dict-tag
@@ -97,8 +97,8 @@
       </el-table-column>
       <el-table-column label="来源单据编号" align="center" prop="orderSourceCode" width="140" />
       <el-table-column label="产品编码" align="center" prop="productCode" width="120" />
-      <el-table-column label="产品名称" align="center" prop="productName" min-width="120" />
-      <el-table-column label="规格型号" align="center" prop="productSpecification" width="120" />
+      <el-table-column label="产品名称" align="center" :formatter="$catalogCell" prop="productName" min-width="120" />
+      <el-table-column label="规格型号" align="center" :formatter="$catalogCell" prop="productSpecification" width="120" />
       <el-table-column label="单位" align="center" prop="unitMeasureName" width="80" />
       <el-table-column label="工单数量" align="center" prop="quantity" width="100" />
       <el-table-column label="已排产数量" align="center" prop="quantityScheduled" width="100" />

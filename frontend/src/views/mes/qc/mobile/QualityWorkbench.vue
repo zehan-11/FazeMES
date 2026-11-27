@@ -18,7 +18,7 @@
         <el-tab-pane label="待检任务" name="pending">
           <div class="cards" v-loading="pendingLoading">
             <article v-for="row in pending" :key="`${row.sourceDocType}-${row.sourceLineId}`">
-              <h3>{{ row.itemName || row.itemCode }}</h3>
+              <h3>{{ $catalogLabel(row.itemName) || row.itemCode }}</h3>
               <p>{{ row.sourceDocCode }} · {{ row.workstationName || row.vendorName || row.clientName || stageLabel }}</p>
               <strong>待检数量 {{ row.quantity }} {{ row.unitName }}</strong>
               <el-button v-if="canCreate" type="primary" size="large" @click="createInspection(row)">建立检验单</el-button>
@@ -31,7 +31,7 @@
           <div class="cards" v-loading="documentLoading">
             <article v-for="row in documents" :key="row.id">
               <div class="document-title"><h3>{{ row.code }}</h3><el-tag :type="row.status === MesQcStatusEnum.DRAFT ? 'warning' : 'success'">{{ row.status === MesQcStatusEnum.DRAFT ? '待完成' : '已完成' }}</el-tag></div>
-              <p>{{ row.name }}</p><p>{{ row.itemName || row.itemCode }} · 检测数量 {{ row.checkQuantity }}</p>
+              <p>{{ row.name }}</p><p>{{ $catalogLabel(row.itemName) || row.itemCode }} · 检测数量 {{ row.checkQuantity }}</p>
               <el-button size="large" type="primary" @click="editInspection(row)">{{ row.status === MesQcStatusEnum.DRAFT && canUpdate ? '填报检测值 / 缺陷 / 完成' : '查看结果' }}</el-button>
             </article>
           </div>

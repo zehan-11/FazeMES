@@ -5,7 +5,7 @@
   >
     <div class="relative mx-auto h-full flex">
       <div
-        :class="`${prefixCls}__left flex-1 bg-gray-500 bg-opacity-20 relative p-30px lt-xl:hidden overflow-x-hidden overflow-y-auto`"
+        :class="`${prefixCls}__left flex-1 relative p-30px lt-xl:hidden overflow-x-hidden overflow-y-auto`"
       >
         <!-- 左上角的 logo + 系统标题 -->
         <div class="relative flex items-center text-white">
@@ -16,7 +16,7 @@
         <div class="h-[calc(100%-60px)] flex items-center justify-center">
           <TransitionGroup
             appear
-            enter-active-class="animate__animated animate__bounceInLeft"
+            enter-active-class="fm-login-enter"
             tag="div"
           >
             <img key="1" alt="" class="w-350px max-w-full rounded-2xl mb-6" src="/login-manufacturing.webp" />
@@ -26,14 +26,11 @@
             <div key="3" class="mt-5 text-14px font-normal text-white">
               {{ localMes ? '工单、排产、报工、仓储、质量与设备管理' : t('login.message') }}
             </div>
-            <div v-if="localMes" key="4" class="mt-5 text-12px text-white">
-              FazeMES · 本地示例环境
-            </div>
           </TransitionGroup>
         </div>
       </div>
       <div
-        class="relative flex-1 p-30px dark:bg-[var(--login-bg-color)] lt-sm:p-10px overflow-x-hidden overflow-y-auto"
+        class="relative flex-1 p-30px lt-sm:p-10px overflow-x-hidden overflow-y-auto"
       >
         <!-- 右上角的主题、语言选择 -->
         <div
@@ -50,22 +47,22 @@
           </div>
         </div>
         <!-- 右边的登录界面 -->
-        <Transition appear enter-active-class="animate__animated animate__bounceInRight">
+        <Transition appear enter-active-class="fm-login-enter">
           <div
-            class="m-auto h-[calc(100%-60px)] w-[100%] flex items-center at-2xl:max-w-500px at-lg:max-w-500px at-md:max-w-500px at-xl:max-w-500px"
+            class="fm-login-form-wrap m-auto min-h-[calc(100%-60px)] w-[100%] flex items-center at-2xl:max-w-500px at-lg:max-w-500px at-md:max-w-500px at-xl:max-w-500px"
           >
             <!-- 账号登录 -->
-            <LoginForm class="m-auto h-auto p-20px lt-xl:(rounded-3xl light:bg-white)" />
+            <LoginForm class="fm-login-card m-auto h-auto" />
             <!-- 手机登录 -->
-            <MobileForm class="m-auto h-auto p-20px lt-xl:(rounded-3xl light:bg-white)" />
+            <MobileForm class="fm-login-card m-auto h-auto" />
             <!-- 二维码登录 -->
-            <QrCodeForm class="m-auto h-auto p-20px lt-xl:(rounded-3xl light:bg-white)" />
+            <QrCodeForm class="fm-login-card m-auto h-auto" />
             <!-- 注册 -->
-            <RegisterForm class="m-auto h-auto p-20px lt-xl:(rounded-3xl light:bg-white)" />
+            <RegisterForm class="fm-login-card m-auto h-auto" />
             <!-- 三方登录 -->
-            <SSOLoginVue class="m-auto h-auto p-20px lt-xl:(rounded-3xl light:bg-white)" />
+            <SSOLoginVue class="fm-login-card m-auto h-auto" />
             <!-- 忘记密码 -->
-            <ForgetPasswordForm class="m-auto h-auto p-20px lt-xl:(rounded-3xl light:bg-white)" />
+            <ForgetPasswordForm class="fm-login-card m-auto h-auto" />
           </div>
         </Transition>
       </div>
@@ -97,38 +94,3 @@ const appStore = useAppStore()
 const { getPrefixCls } = useDesign()
 const prefixCls = getPrefixCls('login')
 </script>
-
-<style lang="scss" scoped>
-$prefix-cls: #{$namespace}-login;
-
-.#{$prefix-cls} {
-  overflow: auto;
-
-  &__left {
-    &::before {
-      position: absolute;
-      top: 0;
-      left: 0;
-      z-index: -1;
-      width: 100%;
-      height: 100%;
-      background-image: linear-gradient(135deg, #233a52, #436783);
-      background-position: center;
-      background-repeat: no-repeat;
-      content: '';
-    }
-  }
-}
-</style>
-
-<style lang="scss">
-.dark .login-form {
-  .el-divider__text {
-    background-color: var(--login-bg-color);
-  }
-
-  .el-card {
-    background-color: var(--login-bg-color);
-  }
-}
-</style>

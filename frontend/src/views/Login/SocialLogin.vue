@@ -5,7 +5,7 @@
   >
     <div class="relative mx-auto h-full flex">
       <div
-        :class="`${prefixCls}__left flex-1 bg-gray-500 bg-opacity-20 relative p-30px lt-xl:hidden overflow-x-hidden overflow-y-auto`"
+        :class="`${prefixCls}__left flex-1 relative p-30px lt-xl:hidden overflow-x-hidden overflow-y-auto`"
       >
         <!-- 左上角的 logo + 系统标题 -->
         <div class="relative flex items-center text-white">
@@ -16,7 +16,7 @@
         <div class="h-[calc(100%-60px)] flex items-center justify-center">
           <TransitionGroup
             appear
-            enter-active-class="animate__animated animate__bounceInLeft"
+            enter-active-class="fm-login-enter"
             tag="div"
           >
             <img key="1" alt="" class="w-350px max-w-full rounded-2xl mb-6" src="/login-manufacturing.webp" />
@@ -28,11 +28,11 @@
         </div>
       </div>
       <div
-        class="relative flex-1 p-30px dark:bg-[var(--login-bg-color)] lt-sm:p-10px overflow-x-hidden overflow-y-auto"
+        class="relative flex-1 p-30px lt-sm:p-10px overflow-x-hidden overflow-y-auto"
       >
         <!-- 右上角的主题、语言选择 -->
         <div
-          class="flex items-center justify-between text-white at-2xl:justify-end at-xl:justify-end"
+          class="flex items-center justify-between at-2xl:justify-end at-xl:justify-end"
         >
           <div class="flex items-center at-2xl:hidden at-xl:hidden">
             <img alt="FazeMES标识" class="mr-10px h-48px w-48px" src="/fazemes-logo.svg" />
@@ -40,13 +40,13 @@
           </div>
           <div class="flex items-center justify-end space-x-10px h-48px">
             <ThemeSwitch />
-            <LocaleDropdown class="dark:text-white lt-xl:text-white" />
+            <LocaleDropdown />
           </div>
         </div>
         <!-- 右边的登录界面 -->
-        <Transition appear enter-active-class="animate__animated animate__bounceInRight">
+        <Transition appear enter-active-class="fm-login-enter">
           <div
-            class="m-auto h-[calc(100%-60px)] w-[100%] flex items-center at-2xl:max-w-500px at-lg:max-w-500px at-md:max-w-500px at-xl:max-w-500px"
+            class="fm-login-form-wrap m-auto min-h-[calc(100%-60px)] w-[100%] flex items-center at-2xl:max-w-500px at-lg:max-w-500px at-md:max-w-500px at-xl:max-w-500px"
           >
             <!-- 账号登录 -->
             <el-form
@@ -54,7 +54,7 @@
               ref="formLogin"
               :model="loginData.loginForm"
               :rules="LoginRules"
-              class="login-form"
+              class="fm-login-card login-form"
               label-position="top"
               label-width="120px"
               size="large"
@@ -200,7 +200,7 @@ const loginData = reactive({
   captchaEnable: import.meta.env.VITE_APP_CAPTCHA_ENABLE !== 'false',
   tenantEnable: import.meta.env.VITE_APP_TENANT_ENABLE !== 'false',
   loginForm: {
-    tenantName: '示例企业',
+    tenantName: import.meta.env.VITE_APP_DEFAULT_LOGIN_TENANT || '',
     username: 'admin',
     password: 'admin123',
     captchaVerification: '',
@@ -323,26 +323,3 @@ onMounted(() => {
   tryLogin()
 })
 </script>
-
-<style lang="scss" scoped>
-$prefix-cls: #{$namespace}-login;
-
-.#{$prefix-cls} {
-  overflow: auto;
-
-  &__left {
-    &::before {
-      position: absolute;
-      top: 0;
-      left: 0;
-      z-index: -1;
-      width: 100%;
-      height: 100%;
-      background-image: linear-gradient(135deg, #233a52, #436783);
-      background-position: center;
-      background-repeat: no-repeat;
-      content: '';
-    }
-  }
-}
-</style>

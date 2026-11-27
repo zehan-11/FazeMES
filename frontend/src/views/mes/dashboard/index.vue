@@ -19,7 +19,7 @@
           :teleported="false"
           @change="changeWorkshop"
         >
-          <el-option v-for="w in data?.workshops || []" :key="w.id" :label="w.name" :value="w.id" />
+          <el-option v-for="w in data?.workshops || []" :key="w.id" :label="$catalogLabel(w.name)" :value="w.id" />
         </el-select>
         <el-select
           v-model="filters.workstationId"
@@ -33,7 +33,7 @@
           <el-option
             v-for="w in workstationOptions"
             :key="w.id"
-            :label="`${w.name} · ${w.scheduleLabel}`"
+            :label="`${$catalogLabel(w.name)} · ${w.scheduleLabel}`"
             :value="w.id"
           />
         </el-select>
@@ -56,7 +56,7 @@
         <el-switch v-model="autoRefresh" active-text="30秒刷新" aria-label="自动刷新" />
         <el-button :loading="loading" @click="load">刷新</el-button>
         <el-button @click="toggleFullscreen">全屏</el-button>
-        <el-button @click="router.back()">返回</el-button>
+        <HistoryBackButton with-label />
       </div>
     </div>
     <div v-if="error" class="screen-error" role="alert"
@@ -98,12 +98,12 @@
         </section>
         <section class="screen-panel ranking-panel">
           <div class="panel-heading"
-            ><h2>城市排行</h2><span v-if="mapExample" class="example-badge">示例</span></div
+            ><h2>城市排行</h2><span v-if="mapExample" class="example-badge">静态参考</span></div
           >
           <ChinaDistributionMap
             :cities="mapCities"
-            :metric-label="mapExample ? '销售示例' : '当日关联工单数'"
-            :unit="mapExample ? '示例值' : '单'"
+            :metric-label="mapExample ? '市场参考' : '当日关联工单数'"
+            :unit="mapExample ? '参考值' : '单'"
             :is-example="mapExample"
             view="ranking"
           />
@@ -112,10 +112,10 @@
       <div class="production-column">
         <section
           class="screen-panel map-panel"
-          :title="mapExample ? '示例值，与本系统业务统计无关' : regionData?.basis"
+          :title="mapExample ? '静态市场参考资料' : regionData?.basis"
         >
           <div class="panel-heading">
-            <h2>{{ mapExample ? '产品销售市场 · 示例' : '客户区域工单分布' }}</h2>
+            <h2>{{ mapExample ? '产品销售市场 · 参考分布' : '客户区域工单分布' }}</h2>
             <div class="map-controls"
               ><span v-if="!mapExample" class="map-count"
                 >已定位
@@ -125,13 +125,13 @@
                   }}</b
                 >
                 · 待定位 <b>{{ regionData?.unlocatedOrderCount || 0 }}</b></span
-              ><el-switch v-model="mapExample" active-text="示例" aria-label="切换地图示例数据"
+              ><el-switch v-model="mapExample" active-text="参考分布" aria-label="切换市场参考分布"
             /></div>
           </div>
           <ChinaDistributionMap
             :cities="mapCities"
-            :metric-label="mapExample ? '销售示例' : '当日关联工单数'"
-            :unit="mapExample ? '示例值' : '单'"
+            :metric-label="mapExample ? '市场参考' : '当日关联工单数'"
+            :unit="mapExample ? '参考值' : '单'"
             :is-example="mapExample"
             view="map"
             :empty-text="
@@ -151,7 +151,7 @@
               <button class="topology-station" @click="openStation(station.id)"
                 ><span class="station-node" aria-hidden="true"><Icon icon="ep:setting" /></span
                 ><span
-                  ><strong>{{ station.name }}</strong
+                  ><strong>{{ $catalogLabel(station.name) }}</strong
                   ><small>{{
                     station.count
                       ? `${format(station.produced)} / ${format(station.target)}`
@@ -182,7 +182,7 @@
               <tbody
                 ><tr v-for="w in data.workOrders" :key="w.id"
                   ><td>{{ w.code }}</td
-                  ><td :title="w.name">{{ w.name }}</td
+                  ><td :title="$catalogLabel(w.name)">{{ $catalogLabel(w.name) }}</td
                   ><td>{{ format(w.producedQuantity) }} / {{ format(w.quantity) }}</td
                   ><td
                     ><el-progress
@@ -249,7 +249,7 @@
               class="station-row"
               @click="openStation(s.id)"
               ><div
-                ><strong>{{ s.name }}</strong
+                ><strong>{{ $catalogLabel(s.name) }}</strong
                 ><span>{{
                   s.count ? `${s.count} 项任务` : '工位已建档 · 所选日期未排产'
                 }}</span></div
@@ -266,11 +266,11 @@
         </section>
       </div>
     </main>
-    <div v-else-if="loading" class="screen-empty">正在读取生产业务数据…</div>
+    <GlassSkeleton v-else-if="loading" variant="dashboard" label="正在读取生产业务数据" />
     <div v-else class="screen-empty">数据尚未加载，请点击刷新重试。</div>
     <el-drawer
       v-model="drawer"
-      :title="`${selectedStationName} · ${data?.date || filters.date} 任务`"
+      :title="`${$catalogLabel(selectedStationName)} · ${data?.date || filters.date} 任务`"
       size="min(900px, 90vw)"
       class="production-screen-drawer"
       :append-to="screen"
@@ -292,6 +292,8 @@
 </template>
 
 <script setup lang="ts">
+import HistoryBackButton from '@/components/HistoryBackButton.vue'
+import GlassSkeleton from '@/components/GlassSkeleton.vue'
 import { formatQuantity, quantityText, quantityUnits } from '@/utils/mesQuantity'
 import { formatDate } from '@/utils/formatTime'
 import dayjs from 'dayjs'
@@ -600,6 +602,33 @@ onBeforeUnmount(() => {
   flex-direction: column;
   gap: 14px;
   color-scheme: dark;
+}
+
+html.dark .production-screen {
+  --screen-cyan: var(--fm-blue-ink);
+  --screen-muted: var(--fm-secondary);
+  --screen-line: var(--fm-line);
+  --el-text-color-primary: var(--fm-text);
+  --el-text-color-regular: var(--fm-secondary);
+  --el-text-color-placeholder: var(--fm-muted);
+  --el-fill-color-blank: var(--fm-slot);
+  --el-border-color: var(--fm-strong-line);
+
+  color: var(--fm-text);
+  background: var(--fm-skylight), var(--fm-curtain);
+
+  .screen-panel { background: var(--fm-card-glass); }
+  .panel-heading, .order-table th { background: var(--fm-surface); }
+  .panel-heading { border-left-color: var(--fm-tile-hover-line); }
+  .panel-heading h2, .order-table th { color: var(--fm-table-label); }
+  .map-panel .panel-heading { background: transparent; }
+  .order-table td { color: var(--fm-text); border-color: var(--fm-table-rule); }
+  .order-table tbody tr:nth-child(even) { background: var(--fm-hover); }
+  .screen-empty, .map-count, .topology-station { color: var(--fm-secondary); }
+  .station-node, :deep(.el-select__wrapper), :deep(.el-input__wrapper) { background: var(--fm-slot); }
+  :deep(.el-select__wrapper), :deep(.el-input__wrapper) { box-shadow: inset 0 0 0 1px var(--fm-strong-line); }
+  :deep(.el-progress-bar__outer) { background: var(--fm-surface); }
+  :deep(.el-input__inner), :deep(.el-progress__text) { color: var(--fm-secondary); }
 }
 
 .production-screen * {
@@ -1389,5 +1418,18 @@ onBeforeUnmount(() => {
   --el-border-color: #245064;
   --el-border-color-light: #173744;
   --el-border-color-lighter: #173744;
+}
+
+html.dark :is(.production-screen-popper, .production-screen-drawer) {
+  --el-bg-color: var(--fm-surface);
+  --el-bg-color-overlay: var(--fm-overlay);
+  --el-fill-color-blank: var(--fm-surface);
+  --el-fill-color-light: var(--fm-raised);
+  --el-text-color-primary: var(--fm-text);
+  --el-text-color-regular: var(--fm-secondary);
+  --el-text-color-secondary: var(--fm-muted);
+  --el-border-color: var(--fm-strong-line);
+  --el-border-color-light: var(--fm-line);
+  --el-border-color-lighter: var(--fm-divider);
 }
 </style>

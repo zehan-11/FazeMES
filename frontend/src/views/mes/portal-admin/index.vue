@@ -66,12 +66,12 @@
           >
           <el-table :data="catalog" v-loading="loading" stripe
             ><el-table-column prop="productCode" label="产品编码" min-width="150" /><el-table-column
-              prop="productName"
+              :formatter="$catalogCell" prop="productName"
               label="产品名称"
               min-width="180"
               show-overflow-tooltip
             /><el-table-column
-              prop="specification"
+              :formatter="$catalogCell" prop="specification"
               label="规格"
               min-width="180"
               show-overflow-tooltip
@@ -106,9 +106,9 @@
                 ><div class="request-detail"
                   ><el-table :data="row.items" size="small"
                     ><el-table-column prop="productCode" label="产品编码" /><el-table-column
-                      prop="productName"
+                      :formatter="$catalogCell" prop="productName"
                       label="产品名称" /><el-table-column
-                      prop="specification"
+                      :formatter="$catalogCell" prop="specification"
                       label="规格" /><el-table-column
                       prop="quantity"
                       label="数量"
@@ -234,7 +234,7 @@
               v-for="product in products"
               :key="product.id"
               :value="product.id"
-              :label="`${product.code} · ${product.name}`" /></el-select></el-form-item
+              :label="`${product.code} · ${$catalogLabel(product.name)}`" /></el-select></el-form-item
         ><el-form-item label="客户可见说明"
           ><el-input
             v-model="catalogForm.description"

@@ -98,8 +98,8 @@
               </el-link>
             </template>
           </el-table-column>
-          <el-table-column label="物料名称" align="center" prop="name" />
-          <el-table-column label="规格型号" align="center" prop="specification" />
+          <el-table-column label="物料名称" align="center" :formatter="$catalogCell" prop="name" />
+          <el-table-column label="规格型号" align="center" :formatter="$catalogCell" prop="specification" />
           <el-table-column label="单位" align="center" prop="unitMeasureName" />
           <el-table-column label="物料分类" align="center" prop="itemTypeName" />
           <el-table-column label="物料/产品" align="center" prop="itemOrProduct">

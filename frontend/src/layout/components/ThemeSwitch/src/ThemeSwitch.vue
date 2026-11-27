@@ -1,46 +1,19 @@
-<script lang="ts" setup>
+<script setup lang="ts">
+import { Moon, Sunny } from '@element-plus/icons-vue'
 import { useAppStore } from '@/store/modules/app'
-import { useIcon } from '@/hooks/web/useIcon'
-import { useDesign } from '@/hooks/web/useDesign'
 
-defineOptions({ name: 'ThemeSwitch' })
-
-const { getPrefixCls } = useDesign()
-
-const prefixCls = getPrefixCls('theme-switch')
-
-const Sun = useIcon({ icon: 'emojione-monotone:sun', color: '#fde047' })
-
-const CrescentMoon = useIcon({ icon: 'emojione-monotone:crescent-moon', color: '#fde047' })
-
-const appStore = useAppStore()
-
-// 初始化获取是否是暗黑主题
-const isDark = ref(appStore.getIsDark)
-
-// 设置switch的背景颜色
-const blackColor = 'var(--el-color-black)'
-
-const themeChange = (val: boolean) => {
-  appStore.setIsDark(val)
-}
+const app = useAppStore()
+const label = computed(() => (app.getIsDark ? '切换到浅色主题' : '切换到深蓝主题'))
 </script>
 
 <template>
-  <ElSwitch
-    v-model="isDark"
-    :active-color="blackColor"
-    :active-icon="Sun"
-    :border-color="blackColor"
-    :class="prefixCls"
-    :inactive-color="blackColor"
-    :inactive-icon="CrescentMoon"
-    inline-prompt
-    @change="themeChange"
-  />
+  <button
+    type="button"
+    class="fm-icon-button"
+    :aria-label="label"
+    :title="label"
+    @click="app.setIsDark(!app.getIsDark)"
+  >
+    <ElIcon :size="18" aria-hidden="true"><Sunny v-if="app.getIsDark" /><Moon v-else /></ElIcon>
+  </button>
 </template>
-<style lang="scss" scoped>
-:deep(.el-switch__core .el-switch__inner .is-icon) {
-  overflow: visible;
-}
-</style>

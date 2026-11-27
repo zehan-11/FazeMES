@@ -33,7 +33,7 @@
       />
       <el-table-column label="点检人" align="center" prop="nickname" width="100" />
       <el-table-column label="设备编码" align="center" prop="machineryCode" width="120" />
-      <el-table-column label="设备名称" align="center" prop="machineryName" width="120" />
+      <el-table-column label="设备名称" align="center" :formatter="$catalogCell" prop="machineryName" width="120" />
       <el-table-column label="品牌" align="center" prop="machineryBrand" width="100" />
       <el-table-column label="规格型号" align="center" prop="machinerySpecification" width="120" />
       <el-table-column label="状态" align="center" prop="status" width="100">

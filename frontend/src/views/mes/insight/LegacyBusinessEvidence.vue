@@ -16,7 +16,7 @@
           />
           <el-table-column
             v-if="answer.topic === 'risks'"
-            prop="productName"
+            :formatter="$catalogCell" prop="productName"
             label="产品"
             min-width="140"
           />

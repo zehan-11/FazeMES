@@ -268,13 +268,14 @@ watch(
   () => currentRoute.value,
   () => {
     addTags()
-    moveToCurrentTag()
+    if (appStore.getTagsView) moveToCurrentTag()
   }
 )
 </script>
 
 <template>
   <div
+    v-if="appStore.getTagsView"
     :id="prefixCls"
     :class="prefixCls"
     class="relative w-full flex bg-[#fff] dark:bg-[var(--el-bg-color)]"

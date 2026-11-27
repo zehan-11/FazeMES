@@ -255,6 +255,7 @@ export function kittingRun(
 
 export interface WorkspaceAccess {
   canQuery: boolean
+  preferKnowledge?: boolean
   canKnowledge: boolean
   canDify: boolean
   canBusiness?: boolean
