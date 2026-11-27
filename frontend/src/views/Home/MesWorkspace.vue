@@ -25,7 +25,7 @@
 
     <el-row v-if="statistics.length" :gutter="16" class="statistics">
       <el-col v-for="(stat, i) in statistics" :key="stat.key" :xs="24" :sm="8">
-        <el-card v-tech-card v-loading="loading" shadow="never" class="fm-stagger" :style="{ '--i': i }">
+        <el-card v-tech-card v-loading="loading" shadow="never" class="fm-interactive-card fm-stagger" :style="{ '--i': i }">
           <div class="stat-label">{{ stat.label }}</div>
           <div class="stat-value"><AnimatedNumber :value="counts[stat.key]" /></div>
           <div class="stat-hint">{{ stat.hint }}</div>

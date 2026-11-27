@@ -4,7 +4,7 @@
       v-for="(item, i) in cards"
       :key="item.label"
       v-tech-card
-      class="fm-stagger"
+      class="fm-interactive-card fm-stagger"
       :style="{ '--i': i }"
       shadow="never"
     >

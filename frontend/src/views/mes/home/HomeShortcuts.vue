@@ -11,7 +11,7 @@
         v-for="(item, i) in items"
         :key="item.path"
         v-tech-card
-        class="shortcut fm-stagger"
+        class="shortcut fm-interactive-card fm-stagger"
         :style="{ '--i': Math.min(i, 7) }"
         @click="emit('navigate', item.path)"
       >

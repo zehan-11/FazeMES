@@ -9,13 +9,13 @@
         <el-button :loading="busy" @click="refresh">刷新当前数据</el-button>
       </div>
       <div class="metrics" v-if="risks">
-        <div
+        <div class="fm-interactive-card"
           ><small>未结工单</small><strong><AnimatedNumber :value="risks.summary.open" /></strong></div
         >
-        <div
+        <div class="fm-interactive-card"
           ><small>高风险工单</small><strong class="danger"><AnimatedNumber :value="risks.summary.high" /></strong></div
         >
-        <div
+        <div class="fm-interactive-card"
           ><small>交期尚不能估算</small><strong><AnimatedNumber :value="risks.summary.unknown" /></strong></div
         >
         <div class="metric-note"
@@ -957,7 +957,7 @@ onMounted(async () => {
 .eyebrow {
   font-size: 11px;
   letter-spacing: 1.4px;
-  color: #368a96;
+  color: var(--fm-blue-ink);
 }
 
 h1 {
@@ -989,6 +989,15 @@ p {
   gap: 20px;
 }
 
+.metrics > .fm-interactive-card {
+  min-width: 0;
+  padding: 12px clamp(10px, 1.2vw, 18px);
+  border: 1px solid var(--fm-line);
+  border-radius: var(--fm-panel-radius);
+  background: var(--fm-card-glass);
+  box-shadow: inset 0 1px var(--fm-highlight);
+  transition: --fm-tile-emphasis var(--fm-motion);
+}
 .metrics small {
   display: block;
   font-size: 12px;

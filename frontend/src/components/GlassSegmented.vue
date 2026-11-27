@@ -65,6 +65,10 @@ onBeforeUnmount(() => observer?.disconnect())
   border-radius: 999px;
   background: var(--fm-slot);
 }
+.fm-segmented:focus-within {
+  border-color: var(--fm-focus);
+  box-shadow: 0 0 0 3px var(--fm-focus-halo);
+}
 .fm-segmented__track {
   position: relative;
   display: flex;

@@ -13,9 +13,14 @@
   --fm-curtain: linear-gradient(145deg, #0d295e 0%, #143a7e 42%, #0c2556 76%, #081a3f 100%);
   --fm-skylight: radial-gradient(ellipse 60% 45% at 88% 4%, rgba(150, 220, 255, 0.24) 0%, rgba(56, 165, 255, 0.10) 45%, transparent 75%);
   --fm-sea-glow: radial-gradient(ellipse 62% 58% at 4% 98%, rgba(37, 118, 255, 0.20), transparent 74%);
-  --fm-floor-line: rgba(120, 200, 255, 0.14);
+  --fm-tile-top: rgba(205, 232, 255, 0.14);
+  --fm-tile-bottom: rgba(120, 178, 245, 0.08);
+  --fm-tile-line: rgba(175, 224, 255, 0.28);
+  --fm-tile-hover-top: rgba(54, 165, 222, 0.32);
+  --fm-tile-hover-bottom: rgba(51, 125, 210, 0.22);
+  --fm-tile-hover-line: rgba(111, 220, 255, 0.68);
   --fm-card: rgba(176, 212, 255, 0.10);
-  --fm-card-glass: linear-gradient(180deg, rgba(205, 232, 255, 0.14) 0%, rgba(120, 178, 245, 0.08) 100%);
+  --fm-card-glass: linear-gradient(180deg, var(--fm-tile-top), var(--fm-tile-bottom));
   --fm-card-over: rgba(176, 218, 255, 0.06);
   --fm-card-filter: blur(16px) saturate(165%);
   --fm-chrome-filter: blur(18px);
@@ -32,7 +37,7 @@
   --fm-header-tint: #14294a;
   --fm-menu-tint: #0d1526;
   --fm-chrome-line: rgba(147, 197, 255, 0.16);
-  --fm-line: rgba(175, 224, 255, 0.28);
+  --fm-line: var(--fm-tile-line);
   --fm-divider: rgb(148 197 255 / 13%);
   --fm-strong-line: rgba(148, 197, 255, 0.24);
   --fm-highlight: rgba(255, 255, 255, 0.30);
@@ -83,7 +88,12 @@
 html.light,
 html.light .fm-face-login-dialog {
   --fm-curtain: linear-gradient(135deg, #eef5ff, #e8f1fd 48%, #eaf6f9);
-  --fm-card-glass: linear-gradient(180deg, rgb(255 255 255 / 85%), rgb(237 246 255 / 72%));
+  --fm-tile-top: rgb(255 255 255 / 85%);
+  --fm-tile-bottom: rgb(237 246 255 / 72%);
+  --fm-tile-line: rgb(62 101 155 / 20%);
+  --fm-tile-hover-top: rgb(146 214 246 / 58%);
+  --fm-tile-hover-bottom: rgb(181 209 245 / 60%);
+  --fm-tile-hover-line: rgb(42 132 185 / 72%);
   --fm-card-over: rgb(246 252 255 / 91%);
   --fm-primary-edge: #2982b4;
   --fm-primary-ink: #10375c;
@@ -91,7 +101,6 @@ html.light .fm-face-login-dialog {
   --fm-button-edge: rgb(42 108 155 / 38%);
   --fm-skylight: radial-gradient(ellipse 60% 45% at 88% 4%, rgb(255 255 255 / 80%), transparent 75%);
   --fm-sea-glow: radial-gradient(ellipse at 4% 98%, rgb(133 189 244 / 18%), transparent 74%);
-  --fm-floor-line: rgb(59 123 184 / 14%);
   --fm-header-beam: linear-gradient(90deg, transparent 5%, #87b6db 35%, #f9fdff 50%, #87b6db 65%, transparent 95%);
   --fm-rim-core: #fff;
   --fm-rim-ice: rgb(104 178 219 / 65%);
@@ -117,7 +126,7 @@ html.light .fm-face-login-dialog {
   --fm-overlay: rgb(249 252 255 / 95%);
   --fm-slot: rgb(247 250 255 / 88%);
   --fm-header: rgb(252 253 255 / 93%);
-  --fm-line: rgb(62 101 155 / 20%);
+  --fm-line: var(--fm-tile-line);
   --fm-divider: rgb(62 101 155 / 13%);
   --fm-strong-line: rgb(56 95 153 / 36%);
   --fm-highlight: rgb(255 255 255 / 94%);

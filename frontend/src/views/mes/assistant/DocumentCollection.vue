@@ -64,7 +64,7 @@ const timestamp = (doc: ListedDocument) =>
       <div v-for="(doc, i) in visibleDocuments" :key="doc.id" class="document-slot">
         <article
           v-tech-card
-          class="document-card fm-hud fm-stagger fm-optical-rim"
+          class="document-card fm-interactive-card fm-hud fm-stagger fm-optical-rim"
           :style="{ '--i': Math.min(i, 7) }"
         >
           <header>
@@ -203,10 +203,6 @@ const timestamp = (doc: ListedDocument) =>
   transition:
     border-color var(--fm-motion),
     transform var(--fm-motion);
-}
-.document-card:hover,
-.document-card:focus-within {
-  border-color: var(--fm-strong-line);
 }
 .document-card header,
 .document-card footer,

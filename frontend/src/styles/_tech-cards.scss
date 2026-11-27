@@ -1,3 +1,27 @@
+// A single interpolated value blends both gradient stops, angle and border together.
+@property --fm-tile-emphasis {
+  syntax: '<number>';
+  inherits: false;
+  initial-value: 0;
+}
+.fm-interactive-card {
+  --fm-tile-mix: calc(100% * var(--fm-tile-emphasis));
+  --fm-card-glass: linear-gradient(
+    calc(180deg - 45deg * var(--fm-tile-emphasis)),
+    color-mix(in srgb, var(--fm-tile-top), var(--fm-tile-hover-top) var(--fm-tile-mix)),
+    color-mix(in srgb, var(--fm-tile-bottom), var(--fm-tile-hover-bottom) var(--fm-tile-mix))
+  );
+  --fm-line: color-mix(in srgb, var(--fm-tile-line), var(--fm-tile-hover-line) var(--fm-tile-mix));
+  --fm-active-card-border: var(--fm-line);
+  --fm-card-over: transparent;
+}
+@media (hover: hover) {
+  .fm-interactive-card:hover:not(:disabled, .is-disabled) { --fm-tile-emphasis: 1; }
+}
+.fm-interactive-card:is(:focus-visible, :has(:focus-visible), :active, .is-active, [aria-pressed='true']):not(:disabled, .is-disabled) {
+  --fm-tile-emphasis: 1;
+}
+
 // Optics are pointer-transparent and separate from the face camera's own two HUD rings.
 .fm-tech-card {
   position: relative;
@@ -8,7 +32,8 @@
   transition:
     transform 0.38s var(--fm-spring),
     border-color 0.2s,
-    background-color 0.2s;
+    background-color 0.2s,
+    --fm-tile-emphasis var(--fm-motion);
 }
 .fm-card-optics {
   position: absolute;
@@ -123,7 +148,7 @@
     .fm-face-login-dialog .face-capture .fm-tech-card.is-lit {
       transition-timing-function: ease-out, ease, ease;
       transform: perspective(900px) rotateX(var(--tilt-x)) rotateY(var(--tilt-y)) translateY(-3px);
-      border-color: var(--fm-primary-edge);
+      border-color: var(--fm-active-card-border, var(--fm-primary-edge));
     }
     .fm-tech-card.is-lit:not(.camera-frame) {
       background: var(--fm-card-glass);
@@ -139,7 +164,8 @@
   }
 }
 @media (prefers-reduced-motion: reduce) {
-  .fm-tech-card {
+  .fm-tech-card,
+  .fm-interactive-card {
     transition: none !important;
   }
 }
