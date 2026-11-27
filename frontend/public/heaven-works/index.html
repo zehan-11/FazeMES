@@ -1,405 +1,705 @@
 <!doctype html>
 <!-- Required Notice: Copyright (c) 2026 赛博老爸
-     Adapted from https://github.com/cyberdaddyleo/agent-display (WORKS v10.0).
+     Scene adapted from https://github.com/cyberdaddyleo/agent-display.
      SPDX-License-Identifier: PolyForm-Noncommercial-1.0.0. See LICENSE. -->
-<html lang="zh-CN"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1">
-<title>天工开物 · 电风扇 | FazeMES</title>
-<link rel="icon" type="image/svg+xml" href="../fazemes-logo.svg">
-<style>html,body,#host-works{height:100%;width:100%;margin:0;background:#04060a;color-scheme:dark}body{overflow:hidden}</style>
-</head><body><div id="host-works"></div>
-<template id="tpl-loom">
-<style>
-/* Layout: 三栏作战大屏 —— 顶部正中是「总控卫星」，下方 8 台造型各异的织机（= 子 Agent）由牵引线挂在总控主环上，
-   向下吐出彩色光丝，汇入中部「织机光梁」的 7 个织位（织片 = 子任务），再由织位垂下的丝线在底部织造台上一针一针织出当前项目。
-   左栏机组阵列 + 执行代码，右栏织造项目 / 事件流 / 交付记录。左上标题、右上按钮与前几款同一套写法。
-   机械与织造台是原生 WebGL（不依赖 three.js），光丝画在 2D 画布上。深空单一深色。 */
-:host{
-  color-scheme:dark;
-  --bg:#04060a; --panel:rgba(8,11,17,.82); --card:rgba(5,8,12,.78);
-  --line:rgba(150,180,220,.13); --line-2:rgba(170,200,240,.28);
-  --fg:#dae2ee; --fg-2:#98a4b5; --fg-3:#5c6777;
-  --ice:#9cd0ff; --silk:#ffb98a; --ok:#86e3b6; --ink:#06080b;
-  --display:"Syncopate","Noto Sans SC",system-ui,sans-serif;
-  --mono:"JetBrains Mono","Noto Sans SC","PingFang SC",ui-monospace,Menlo,monospace;
-  --cjk:"Noto Sans SC","PingFang SC","Microsoft YaHei",system-ui,sans-serif;
-}
-:host{display:block;height:100%;position:relative;overflow:hidden;background:var(--bg);color:var(--fg);font-family:var(--mono);-webkit-font-smoothing:antialiased}
-[hidden]{display:none!important}
-*{box-sizing:border-box}
-.gl{position:absolute;inset:0;width:100%;height:100%;display:block;cursor:grab;touch-action:none}
-.gl.drag{cursor:grabbing}
-.vig{position:absolute;inset:0;pointer-events:none;background:radial-gradient(ellipse 70% 80% at 50% 46%,transparent 56%,rgba(0,0,0,.55) 100%)}
-.fx{position:absolute;inset:0;width:100%;height:100%;display:block;pointer-events:none}
-.nr{position:absolute;inset:0;pointer-events:none}
-.fit{position:absolute;inset:0;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));pointer-events:none}
-.fit-in{position:relative;width:100%;height:100%}
-.board{position:absolute;left:50%;top:50%;width:1920px;height:1080px;transform:translate(-50%,-50%) scale(var(--s,.5));pointer-events:none}
-.pe{pointer-events:auto}
-
-/* ---------- 左上标题（与 03–06 同款） ---------- */
-.topfade{position:absolute;left:-40px;top:0;width:900px;height:330px;background:radial-gradient(ellipse 700px 300px at 0 0,rgba(2,4,8,.92),rgba(2,4,8,.55) 55%,rgba(2,4,8,0) 85%)}
-.hd{position:absolute;left:24px;top:18px;width:max-content;text-shadow:0 0 6px var(--bg),0 0 14px var(--bg)}
-.eb{width:max-content;font-size:10px;letter-spacing:.26em;color:var(--fg-3);white-space:nowrap}
-.eb b{color:var(--ice);font-weight:500}
-.hd h1{margin:12px 0 0;font-family:var(--display);font-weight:700;font-size:44px;line-height:1.06;letter-spacing:.05em;color:var(--fg)}
-.hd h1 span{display:block;width:max-content;white-space:nowrap}
-.hd h1 .l1{display:flex;align-items:center;width:max-content}
-.hd h1 em{font-style:normal;font-family:var(--cjk);font-weight:900;font-size:36px;line-height:1;letter-spacing:.08em;margin-left:22px;text-shadow:none;background:linear-gradient(90deg,#b8dcff,#ffc29a);-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;filter:drop-shadow(0 0 10px rgba(255,185,138,.3))}
-.sub{width:max-content;margin-top:12px;font-family:var(--cjk);font-size:14px;letter-spacing:.06em;color:var(--fg-2);white-space:nowrap}
-.sub2{width:max-content;margin-top:6px;font-size:10px;letter-spacing:.16em;color:var(--fg-3);white-space:nowrap}
-.sub2 b{color:var(--fg);font-weight:500;font-variant-numeric:tabular-nums}
-
-/* ---------- 右上按钮（与 03–06 同款） ---------- */
-.tools{position:absolute;right:24px;top:14px;display:flex;gap:6px}
-button.tb{font:500 11px/1 var(--mono);letter-spacing:.1em;color:var(--fg-2);background:rgba(6,9,14,.75);border:1px solid rgba(160,195,235,.3);padding:8px 11px;cursor:pointer;white-space:nowrap}
-button.tb b{color:var(--fg);font-weight:700;font-family:var(--cjk);margin-left:6px;letter-spacing:.04em}
-button.tb:hover{border-color:var(--ice);color:var(--fg)}
-button.tb:focus-visible{outline:1px solid var(--ice);outline-offset:2px}
-.strip{position:absolute;right:24px;top:52px;display:flex;gap:16px;font-size:9.5px;letter-spacing:.12em;color:var(--fg-3);white-space:nowrap}
-.strip b{color:var(--fg);font-weight:500;margin-left:5px;font-variant-numeric:tabular-nums}
-.strip .live::before{content:"";display:inline-block;width:6px;height:6px;border-radius:50%;background:var(--ok);margin-right:6px;vertical-align:1px;box-shadow:0 0 6px var(--ok)}
-
-/* ---------- 框体 ---------- */
-.panel{position:relative;background:var(--panel);border:1px solid var(--line);min-width:0;min-height:0;display:flex;flex-direction:column;overflow:hidden}
-.panel::before,.panel::after{content:"";position:absolute;width:9px;height:9px;pointer-events:none;border:1px solid var(--line-2);z-index:1}
-.panel::before{top:-1px;left:-1px;border-right:0;border-bottom:0}
-.panel::after{bottom:-1px;right:-1px;border-left:0;border-top:0}
-.ph{flex:none;display:flex;align-items:baseline;justify-content:space-between;gap:12px;padding:9px 12px 7px;border-bottom:1px solid var(--line);font-size:10px;letter-spacing:.14em;color:var(--fg-3);white-space:nowrap}
-.ph>span:first-child{color:var(--fg-2);overflow:hidden;text-overflow:ellipsis}
-.ph b{color:var(--fg);font-weight:500;margin-right:2px}
-.bar{display:block;height:4px;background:rgba(255,255,255,.06);position:relative;overflow:hidden}
-.bar i{position:absolute;left:0;top:0;bottom:0;width:0;background:var(--c,var(--ice));opacity:.7;transition:width .12s linear}
-
-/* 左：机组阵列 + 执行代码 */
-.col-l{position:absolute;left:24px;top:206px;bottom:36px;width:384px;display:flex;flex-direction:column;gap:12px}
-.swarm{flex:none;height:476px}
-.sws{flex:1;display:grid;grid-template-rows:repeat(8,minmax(0,1fr));gap:5px;padding:7px 11px 9px 10px;min-height:0}
-.sw{position:relative;display:grid;grid-template-columns:minmax(0,1fr) 92px;grid-template-rows:auto auto;column-gap:10px;align-content:center;padding:3px 8px 3px 10px;background:var(--card);border:1px solid rgba(160,190,220,.08);min-height:0;transition:border-color .45s,box-shadow .45s}
-.sw::before{content:"";position:absolute;left:0;top:0;bottom:0;width:2px;background:var(--c);opacity:.45;transition:opacity .4s}
-.sw-h{display:flex;align-items:baseline;gap:7px;font-size:9.5px;line-height:14px;white-space:nowrap;min-width:0}
-.sw-h .sid{color:var(--c);font-weight:700;letter-spacing:.06em}
-.sw-h .nm{color:var(--fg);letter-spacing:.05em}
-.sw-h .role{color:var(--fg-3);font-family:var(--cjk);font-size:9px}
-.sw-t{grid-column:1;font-family:var(--cjk);font-size:10.5px;line-height:15px;color:var(--fg-3);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.sw-r{grid-column:2;grid-row:1/3;display:flex;flex-direction:column;justify-content:center;gap:4px;min-width:0}
-.sw-tag{align-self:flex-end;font-size:8px;line-height:11px;letter-spacing:.12em;padding:0 5px;border:1px solid var(--line-2);color:var(--fg-3);font-family:var(--cjk);white-space:nowrap}
-.sw-m{display:grid;grid-template-columns:minmax(0,1fr) 30px;gap:5px;align-items:center;font-size:8.5px;color:var(--fg-2);font-variant-numeric:tabular-nums;text-align:right}
-.sw-g{display:flex;align-items:flex-end;gap:1px;height:9px}
-.sw-g i{flex:1;background:var(--c);opacity:.35;min-height:1px}
-.sw::after{content:"";position:absolute;right:-2px;top:18%;bottom:18%;width:2px;background:repeating-linear-gradient(to bottom,var(--c) 0 1px,transparent 1px 4px);opacity:.5;animation:lmtick .35s linear infinite}
-@keyframes lmtick{from{background-position:0 0}to{background-position:0 4px}}
-.sw.on{border-color:var(--c);box-shadow:inset 0 0 24px -12px var(--c)}
-.sw.on::before{opacity:1}
-.sw.on .sw-t{color:var(--fg)}
-.sw.on .sw-tag{color:var(--c);border-color:var(--c)}
-.sw.on .sw-g i{opacity:.75}
-.sw.done .sw-tag{color:var(--ice)}
-.codep{flex:1}
-.code{flex:1;margin:0;padding:6px 10px 6px 0;list-style:none;font:400 9.5px/13.5px var(--mono);color:#7f8b9a;overflow:hidden;min-height:0}
-.code.sc{-webkit-mask-image:linear-gradient(180deg,transparent 0,#000 30px);mask-image:linear-gradient(180deg,transparent 0,#000 30px)}
-.code li{white-space:pre;overflow:hidden;text-overflow:ellipsis}
-.code li::before{content:attr(data-n);display:inline-block;width:4ch;padding-right:12px;text-align:right;color:var(--fg-3);opacity:.75}
-.code li.hl{color:var(--fg);background:linear-gradient(90deg,rgba(156,208,255,.12),transparent 90%);box-shadow:inset 2px 0 0 var(--ice)}
-.code li.hl.hot{background:linear-gradient(90deg,rgba(255,185,138,.13),transparent 90%);box-shadow:inset 2px 0 0 var(--silk)}
-.code li.hl::before{color:var(--fg-2);opacity:1}
-.code li.cur::after{content:"\258C";color:var(--ice);margin-left:1px;animation:lmblink 1s steps(1) infinite}
-.code li.cur.hot::after{color:var(--silk)}
-.code li.cur.tp::after{animation:none}
-@keyframes lmblink{50%{opacity:0}}
-.code .xk{color:#b9a6ff}
-.code .xf{color:var(--ice)}
-.code .xs{color:#e8c18f}
-.code .xn{color:#8fe3b9}
-.code .xc{color:#66727f;font-family:var(--cjk)}
-
-/* 中：总控机械 / 织机 / 织位 / 织造台 */
-.mid{position:absolute;left:432px;right:432px;top:0;bottom:0}
-.core-cap{position:absolute;left:50%;top:238px;transform:translate(-50%,-50%);font-size:9px;font-weight:500;letter-spacing:.34em;color:#f2f6ff;white-space:nowrap;text-shadow:0 0 4px #04060a,0 0 10px #04060a,0 0 18px #04060a;padding:3px 6px 3px calc(6px + .34em);background:rgba(4,6,10,.42);border:1px solid rgba(200,220,255,.18)}
-.core-sub{position:absolute;left:50%;top:18px;transform:translateX(-50%);display:flex;align-items:baseline;gap:10px;font-size:9px;letter-spacing:.2em;color:var(--fg-3);white-space:nowrap}
-.core-sub b{font-family:var(--cjk);font-size:11px;font-weight:500;letter-spacing:.14em;color:var(--fg-2)}
-.core-sub i{font-style:normal;color:var(--silk)}
-.ch{position:absolute;top:78px;display:flex;flex-direction:column;gap:6px;font-size:8.5px;letter-spacing:.16em;color:var(--fg-3);white-space:nowrap}
-.ch.l{right:calc(50% + 236px);text-align:right;align-items:flex-end}
-.ch.r{left:calc(50% + 236px)}
-.ch .kv b{display:block;font-size:17px;font-weight:400;letter-spacing:.02em;color:var(--fg);font-variant-numeric:tabular-nums;margin-top:2px}
-.ch .kv b small{font-size:10px;color:var(--fg-3);margin-left:3px}
-.slab{position:absolute;width:132px;padding:5px 8px 6px;background:rgba(5,8,12,.82);border:1px solid rgba(160,190,220,.14);font-size:8.5px;color:var(--fg-3);transition:border-color .4s,background .4s}
-.slab.l{left:6px}
-.slab.r{right:6px;text-align:right}
-.slab .h{display:flex;gap:6px;align-items:baseline;white-space:nowrap}
-.slab.r .h{justify-content:flex-end}
-.slab .h b{color:var(--c);font-weight:700;letter-spacing:.06em}
-.slab .h span{color:var(--fg-2);letter-spacing:.06em;overflow:hidden;text-overflow:ellipsis}
-.slab .t{margin-top:3px;font-family:var(--cjk);font-size:10px;color:var(--fg-3);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.slab .k{margin-top:2px;letter-spacing:.1em;white-space:nowrap;font-variant-numeric:tabular-nums}
-.slab.on{border-color:var(--c);background:rgba(8,12,18,.9)}
-.slab.on .t{color:var(--fg)}
-.slab.on .k{color:var(--c)}
-.loom{position:absolute;left:84px;right:84px;top:596px;height:74px;display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:8px}
-.lc{position:relative;display:flex;flex-direction:column;gap:3px;padding:5px 7px 6px;background:rgba(5,8,12,.84);border:1px solid rgba(160,190,220,.14);min-width:0;pointer-events:auto;cursor:pointer;font:inherit;color:inherit;text-align:left;transition:border-color .35s,background .35s,box-shadow .35s}
-.lc::before{content:"";position:absolute;left:-1px;right:-1px;top:-1px;height:2px;background:var(--c);opacity:.5}
-.lc-h{display:flex;justify-content:space-between;gap:4px;font-size:8px;letter-spacing:.1em;color:var(--fg-3);white-space:nowrap}
-.lc-h b{color:var(--c);font-weight:700}
-.lc-h span{overflow:hidden;text-overflow:ellipsis}
-.lc-t{font-family:var(--cjk);font-size:12px;color:var(--fg-2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.lc-b{display:flex;align-items:center;gap:6px;font-size:8.5px;color:var(--fg-3);font-variant-numeric:tabular-nums}
-.lc-b .bar{flex:1;height:3px}
-.lc:hover{border-color:rgba(160,190,220,.35)}
-.lc:focus-visible{outline:1px solid var(--fg);outline-offset:2px}
-.lc.on{border-color:var(--c);background:rgba(10,14,20,.92);box-shadow:0 0 26px -12px var(--c),inset 0 0 18px -10px var(--c)}
-.lc.on .lc-t{color:var(--fg)}
-.lc.on::before{opacity:1}
-.lc.done .lc-t{color:var(--fg)}
-.lc.done .lc-b{color:var(--ice)}
-.lc.focus{border-color:var(--fg)}
-.lc.idle{opacity:.55}
-.hud-b{position:absolute;left:14px;right:14px;bottom:42px;display:flex;justify-content:space-between;align-items:flex-end;gap:20px}
-.eyebrow{font-size:9px;letter-spacing:.2em;color:var(--fg-3);margin-bottom:7px;white-space:nowrap}
-.eyebrow i{display:inline-block;width:6px;height:6px;background:var(--silk);margin-right:8px;vertical-align:1px;animation:lmpulse 1.2s infinite}
-.now-title{font-family:var(--cjk);font-size:28px;font-weight:700;letter-spacing:.02em;line-height:1.12;white-space:nowrap;text-shadow:0 0 12px var(--bg)}
-.now-sub{font-size:10px;color:var(--fg-2);margin-top:6px;letter-spacing:.04em;font-family:var(--cjk);white-space:nowrap}
-.hud-br{text-align:right}
-.big{font-family:var(--mono);font-size:44px;font-weight:400;line-height:1;font-variant-numeric:tabular-nums;color:var(--fg);letter-spacing:-.02em}
-.big small{font-size:16px;color:var(--fg-3);margin-left:4px}
-.cap{font-size:8.5px;letter-spacing:.18em;color:var(--fg-3);margin-top:6px;white-space:nowrap}
-.hint{position:absolute;left:50%;bottom:48px;transform:translateX(-50%);font-size:8.5px;letter-spacing:.14em;color:var(--fg-3);opacity:.7;white-space:nowrap}
-@keyframes lmpulse{0%,100%{opacity:1}50%{opacity:.3}}
-
-/* 右：织造项目 / 事件流 / 交付 */
-.col-r{position:absolute;right:24px;top:80px;bottom:36px;width:384px;display:flex;flex-direction:column;gap:12px}
-.proj{flex:none;height:548px}
-.pj{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:4px 12px;padding:10px 12px 9px;border-bottom:1px solid var(--line)}
-.pj-id{font-size:9px;letter-spacing:.16em;color:var(--fg-3);white-space:nowrap}
-.pj-pct{font-size:9px;color:var(--fg-2);text-align:right;font-variant-numeric:tabular-nums;letter-spacing:.08em}
-.pj-t{grid-column:1/-1;font-family:var(--cjk);font-size:17px;font-weight:700;color:var(--fg);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.pj-bar{grid-column:1/-1;height:3px;background:rgba(255,255,255,.07);position:relative;overflow:hidden;margin-top:2px}
-.pj-bar i{position:absolute;left:0;top:0;bottom:0;width:0;background:linear-gradient(90deg,var(--ice),var(--silk))}
-.steps{list-style:none;margin:0;padding:9px 12px 8px;display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:6px;border-bottom:1px solid var(--line)}
-.steps li{position:relative;display:flex;flex-direction:column;gap:1px;padding-bottom:6px;font-size:8px;color:var(--fg-3);letter-spacing:.1em;white-space:nowrap;transition:color .4s}
-.steps .sl{font-family:var(--cjk);font-size:12px;letter-spacing:.08em}
-.steps i{position:absolute;left:0;right:0;bottom:0;height:2px;background:rgba(160,190,220,.14)}
-.steps i::after{content:"";position:absolute;left:0;top:0;bottom:0;width:100%;background:var(--fg-2);transform-origin:left center;transform:scaleX(var(--p,0))}
-.steps li.done{color:var(--fg-2)}
-.steps li.on{color:var(--fg)}
-.steps li.on i::after{background:var(--ice);box-shadow:0 0 6px var(--ice)}
-.steps li.on.hot i::after{background:var(--silk);box-shadow:0 0 6px var(--silk)}
-.pm{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px;padding:8px 12px 9px;border-bottom:1px solid var(--line)}
-.pm div{display:flex;flex-direction:column;gap:2px;min-width:0}
-.pm span{font-size:8px;letter-spacing:.12em;color:var(--fg-3);white-space:nowrap;font-family:var(--cjk)}
-.pm b{font-size:15px;font-weight:400;color:var(--fg);font-variant-numeric:tabular-nums;white-space:nowrap}
-.pm b small{font-size:9px;color:var(--fg-3);margin-left:2px}
-.secs{flex:1;display:flex;flex-direction:column;justify-content:space-evenly;padding:4px 12px 6px;min-height:0}
-.sr{display:grid;grid-template-columns:18px minmax(0,1fr) 74px 34px;gap:8px;align-items:center;padding:3px 0;font-size:9px;color:var(--fg-3);border-bottom:1px dashed rgba(160,190,220,.08);cursor:pointer;pointer-events:auto;background:none;border-left:0;border-right:0;border-top:0;font-family:inherit;text-align:left}
-.sr:last-child{border-bottom:0}
-.sr .i{color:var(--fg-3);font-variant-numeric:tabular-nums}
-.sr .n{display:flex;flex-direction:column;min-width:0}
-.sr .n b{font-family:var(--cjk);font-size:11.5px;font-weight:500;color:var(--fg-2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.sr .n span{font-size:8.5px;color:var(--fg-3);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;letter-spacing:.06em}
-.sr .n span em{font-style:normal;color:var(--c)}
-.sr .bar{height:3px}
-.sr .p{text-align:right;color:var(--fg-2);font-variant-numeric:tabular-nums}
-.sr.on .n b{color:var(--fg)}
-.sr.on .p{color:var(--c)}
-.sr.done .p{color:var(--ice)}
-.sr.done .bar i{background:var(--ice)}
-.sr.focus .n b{color:var(--fg);text-decoration:underline;text-underline-offset:3px}
-.sr:focus-visible{outline:1px solid var(--fg);outline-offset:1px}
-.ev{flex:1}
-.heat{flex:1;position:relative;margin:9px 12px 8px;min-height:0}
-.heat canvas{position:absolute;inset:0;width:100%;height:100%;display:block}
-.log{flex:1;padding:6px 12px;font-size:9px;line-height:16.5px;overflow:hidden;color:var(--fg-3);min-height:0}
-.lr{display:grid;grid-template-columns:52px 62px minmax(0,1fr);gap:8px;white-space:nowrap}
-.lr .a{color:var(--c)}
-.lr .x{color:var(--fg-2);overflow:hidden;text-overflow:ellipsis;font-family:var(--cjk)}
-.lr.fresh .x{color:var(--fg)}
-.deliv{flex:none;height:150px}
-.dl{flex:1;display:flex;flex-direction:column;justify-content:space-evenly;padding:3px 12px 6px;font-size:9px}
-.dr{display:grid;grid-template-columns:38px 64px minmax(0,1fr) 38px;gap:9px;padding:3px 0;border-bottom:1px dashed rgba(160,190,220,.09);color:var(--fg-3);align-items:baseline;white-space:nowrap}
-.dr:last-child{border-bottom:0}
-.dr .t{color:var(--fg-2);font-family:var(--cjk);font-size:10.5px;overflow:hidden;text-overflow:ellipsis}
-.dr .d{text-align:right;font-variant-numeric:tabular-nums}
-.dr.new{animation:lmflash 2.2s ease-out}
-.dr.new .t{color:var(--fg)}
-@keyframes lmflash{0%{background:rgba(255,185,138,.18)}100%{background:transparent}}
-
-.sb{position:absolute;left:24px;right:24px;bottom:9px;display:flex;align-items:center;justify-content:center;gap:28px;font-size:9.5px;letter-spacing:.14em;color:var(--fg-3);white-space:nowrap;overflow:hidden}
-.sb b{color:var(--fg-2);font-weight:500;font-variant-numeric:tabular-nums}
-.sb .on::before{content:"";display:inline-block;width:6px;height:6px;border-radius:50%;background:var(--ok);margin-right:7px;vertical-align:1px;box-shadow:0 0 6px var(--ok)}
-.sb .wm{font-family:var(--display);font-size:9px;letter-spacing:.3em;color:#3c4552}
-
-/* ---------- 窄屏 / 竖屏 ---------- */
-.mini{display:none;position:absolute;inset:0;flex-direction:column;justify-content:space-between;pointer-events:none;padding-block:10px}
-.narrow .board{display:none}
-.narrow .mini{display:flex}
-.m-top{display:flex;justify-content:space-between;align-items:flex-start;gap:10px}
-.m-title{font-family:var(--display);font-weight:700;font-size:17px;letter-spacing:.05em;line-height:1.1;text-shadow:0 0 8px var(--bg)}
-.m-title i{display:block;font-style:normal;font-family:var(--cjk);font-weight:700;font-size:12px;color:var(--silk);letter-spacing:.12em;margin-top:5px}
-.m-btns{display:flex;flex-wrap:wrap;justify-content:flex-end;gap:5px;max-width:210px}
-.m-btns .tb{padding:6px 8px;font-size:10px}
-.m-bot{background:linear-gradient(0deg,rgba(2,4,8,.92),rgba(2,4,8,.6) 70%,transparent);margin-inline:-16px;padding:24px 16px 0}
-.m-cap{font-family:var(--cjk);font-size:12px;color:var(--fg-2);text-align:center;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.m-stats{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;border-top:1px solid var(--line-2);padding-top:8px;margin-top:8px}
-.m-stats div{display:grid;gap:2px;min-width:0}
-.m-stats span{font-size:9px;letter-spacing:.12em;color:var(--fg-3);white-space:nowrap}
-.m-stats b{font-size:15px;font-weight:600;font-variant-numeric:tabular-nums;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-family:var(--cjk)}
-.m-wm{margin-top:6px;font-family:var(--display);font-weight:400;font-size:8.5px;letter-spacing:.3em;color:#3c4552;text-align:center}
-.glfail{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);max-width:340px;text-align:center;font-family:var(--cjk);font-size:13px;line-height:1.7;color:var(--fg-2);border:1px solid var(--line-2);padding:14px 18px;background:rgba(5,8,12,.85)}
-@media (prefers-reduced-motion:reduce){.eyebrow i{animation:none}.dr.new{animation:none}.sw::after{animation:none}.bar i{transition:none}.code li.cur::after{animation:none}}
-:host([data-record]) .col-l,:host([data-record]) .col-r,:host([data-record]) .ch,
-:host([data-record]) .strip,:host([data-record]) .sb > :not(.wm),:host([data-record]) .codep,
-:host([data-record]) .m-bot,:host([data-record]) .m-btns [data-act=inspect],
-:host([data-record]) [data-act=inspect],:host([data-record]) [data-act=sample],
-:host([data-record]) .sub,:host([data-record]) .sub2,:host([data-record]) .slab .k,
-:host([data-record]) .slab .t,:host([data-record]) .lc-b {display:none}
-:host([data-record]) .mid{left:8%;right:8%}
-:host([data-record]) .pe button[data-act=mode]{display:inline-flex}
-:host([data-record]) .rec-layout{display:grid}
-.rec-layout{display:none;position:absolute;z-index:4;right:16px;top:68px;bottom:32px;width:clamp(240px,28vw,410px);
- align-content:start;gap:14px;padding:18px;overflow:auto;overscroll-behavior:contain;pointer-events:auto;
- background:rgba(9,16,23,.97);border:1px solid #354552;border-top:2px solid var(--silk);font:14px/1.55 var(--cjk)}
-.rec-layout h2{font-size:18px;margin:0;line-height:1.4}.rec-layout h3{font-size:14px;margin:0;color:#f4ceb1}
-.rec-layout p{margin:0;white-space:pre-wrap;overflow-wrap:anywhere}.rec-meta{color:#b7c7d6;font:12px/1.5 var(--cjk)}
-.rec-steps{display:grid;gap:5px}.rec-steps button,.rec-nav button,.mobile-parts button{font:inherit;color:var(--fg);
- text-align:left;border:1px solid #354552;background:#101a23;padding:7px 9px;cursor:pointer}
-.rec-steps button[aria-current=step]{border-color:#ffb98a;color:#ffcfad;background:#231c19}
-.rec-nav{display:flex;gap:6px;flex-wrap:wrap}.rec-nav button:disabled{opacity:.46;cursor:default}
-.rec-detail{border-left:2px solid var(--ice);padding-left:10px}.rec-answer{border-top:1px solid #344451;padding-top:12px}
-.rec-title-band{display:none;color:var(--silk);font:600 12px/1.5 var(--cjk);letter-spacing:.05em}
-:host([data-record]) .rec-title-band{display:block}
-:host([data-record]) .mid{left:6%;right:31%}
-:host([data-record]) .loom{pointer-events:none}
-@media(max-width:760px),(max-aspect-ratio:1/1){
- :host([data-record]) .rec-layout{inset:auto 8px 8px;width:auto;max-height:43%;font-size:13px;padding:12px;gap:8px}
- :host([data-record]) .rec-steps{display:flex;overflow-x:auto} .rec-steps button{flex-shrink:0}
- :host([data-record]) .m-wm{display:none}
-}
-
-:host([data-record]) [data-act=parts]{display:none}
-:host([data-record]) .rec-layout[hidden]{display:none}
-.part-inspector{position:absolute;z-index:5;bottom:5%;left:50%;transform:translateX(-50%);padding:9px 14px;background:#111a23f5;border:1px solid #667c8e;max-width:94%;display:flex;align-items:center;justify-content:center;flex-wrap:wrap;gap:8px;font:14px var(--cjk);color:var(--fg)}
-.part-inspector[hidden]{display:none}.part-inspector button{font:inherit;background:#17232c;color:#e8eff6;border:1px solid #687987;padding:4px 8px;cursor:pointer}.part-inspector button:disabled{opacity:.4}
-button:focus-visible{outline:2px solid #b8e5ff;outline-offset:2px}
-@media(max-width:760px){.m-top{flex-wrap:wrap;gap:6px}.m-btns{flex-wrap:wrap}.m-btns .tb{min-height:30px}.part-inspector{bottom:13%;width:max-content}}
-</style>
-
-<canvas class="gl" id="gl" aria-label="天工开物：顶部总控卫星向 8 台织机下达任务，织机向下吐出彩色光丝汇入 7 个织位，再由织位垂下的丝线在底部织造台上织出当前项目。拖动旋转织造台，滚轮缩放，双击复位"></canvas>
-<div class="vig" aria-hidden="true"></div>
-<canvas class="fx" id="fx" aria-hidden="true"></canvas>
-<div class="nr" id="nr">
-<div class="fit"><div class="fit-in" id="fitIn">
- <div class="board" id="board">
-  <div class="topfade"></div>
-  <header class="hd">
-   <div class="eb">FazeMES · FAN ASSEMBLY</div>
-   <h1><span>HEAVEN</span><span class="l1">WORKS<em>天工开物</em></span></h1>
-   <div class="sub">台式电风扇 · 七部件逐步织造</div>
-   <div class="rec-title-band">运行记录回放 · 电风扇示意模型</div><div class="sub2">装配演示 · 模拟数据 · <b id="clock">--:--:--</b></div>
-  </header>
-  <div class="tools pe">
-   <button class="tb" type="button" data-act="mode">视角<b data-f="mode">环绕</b></button>
-   <button class="tb" type="button" data-act="parts">逐件装配</button>
-    <button class="tb" type="button" data-act="sample">示例问答</button>
-    <button class="tb" type="button" data-act="inspect">看完整风扇</button>
-   <button class="tb" type="button" data-act="full" data-f="full">全屏</button>
-  </div>
-  <div class="strip"><span class="live">MASTER SAT</span><span>UNITS<b id="sSp">8/8</b></span><span>SILK<b id="sSilk">0</b> km</span><span>KNOTS<b id="sKnot">0</b></span><span>FPS<b id="sFps">60</b></span></div>
-
-  <aside class="col-l" id="colL">
-   <section class="panel swarm pe">
-    <div class="ph"><span><b>01</b> / 机组阵列 · LOOM UNITS</span><span id="swMeta">8 ONLINE</span></div>
-    <div class="sws" id="sws"></div>
-   </section>
-   <section class="panel codep">
-    <div class="ph"><span><b>05</b> / 演示脚本 · LOOM.PY</span><span id="codeMeta">—</span></div>
-    <ol class="code" id="code" aria-label="装配演示脚本"></ol>
-   </section>
-  </aside>
-
-  <main class="mid" id="mid">
-   <div class="core-cap" id="coreCap">LISTENING</div>
-   <div class="ch l">
-    <div class="kv">指令队列 · QUEUE<b id="cQ">0</b></div>
-    <div class="kv">心跳 · HEARTBEAT<b id="cHb">0.82<small>Hz</small></b></div>
-   </div>
-   <div class="ch r">
-    <div class="kv">在线机组 · UNITS<b id="cSw">8<small>/ 8</small></b></div>
-    <div class="kv">丝线张力 · TENSION<b id="cTen">0.00<small>kN</small></b></div>
-   </div>
-   <div class="core-sub"><span>MASTER SAT</span><b>总控卫星</b><i id="coreSt">待命</i></div>
-   <div id="slabs"></div>
-   <div class="loom" id="loom"></div>
-  </main>
-
-  <aside class="col-r" id="colR">
-   <section class="panel proj pe">
-    <div class="ph"><span><b>02</b> / 织造项目 · PROJECT</span><span id="pjMeta">07 SECTIONS</span></div>
-    <div class="pj">
-     <div class="pj-id" id="pjId">—</div>
-     <div class="pj-pct" id="pjPct">0%</div>
-     <div class="pj-t" id="pjT">—</div>
-     <div class="pj-bar"><i id="pjBar"></i></div>
-    </div>
-    <ol class="steps" id="steps">
-     <li><span class="sn">01 DISPATCH</span><span class="sl">下达</span><i></i></li>
-     <li><span class="sn">02 SPIN</span><span class="sl">吐丝</span><i></i></li>
-     <li><span class="sn">03 WEAVE</span><span class="sl">织网</span><i></i></li>
-     <li><span class="sn">04 VERIFY</span><span class="sl">校验</span><i></i></li>
-     <li><span class="sn">05 DELIVER</span><span class="sl">交付</span><i></i></li>
-    </ol>
-    <div class="pm">
-     <div><span>丝线总长</span><b id="mSilk">0<small>m</small></b></div>
-     <div><span>结点</span><b id="mKnot">0</b></div>
-     <div><span>织片</span><b id="mSec">0/7</b></div>
-     <div><span>用时</span><b id="mEl">00:00</b></div>
-    </div>
-    <div class="secs" id="secs"></div>
-   </section>
-   <section class="panel ev">
-    <div class="ph"><span><b>03</b> / 光丝活动 · SILK ACTIVITY</span><span>近 30s · 每格 2.5s</span></div>
-    <div class="heat"><canvas id="heat" aria-label="每台织机最近 30 秒的光丝喷射强度热力格"></canvas></div>
-   </section>
-   <section class="panel deliv">
-    <div class="ph"><span><b>04</b> / 交付记录 · DELIVERED</span><span id="delivMeta">0 TOTAL</span></div>
-    <div class="dl" id="dl"></div>
-   </section>
-  </aside>
-
-  <footer class="sb">
-   <span class="on">SYSTEM ONLINE</span><span>演示交付 <b id="sbDel">0</b></span><span>丝线总长 <b id="sbSilk">0</b> km</span><span>结点 <b id="sbKnot">0</b></span><span>当前项目 <b id="sbJob">—</b></span><span class="wm">DEVELOPED BY @赛博老爸</span>
-  </footer>
- </div>
-
- <div class="mini" id="mini">
-  <div class="m-top">
-   <div class="m-title">HEAVEN WORKS<i>天工开物 · 示例数据</i></div>
-   <div class="m-btns pe">
-    <button class="tb" type="button" data-act="mode">视角<b data-f="mode">环绕</b></button>
-    <button class="tb" type="button" data-act="parts">逐件装配</button>
-    <button class="tb" type="button" data-act="sample">示例问答</button>
-    <button class="tb" type="button" data-act="inspect">看完整风扇</button>
-   </div>
-  </div>
-  <div class="m-bot">
-   <div class="m-cap" id="mCap">—</div>
-   <div class="m-stats"><div><span>当前项目</span><b id="mJob">—</b></div><div><span>织网进度</span><b id="mProg">—</b></div><div><span>演示交付</span><b id="mDel">0</b></div></div>
-   <div class="m-wm">DEVELOPED BY @赛博老爸</div>
-  </div>
- </div>
-</div></div>
-</div>
-<div class="glfail" id="glFail" hidden>这台设备的浏览器没法显示 3D 画面（WebGL 不可用），面板数据照常在跑。换 Chrome / Edge 打开即可看到机械与织造台。</div>
-<section class="part-inspector" aria-label="分步装配" hidden>
-  <span id="part-caption" aria-live="polite"></span><button type="button" id="part-prev">上一件</button><button type="button" id="part-next">下一件</button><button type="button" id="part-close">重播织造</button>
-</section>
-<aside class="rec-layout" aria-label="本轮任务回放" hidden>
-  <div class="rec-meta" id="record-source"></div><h2 id="record-question"></h2>
-  <div class="rec-steps" id="record-steps" role="group" aria-label="回放步骤"></div>
-  <div class="rec-detail" aria-live="polite"><h3 id="record-title"></h3><p id="record-detail"></p></div>
-  <div class="rec-nav"><button type="button" id="record-prev">上一步</button><button type="button" id="record-next">下一步</button><button type="button" id="record-return" hidden>返回装配演示</button></div>
-  <div class="rec-answer"><h3>本轮结果</h3><p id="record-answer"></p></div>
-</aside>
-</template>
-<script src="./fan-model.js"></script>
-<script src="./loom.js"></script>
-<script src="./fan-view.js"></script>
-</body></html>
+<html lang="zh-CN"
+  ><head
+    ><meta charset="UTF-8" /><meta
+      name="viewport"
+      content="width=device-width, initial-scale=1"
+    /><title>FazeMES · 生产智能协同中心</title
+    ><link rel="icon" href="../fazemes-logo.svg" /><style>
+      html,
+      body,
+      #host-works {
+        width: 100%;
+        height: 100%;
+        margin: 0;
+        background: #04060a;
+      }
+      body {
+        overflow: hidden;
+      }
+    </style></head
+  >
+  <body
+    ><div id="host-works"></div
+    ><template id="tpl-loom"
+      ><style>
+        :host {
+          --bg: #04060a;
+          --panel: rgba(8, 13, 20, 0.94);
+          --line: #243340;
+          --mute: #a2b1c3;
+          --ink: #e2edf5;
+          --ice: #9cd0ff;
+          --warm: #ffb98a;
+          --cjk: 'Noto Sans SC', 'Microsoft YaHei', system-ui, sans-serif;
+          --mono: 'JetBrains Mono', Consolas, monospace;
+          display: block;
+          position: relative;
+          height: 100%;
+          width: 100%;
+          overflow: hidden;
+          font: 14px/1.5 var(--cjk);
+          color: var(--ink);
+          background: var(--bg);
+          color-scheme: dark;
+        }
+        * {
+          box-sizing: border-box;
+        }
+        [hidden] {
+          display: none !important;
+        }
+        button,
+        input,
+        select,
+        textarea {
+          font: inherit;
+          color: inherit;
+        }
+        button {
+          cursor: pointer;
+        }
+        button:disabled {
+          opacity: 0.48;
+          cursor: default;
+        }
+        button:focus-visible,
+        select:focus-visible,
+        textarea:focus-visible {
+          outline: 2px solid var(--ice);
+          outline-offset: 2px;
+        }
+        button {
+          touch-action: manipulation;
+        }
+        .gl,
+        .fx,
+        .nr,
+        .fit,
+        .fit-in,
+        .overlay {
+          position: absolute;
+          inset: 0;
+          width: 100%;
+          height: 100%;
+        }
+        .gl {
+          cursor: grab;
+          touch-action: none;
+        }
+        .gl.drag {
+          cursor: grabbing;
+        }
+        .fx,
+        .nr,
+        .overlay {
+          pointer-events: none;
+        }
+        .fit {
+          padding: 0 16px;
+        }
+        .fit-in {
+          position: relative;
+        }
+        .board {
+          position: absolute;
+          left: 50%;
+          top: 50%;
+          width: 1920px;
+          height: 1080px;
+          transform: translate(-50%, -50%) scale(var(--s, 0.5));
+          pointer-events: none;
+        }
+        .mid {
+          position: absolute;
+          inset: 0 390px;
+        }
+        .loom {
+          position: absolute;
+          top: 51%;
+          left: 3%;
+          right: 3%;
+          display: grid;
+          grid-template-columns: repeat(7, minmax(0, 1fr));
+          gap: 7px;
+          height: 61px;
+          pointer-events: auto;
+        }
+        .part-card {
+          min-width: 0;
+          padding: 6px 5px;
+          text-align: left;
+          background: #080f16df;
+          border: 1px solid #2c3b47;
+          border-top: 2px solid var(--accent);
+          color: var(--ink);
+        }
+        .part-card b,
+        .part-card small {
+          display: block;
+          white-space: nowrap;
+          overflow: hidden;
+          text-overflow: ellipsis;
+        }
+        .part-card b {
+          font-size: 16px;
+        }
+        .part-card small {
+          font: 12px var(--cjk);
+          color: #b0bfd0;
+          margin-top: 4px;
+        }
+        .part-card[data-state='short'] {
+          border-color: #ed995a;
+        }
+        .part-card[data-state='short'] small {
+          color: var(--warm);
+        }
+        .head {
+          position: absolute;
+          top: 17px;
+          left: 22px;
+          pointer-events: none;
+        }
+        .head h1 {
+          font: 700 clamp(25px, 2.55vw, 42px)/1 var(--cjk);
+          letter-spacing: -0.045em;
+          margin: 0;
+        }
+        .head h1 em {
+          font-style: normal;
+          color: #a5d7e0;
+        }
+        .head p {
+          margin: 5px 0 0;
+          letter-spacing: 0.12em;
+          color: #b9c9d6;
+          font-size: 13px;
+        }
+        .controls {
+          position: absolute;
+          top: 17px;
+          right: 20px;
+          display: flex;
+          gap: 5px;
+          align-items: center;
+        }
+        .btn,
+        .chip,
+        .row-btn {
+          border: 1px solid #354551;
+          color: #dce8f4;
+          background: #0b131be8;
+          padding: 6px 10px;
+          border-radius: 3px;
+        }
+        .btn:hover,
+        .row-btn:hover,
+        .chip:hover {
+          border-color: #8da8ba;
+        }
+        .btn.primary {
+          background: #c1dfeb;
+          color: #101923;
+          border-color: #d1ecf4;
+          font-weight: 650;
+        }
+        .btn,
+        .chip {
+          font-size: 12px;
+        }
+        .btn.warm {
+          border-color: #886549;
+          color: #ffd3aa;
+        }
+        .controls .btn {
+          font-size: 11px;
+        }
+        .side {
+          position: absolute;
+          top: 84px;
+          bottom: 38px;
+          width: clamp(202px, 20vw, 320px);
+          display: flex;
+          flex-direction: column;
+          overflow: auto;
+          scrollbar-width: thin;
+          scrollbar-color: #34485a transparent;
+          background: linear-gradient(160deg, rgba(11, 18, 26, 0.96), rgba(6, 10, 15, 0.87));
+          border: 1px solid var(--line);
+          border-radius: 4px;
+          overscroll-behavior: contain;
+        }
+        .side.left {
+          left: 20px;
+        }
+        .side.right {
+          right: 20px;
+        }
+        .group {
+          padding: 14px;
+          border-bottom: 1px solid #20303a;
+        }
+        .group:last-child {
+          border-bottom: 0;
+        }
+        .side h2,
+        .side h3 {
+          font-size: 14px;
+          margin: 0 0 9px;
+          font-weight: 650;
+        }
+        .side h2 {
+          letter-spacing: 0.04em;
+        }
+        .side p {
+          font-size: 13px;
+          white-space: pre-line;
+          overflow-wrap: anywhere;
+          line-height: 1.65;
+          margin: 5px 0;
+          color: #c0ceda;
+        }
+        .side .muted,
+        .meta {
+          color: #a0b0bf;
+          font-size: 11px;
+        }
+        .form {
+          display: grid;
+          gap: 9px;
+        }
+        .form label {
+          display: grid;
+          gap: 4px;
+          color: #b6c5d2;
+          font-size: 12px;
+        }
+        .form textarea,
+        .form select {
+          border: 1px solid #334552;
+          background: #0b141d;
+          padding: 7px;
+          border-radius: 3px;
+          resize: vertical;
+          width: 100%;
+        }
+        .form textarea {
+          min-height: 62px;
+          max-height: 140px;
+        }
+        .actions {
+          display: flex;
+          gap: 6px;
+          flex-wrap: wrap;
+        }
+        .row-btn {
+          display: block;
+          width: 100%;
+          text-align: left;
+          font-size: 12px;
+          padding: 7px 9px;
+          margin: 4px 0;
+          white-space: normal;
+          overflow-wrap: anywhere;
+        }
+        .row-btn small {
+          display: block;
+          color: #a1b1c2;
+          font-size: 11px;
+        }
+        .row-btn.short,
+        .row-btn[aria-current='true'] {
+          border-left: 2px solid var(--warm);
+        }
+        .row-btn.short {
+          color: #ffbd90;
+        }
+        .list {
+          list-style: none;
+          margin: 0;
+          padding: 0;
+        }
+        .list li {
+          border-left: 1px solid #496171;
+          padding: 0 0 9px 9px;
+          font-size: 12px;
+          color: #c0d0de;
+          white-space: pre-line;
+          overflow-wrap: anywhere;
+        }
+        .list li:last-child {
+          padding-bottom: 0;
+        }
+        .list strong {
+          display: block;
+          font-weight: 600;
+          color: var(--ink);
+        }
+        .status {
+          color: #a7d7d5;
+          font-size: 12px;
+        }
+        #answer {
+          max-height: 12em;
+          overflow: auto;
+          scrollbar-width: thin;
+        }
+        #answer-links:not(:empty) {
+          margin: 8px 0;
+        }
+        .short-text {
+          color: var(--warm) !important;
+        }
+        .report {
+          border-left: 2px solid var(--ice);
+          padding-left: 8px;
+        }
+        .master,
+        .sat-label,
+        .part-pin {
+          position: absolute;
+          transform: translate(-50%, 0);
+          pointer-events: auto;
+          white-space: nowrap;
+          font-family: var(--cjk);
+          text-align: center;
+          border: 1px solid #3c5365;
+          border-radius: 3px;
+          background: #081019eb;
+          color: var(--ink);
+        }
+        .master {
+          padding: 4px 11px;
+          border-top: 2px solid #e5bb86;
+        }
+        .master strong,
+        .sat-label strong {
+          display: block;
+          font-size: clamp(11px, 0.88vw, 14px);
+          font-weight: 620;
+        }
+        .master small,
+        .sat-label span {
+          display: block;
+          font-size: 10px;
+          color: #b6c7d5;
+        }
+        .sat-label {
+          border-top: 2px solid var(--accent);
+          padding: 4px 7px;
+        }
+        .sat-label.active {
+          box-shadow: 0 0 14px color-mix(in srgb, var(--accent) 36%, transparent);
+          border-color: var(--accent);
+        }
+        .sat-label.active span {
+          color: var(--accent);
+        }
+        .part-pin {
+          max-width: min(36vw, 190px);
+          overflow: hidden;
+          text-overflow: ellipsis;
+          transform: translate(-50%, -50%);
+          background: #2c1911;
+          border: 1px solid #e89151;
+          color: #ffcfaa;
+          font-size: 12px;
+          padding: 4px 8px;
+        }
+        .foot {
+          position: absolute;
+          left: 22px;
+          right: 22px;
+          bottom: 8px;
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+          gap: 8px;
+          pointer-events: none;
+          font-size: 10px;
+          color: var(--mute);
+        }
+        .foot a {
+          pointer-events: auto;
+          color: var(--mute);
+          text-decoration: none;
+        }
+        .mobile-nav {
+          display: none;
+        }
+        .inspector {
+          position: absolute;
+          left: 50%;
+          bottom: 5%;
+          transform: translateX(-50%);
+          display: flex;
+          gap: 5px;
+          align-items: center;
+          border: 1px solid var(--line);
+          padding: 6px;
+          border-radius: 3px;
+          background: #0c151e;
+        }
+        .inspector span {
+          font-size: 12px;
+        }
+        .glfail {
+          position: absolute;
+          top: 46%;
+          left: 50%;
+          transform: translateX(-50%);
+          background: #17202a;
+          padding: 8px;
+          border: 1px solid var(--line);
+          font-size: 12px;
+        }
+        .view-card {
+          position: absolute;
+          left: 50%;
+          top: 51%;
+          transform: translateX(-50%);
+          width: min(42%, 580px);
+          padding: 10px 16px;
+          border: 1px solid #4b6b78;
+          border-top: 2px solid #a2dcd5;
+          border-radius: 4px;
+          background: #09131cf2;
+          box-shadow: 0 8px 22px #0006;
+          color: var(--ink);
+          text-align: left;
+          pointer-events: auto;
+        }
+        .view-card b, .view-card strong, .view-card small { display: block; }
+        .view-card b { color: #a9cdcf; font-size: 11px; font-weight: 500; }
+        .view-card strong { font-size: clamp(15px, 1.45vw, 24px); line-height: 1.3; margin: 3px 0; }
+        .view-card small { color: #c2d0d9; font-size: 11px; overflow-wrap: anywhere; }
+        :host([data-view]) .loom { visibility: hidden; }
+        .part-pin.inspect { background: #0e292c; border-color: #72d4cc; color: #c8f5ee; }
+        @media (min-width:861px) and (min-aspect-ratio:1/1) {
+          :host([data-product-view]) .view-card { display:grid; grid-template-columns:minmax(100px,1fr) auto; align-items:center; gap:0 12px; }
+          :host([data-product-view]) .view-card > :is(b,strong,small) { grid-column:1; }
+          :host([data-product-view]) #view-choices { grid-column:2; grid-row:1 / 4; margin:0; max-width:230px; justify-content:flex-end; }
+        }
+        #view-choices { margin-top: 7px; }
+        #view-choices:empty { display:none; }
+        #view-choices .chip, #examples .chip { min-height: 30px; font-size: 11px; }
+        :host([data-list-only]) .view-card { top: 58%; }
+        @media (max-width:860px), (max-aspect-ratio:1/1) {
+          .view-card, :host([data-list-only]) .view-card { top:44%; width: min(90%, 470px); padding: 6px 10px; }
+          :host([data-product-view]) .view-card { top:auto; bottom:55px; max-height:25%; overflow:auto; }
+          .view-card strong { font-size:15px; }
+          .view-card .actions { gap:4px; }
+        }
+        :host([data-list-only]) .loom {
+          visibility: hidden;
+        }
+        :host([data-run]) .demo-control {
+          display: none;
+        }
+        @media (max-width: 860px), (max-aspect-ratio: 1/1) {
+          .head {
+            top: 10px;
+            left: 12px;
+          }
+          .head h1 {
+            font-size: 24px;
+          }
+          .head p {
+            font-size: 10px;
+            margin-top: 2px;
+          }
+          .controls {
+            top: 10px;
+            right: 9px;
+            max-width: 61%;
+            justify-content: flex-end;
+            flex-wrap: wrap;
+            gap: 3px;
+          }
+          .controls .btn {
+            font-size: 10px;
+            padding: 4px 6px;
+          }
+          .side {
+            display: none;
+            width: auto;
+            left: 8px !important;
+            right: 8px !important;
+            bottom: 45px;
+            top: auto;
+            max-height: 44%;
+            z-index: 7;
+            background: #09121bf8;
+          }
+          .side.open {
+            display: flex;
+          }
+          .group {
+            padding: 10px;
+          }
+          .mobile-nav {
+            display: flex;
+            position: absolute;
+            bottom: 7px;
+            left: 50%;
+            transform: translateX(-50%);
+            gap: 8px;
+            white-space: nowrap;
+          }
+          .foot {
+            bottom: 44px;
+            left: 10px;
+            right: 10px;
+          }
+          .foot a {
+            font-size: 8px;
+          }
+          .loom {
+            visibility: hidden;
+          }
+          .sat-label {
+            padding: 3px 4px;
+          }
+          .sat-label strong {
+            font-size: 10px;
+          }
+          .sat-label span,
+          .master small {
+            font-size: 8px;
+          }
+          .master strong {
+            font-size: 11px;
+          }
+          .part-pin {
+            font-size: 10px;
+            padding: 3px 5px;
+          }
+          .inspector {
+            bottom: 12%;
+            max-width: 94%;
+            white-space: nowrap;
+            z-index: 8;
+          }
+          .inspector .btn {
+            font-size: 10px;
+            padding: 4px;
+          }
+          .inspector span {
+            font-size: 10px;
+          }
+        }
+      </style>
+      <link rel="stylesheet" href="./question-flow.css" />
+      <canvas
+        class="gl"
+        id="gl"
+        aria-label="FazeMES 卫星协同与风扇装配，可以拖动旋转、滚轮缩放"
+      ></canvas
+      ><canvas class="fx" id="fx" aria-hidden="true"></canvas>
+      <div class="nr" id="nr"
+        ><div class="fit"
+          ><div class="fit-in" id="fitIn"
+            ><div class="board" id="board"
+              ><main class="mid" id="mid"
+                ><div class="loom" id="loom" aria-label="风扇部件"></div></main></div></div></div
+      ></div>
+      <header class="head"
+        ><h1>Faze<em>MES</em></h1
+        ><p>生产智能协同中心</p></header
+      >
+      <nav class="controls" aria-label="场景控制"
+        ><button class="btn" data-act="mode">视角 · <b data-f="mode">环绕</b></button
+        ><button class="btn demo-control" data-act="parts">逐件装配</button
+        ><button class="btn demo-control" data-act="inspect">看完整风扇</button
+        ><button class="btn" id="trace-example">协同示例</button
+        ><button class="btn" id="sample-top">缺料示例</button
+        ><button class="btn" id="stage-mode" hidden>查看零件模型</button
+        ><button class="btn" id="back" hidden>返回装配演示</button
+        ><button class="btn" data-act="full" data-f="full">全屏</button></nav
+      >
+      <div class="overlay"
+        ><button class="master" id="master-label"
+          ><strong>生产协同调度 Agent</strong
+          ><small>总 Agent · <span id="coreSt">准备装配</span></small></button
+        ><div id="agent-labels"></div><div id="part-pins"></div
+      ></div>
+      <section class="view-card" id="view-card" aria-live="polite" hidden><b id="view-heading"></b><strong id="view-value"></strong><small id="view-caption"></small><div class="actions" id="view-choices"></div></section>
+      <section id="flow-stage" aria-label="本轮协同" hidden>
+        <section id="flow-code" hidden>
+          <header><span class="terminal-mark" aria-hidden="true">›_</span><strong id="flow-agent"></strong><span class="trace-label">执行终端</span></header>
+          <div class="terminal-body"><p id="flow-action" role="status"></p>
+            <pre id="terminal-viewport" tabindex="0" aria-label="本轮终端输出"><code id="flow-lines"></code></pre>
+          </div>
+        </section>
+        <article id="flow-paper" aria-label="本轮问答报告" hidden>
+          <div id="paper-ink"><header><span>FazeMES</span><small id="paper-status"></small></header>
+          <div id="paper-body" tabindex="0">
+            <h2 id="paper-title"></h2><p id="paper-question"></p>
+            <p id="paper-answer"></p><div id="paper-evidence" class="actions"></div>
+            <div id="paper-choices" class="actions"></div>
+          </div>
+          <footer id="paper-source"></footer></div>
+        </article>
+      </section>
+      <canvas id="flow-particles" aria-hidden="true"></canvas>
+      <aside class="side left" id="chat"
+        ><section class="group"
+          ><h2>智能问答</h2
+          ><div class="form" id="online-form" hidden
+            ><label>提问<textarea id="question" rows="2" maxlength="4000" placeholder="问产品、工单，或知识库里的问题"></textarea></label>
+            <div class="actions" id="examples" aria-label="常用提问"></div>
+            <details id="source-settings"><summary>查询方式</summary><label>资料来源<select id="reference">
+              <option value="auto">总 Agent 自动判断</option><option value="knowledge">知识助手 · 当前设置</option>
+              <option value="evidence">仅检索知识证据</option><option value="graph">知识助手 · 图谱</option><option value="hybrid">知识助手 · 混合检索</option>
+              <option value="business">业务工具</option><option value="kitting-doc">工单齐套与已发布规程</option><option value="dify">Dify 项目手册</option>
+            </select></label><button class="chip" id="knowledge-settings" hidden>知识库与检索设置</button></details>
+            <button class="btn" id="choose">选择工单</button
+            ><button class="btn primary" id="ask">发送给总 Agent</button></div
+          ><p id="offline-note">在 FazeMES 协同大屏提问，或点右上角体验缺料示例。</p></section
+        >
+        <section class="group"
+          ><h3 id="context-title">装配演示</h3><p id="run-question">台式电风扇 · 七部件装配</p
+          ><p class="status" id="run-stage"></p><p id="answer" aria-live="polite" tabindex="-1"></p
+          ><div class="actions" id="answer-links"></div
+          ><div class="actions"
+            ><button class="btn" id="report" hidden>生成缺料报告</button
+            ><button class="btn" id="review" hidden>重新核对</button
+            ><button class="btn" id="resolve" hidden>模拟补齐</button></div
+          ></section
+        >
+        <section class="group" id="report-section" hidden
+          ><h3>本轮缺料报告</h3><p class="report" id="report-text"></p></section
+        ><section class="group"
+          ><h3>工具调用与执行记录</h3><ol class="list" id="events"></ol></section
+      ></aside>
+      <aside class="side right" id="evidence"
+        ><section class="group"><h2 id="detail-heading">调度与分工</h2><p id="detail"></p></section
+        ><section class="group"
+          ><h3 id="materials-title">装配部件</h3><div id="materials"></div></section
+        ><section class="group" id="history-panel" hidden
+          ><h3>本轮证据</h3><div id="history"></div></section
+      ></aside>
+      <section id="part-inspector" class="inspector" hidden
+        ><span id="part-caption"></span><button class="btn" id="prev">上一件</button
+        ><button class="btn" id="next">下一件</button
+        ><button class="btn" id="replay">重播装配</button></section
+      >
+      <div class="foot"
+        ><span id="assembly-state">准备装配</span
+        ><a href="./LICENSE" target="_blank" rel="noopener">视觉引擎 © 赛博老爸 · 许可</a></div
+      ><nav class="mobile-nav"
+        ><button class="btn" id="toggle-chat">智能问答</button
+        ><button class="btn" id="toggle-evidence">本轮依据</button></nav
+      ><div class="glfail" id="glFail" hidden
+        >当前浏览器无法显示 WebGL 场景。问答与物料明细仍可使用。</div
+      > </template
+    ><script src="./fan-model.js"></script
+    ><script src="./loom.js"></script
+    ><script src="./report-particles.js"></script
+    ><script src="./question-flow.js"></script
+    ><script src="./fan-view.js"></script></body
+></html>

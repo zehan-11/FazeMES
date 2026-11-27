@@ -1,7 +1,11 @@
 <template>
   <KnowledgeLaunchOverlay v-if="moduleIntro && tab !== 'graph'" @done="moduleIntro = false" />
   <section class="mes-assistant-page" :class="{ 'is-graph': tab === 'graph' }">
-    <el-tag class="model-status" :type="modelStatus?.configured ? 'success' : 'info'" :title="modelLabel">
+    <el-tag
+      class="model-status"
+      :type="modelStatus?.configured ? 'success' : 'info'"
+      :title="modelLabel"
+    >
       {{ modelLabel }}
     </el-tag>
     <el-alert
@@ -19,8 +23,18 @@
       <el-tab-pane v-if="canBusiness" label="业务 Agent" name="business">
         <BusinessAssistant :active="tab === 'business'" @navigate="openBusinessAnalysis" />
       </el-tab-pane>
-      <el-tab-pane v-if="canBusiness || canChat || canKnowledge" label="天工开物" name="works">
-        <FanWorksWorkbench v-if="tab === 'works'" />
+      <el-tab-pane v-if="canBusiness || canChat || canKnowledge" label="Agent 协同" name="works">
+        <FanWorksWorkbench
+          v-if="tab === 'works'"
+          @knowledge-settings="worksScopeOpen = true"
+          :ask-knowledge="sendKnowledgeQuestion"
+          :knowledge-scope="{
+            knowledgeBaseIds: selectedBases,
+            mode: retrievalMode,
+            documentStrategy,
+            hops: retrievalHops
+          }"
+        />
       </el-tab-pane>
       <el-tab-pane v-if="canChat || canKnowledge" label="知识助手" name="chat">
         <div class="assistant-layout" :class="{ 'assistant-without-sidebar': !canChat }">
@@ -45,59 +59,14 @@
           </aside>
           <main class="assistant-chat">
             <div class="assistant-chat-toolbar">
-              <el-select
-                v-model="selectedBases"
-                multiple
-                collapse-tags
-                collapse-tags-tooltip
-                placeholder="全部可访问的已发布知识库"
-                aria-label="检索知识库范围"
-                class="assistant-base-select"
-              >
-                <el-option
-                  v-for="base in bases"
-                  :key="base.id"
-                  :label="base.name"
-                  :value="base.id"
-                />
-              </el-select>
-              <label class="assistant-method"
-                >检索模式
-                <el-select
-                  v-model="retrievalMode"
-                  aria-label="检索模式"
-                  class="assistant-mode-select"
-                  :disabled="sending"
-                >
-                  <el-option label="文档检索" value="DOCUMENT" />
-                  <el-option label="图谱检索" value="GRAPH" />
-                  <el-option label="混合检索" value="HYBRID" />
-                </el-select>
-              </label>
-              <label v-if="retrievalMode !== 'GRAPH'" class="assistant-method">
-                文档策略
-                <el-select
-                  v-model="documentStrategy"
-                  aria-label="文档检索策略"
-                  class="assistant-mode-select"
-                  :disabled="sending"
-                >
-                  <el-option label="综合（关键词＋语义）" value="COMBINED" />
-                  <el-option label="语义检索" value="SEMANTIC" />
-                  <el-option label="关键词检索" value="LEXICAL" />
-                </el-select>
-              </label>
-              <label v-if="retrievalMode !== 'DOCUMENT'" class="assistant-method"
-                >关联范围
-                <el-select
-                  v-model="retrievalHops"
-                  aria-label="图谱检索跳数"
-                  class="assistant-hop-select"
-                >
-                  <el-option label="一跳关系" :value="1" />
-                  <el-option label="两跳关系" :value="2" />
-                </el-select>
-              </label>
+              <KnowledgeScopeControls
+                v-model:selected-bases="selectedBases"
+                v-model:retrieval-mode="retrievalMode"
+                v-model:document-strategy="documentStrategy"
+                v-model:retrieval-hops="retrievalHops"
+                :bases="bases"
+                :sending="sending"
+              />
               <DifyAssistant v-if="canChat && canKnowledge" @journey="openJourney" />
               <el-button plain @click="openJourney()">预览流程示例</el-button>
               <el-button v-if="sessionId" text :disabled="sending" @click="renameSession"
@@ -205,9 +174,14 @@
                   link
                   type="primary"
                   @click="openMessageJourney(item, messageIndex)"
-                >查看本次问答流程</el-button>
+                  >查看本次问答流程</el-button
+                >
               </article>
-              <el-button v-if="searchResult" plain @click="openJourney(searchJourney(searchResult))">
+              <el-button
+                v-if="searchResult"
+                plain
+                @click="openJourney(searchJourney(searchResult))"
+              >
                 查看本次检索流程
               </el-button>
               <EvidenceResults v-if="searchResult" :result="searchResult" />
@@ -811,6 +785,27 @@
     <FanWorksReplay v-if="journeyData" :record="journeyData" />
     <WorkflowJourney v-if="journeyVisible" :journey="journeyData" @source="openJourneySource" />
   </el-dialog>
+  <el-dialog
+    v-if="canKnowledge"
+    v-model="worksScopeOpen"
+    title="知识库与检索设置"
+    width="min(560px, 94vw)"
+    append-to-body
+    destroy-on-close
+  >
+    <div class="works-knowledge-settings"
+      ><KnowledgeScopeControls
+        v-model:selected-bases="selectedBases"
+        v-model:retrieval-mode="retrievalMode"
+        v-model:document-strategy="documentStrategy"
+        v-model:retrieval-hops="retrievalHops"
+        :bases="bases"
+        :sending="sending"
+    /></div>
+    <template #footer
+      ><el-button type="primary" @click="worksScopeOpen = false">完成</el-button></template
+    >
+  </el-dialog>
   <el-dialog v-model="previewVisible" title="原文与分块" width="85%"
     ><div v-loading="previewLoading" v-if="previewDocument"
       ><h3>{{ previewDocument.title }} · v{{ previewDocument.version }}</h3
@@ -882,6 +877,7 @@ import {
 } from '@/api/mes/assistant/evidence'
 import { checkPermi } from '@/utils/permission'
 import { formatAssistantTime as time } from './assistantTime'
+import KnowledgeScopeControls from './KnowledgeScopeControls.vue'
 import BusinessAssistant from '@/views/mes/insight/BusinessAssistant.vue'
 
 const FanWorksWorkbench = defineAsyncComponent(() => import('./FanWorksWorkbench.vue'))
@@ -946,7 +942,9 @@ const tab = ref(
 
 const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)')
 const moduleIntro = ref(tab.value !== 'graph' && tab.value !== 'works' && !reducedMotion.matches)
-watch(tab, () => { moduleIntro.value = false })
+watch(tab, () => {
+  moduleIntro.value = false
+})
 
 const businessRouter = useRouter()
 function openBusinessAnalysis(topic: string) {
@@ -961,6 +959,7 @@ const modelLabel = computed(() =>
 )
 const bases = ref<KnowledgeBase[]>([])
 const selectedBases = ref<number[]>([])
+const worksScopeOpen = ref(false)
 const knowledgeBaseId = ref<number>()
 const currentBase = computed(() => bases.value.find((base) => base.id === knowledgeBaseId.value))
 const sessions = ref<AssistantSession[]>([])
@@ -1156,32 +1155,44 @@ async function removeSession() {
     if (!cancelled(exception)) failure(exception, '删除失败')
   }
 }
-async function send() {
-  if (!canChat || !canKnowledge || sending.value || searching.value || !question.value.trim())
-    return
+async function sendKnowledgeQuestion(content: string, mode: RetrievalMode = retrievalMode.value) {
+  if (!canChat || !canKnowledge || sending.value || searching.value) {
+    throw new Error('当前知识会话暂时无法发送问题。')
+  }
   sending.value = true
   error.value = ''
   searchResult.value = undefined
   try {
     if (!sessionId.value) sessionId.value = await AssistantApi.createSession()
+    const target = sessionId.value
     const result = await AssistantApi.send(
-      sessionId.value,
-      question.value.trim(),
+      target,
+      content,
       selectedBases.value,
-      retrievalMode.value,
+      mode,
       retrievalHops.value,
-      retrievalMode.value === 'GRAPH' ? 'LEXICAL' : documentStrategy.value
+      mode === 'GRAPH' ? 'LEXICAL' : documentStrategy.value
     )
-    chatNotice.value = result.message
-    question.value = ''
-    const session = await AssistantApi.session(sessionId.value)
-    messages.value = session.messages || []
+    if (sessionId.value === target) {
+      chatNotice.value = result.message
+      const session = await AssistantApi.session(target)
+      if (sessionId.value === target) messages.value = session.messages || []
+    }
     await loadSessions()
     await scrollMessages()
-  } catch (exception) {
-    failure(exception, '发送失败，请重试')
+    return result
   } finally {
     sending.value = false
+  }
+}
+async function send() {
+  if (!canChat || !canKnowledge || sending.value || searching.value || !question.value.trim())
+    return
+  try {
+    await sendKnowledgeQuestion(question.value.trim())
+    question.value = ''
+  } catch (exception) {
+    failure(exception, '发送失败，请重试')
   }
 }
 async function search() {
@@ -1681,8 +1692,12 @@ onMounted(async () => {
   min-width: 0;
   min-height: 0;
 }
-.mes-assistant-page:not(.is-graph) :deep(.assistant-tabs > .el-tabs__content) { padding: 10px; }
-.mes-assistant-page :deep(#pane-graph) { height: 100%; }
+.mes-assistant-page:not(.is-graph) :deep(.assistant-tabs > .el-tabs__content) {
+  padding: 10px;
+}
+.mes-assistant-page :deep(#pane-graph) {
+  height: 100%;
+}
 .model-status {
   grid-area: 1 / 2;
   align-self: center;
@@ -1695,7 +1710,9 @@ onMounted(async () => {
   overflow: hidden;
   text-overflow: ellipsis;
 }
-.mes-assistant-page > .assistant-alert { grid-area: 2 / 1 / 3 / -1; }
+.mes-assistant-page > .assistant-alert {
+  grid-area: 2 / 1 / 3 / -1;
+}
 
 .assistant-chat-toolbar,
 .assistant-document-heading,
@@ -1712,7 +1729,6 @@ onMounted(async () => {
 
 .assistant-document-heading p,
 .assistant-welcome p,
-.assistant-method,
 .assistant-search-result p,
 .assistant-field-help {
   font-size: 13px;
@@ -1795,16 +1811,14 @@ onMounted(async () => {
   flex-wrap: wrap;
 }
 
-.assistant-mode-select {
-  width: 140px;
+.works-knowledge-settings {
+  display: grid;
+  gap: 14px;
 }
-
-.assistant-hop-select {
-  width: 125px;
-}
-
-.assistant-base-select {
-  width: 280px;
+.works-knowledge-settings :deep(label) {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
 }
 
 .assistant-messages {

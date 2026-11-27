@@ -1,9 +1,9 @@
 <template>
-  <el-button plain size="small" @click="openReplay">天工开物回放</el-button>
+  <el-button plain size="small" @click="openReplay">查看 Agent 协同记录</el-button>
   <el-dialog
     v-if="visible"
     v-model="visible"
-    title="天工开物 · 本轮回放"
+    title="FazeMES · 本轮协同记录"
     fullscreen
     append-to-body
     destroy-on-close

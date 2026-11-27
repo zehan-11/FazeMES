@@ -3,55 +3,58 @@
     v-if="active"
     ref="frame"
     :src="url"
-    title="天工开物 · 电风扇织造台"
+    title="FazeMES 生产智能协同中心"
     class="fan-works-frame"
     allowfullscreen
     referrerpolicy="no-referrer"
-    @load="sendRun"
+    @load="send"
   ></iframe>
 </template>
-
 <script setup lang="ts">
-import { computed, onActivated, onDeactivated, ref, watch } from 'vue'
-import type { WorksRun } from './fanWorksRecords'
-
-const props = defineProps<{ run?: WorksRun }>()
+import { onActivated, onBeforeUnmount, onDeactivated, onMounted, ref, watch } from 'vue'
+import type { WorksRun, WorkspaceAccess, SceneCommand } from './fanWorksRecords'
+const props = defineProps<{ run?: WorksRun; access?: WorkspaceAccess }>()
+const emit = defineEmits<{ command: [command: SceneCommand] }>()
 const frame = ref<HTMLIFrameElement>()
 const active = ref(true)
-const url = computed(
-  () => `${import.meta.env.BASE_URL}heaven-works/index.html${props.run ? '?view=record' : ''}`
-)
+const url = import.meta.env.BASE_URL + 'heaven-works/index.html'
+function send() {
+  if (!active.value || !frame.value?.contentWindow) return
+  // Vue proxies cannot be posted. The payload contains only display data for this turn.
+  const snapshot = JSON.parse(
+    JSON.stringify({ run: props.run || null, access: props.access || null })
+  )
+  frame.value.contentWindow.postMessage(
+    { type: 'fazemes:session', ...snapshot },
+    window.location.origin
+  )
+}
+function receive(event: MessageEvent) {
+  if (
+    !active.value ||
+    event.origin !== window.location.origin ||
+    event.source !== frame.value?.contentWindow
+  )
+    return
+  if (event.data?.type === 'fazemes:ready') send()
+  if (props.access && event.data?.type === 'fazemes:command' && event.data.command)
+    emit('command', event.data.command)
+}
+onMounted(() => window.addEventListener('message', receive))
+onBeforeUnmount(() => window.removeEventListener('message', receive))
 onActivated(() => {
   active.value = true
 })
 onDeactivated(() => {
   active.value = false
 })
-function sendRun() {
-  if (!props.run || !frame.value?.contentWindow) return
-  const { source, question, answer, steps, shortageParts } = props.run
-  frame.value.contentWindow.postMessage(
-    {
-      type: 'fazemes:works-run',
-      run: {
-        source,
-        question,
-        answer,
-        shortageParts: [...(shortageParts || [])],
-        steps: steps.map((step) => ({ ...step }))
-      }
-    },
-    window.location.origin
-  )
-}
-watch(() => props.run, sendRun, { flush: 'post' })
+watch([() => props.run, () => props.access], send, { flush: 'post' })
 </script>
-
 <style scoped>
 .fan-works-frame {
   display: block;
   width: 100%;
-  height: clamp(440px, 74vh, 1080px);
+  height: clamp(540px, 78vh, 1100px);
   border: 0;
   background: #04060a;
 }

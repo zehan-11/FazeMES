@@ -7,85 +7,17 @@ var TAU = Math.PI * 2;
 var RM = false;
 try { RM = window.matchMedia("(prefers-reduced-motion: reduce)").matches; } catch (e) {}
 
-/* =====================================================================
-   1. 配置：8 台织机（= 子 Agent）与 6 个织造项目（织片 = 子任务）
-   ===================================================================== */
-var AGENTS = [
-  {
-    "id": "code_smith",
-    "role": "动力装配",
-    "c": "#8fe3b9",
-    "beat": [
-      "核对电机定位",
-      "核对轴端配合"
-    ]
-  },
-  {
-    "id": "research",
-    "role": "手册检索",
-    "c": "#8cc8ff",
-    "beat": [
-      "查阅锁紧顺序",
-      "核对安装说明"
-    ]
-  },
-  {
-    "id": "builder",
-    "role": "基座装配",
-    "c": "#f2b872",
-    "beat": [
-      "定位防滑底座",
-      "检查支承平面"
-    ]
-  },
-  {
-    "id": "review",
-    "role": "装配校验",
-    "c": "#f0a6c4",
-    "beat": [
-      "核对安全间隙",
-      "检查七项装配记录"
-    ]
-  },
-  {
-    "id": "data_ops",
-    "role": "支架装配",
-    "c": "#72d4d0",
-    "beat": [
-      "定位立柱接口",
-      "复核支架高度"
-    ]
-  },
-  {
-    "id": "designer",
-    "role": "叶轮装配",
-    "c": "#b9a6ff",
-    "beat": [
-      "校准叶轮方向",
-      "核对叶片间隙"
-    ]
-  },
-  {
-    "id": "scout",
-    "role": "后罩定位",
-    "c": "#d6df7c",
-    "beat": [
-      "定位后罩基准",
-      "检查固定环"
-    ]
-  },
-  {
-    "id": "deploy",
-    "role": "整机交付",
-    "c": "#ff9f8c",
-    "beat": [
-      "合拢防护网圈",
-      "检查网扣闭合"
-    ]
-  }
-];
-var AGI = {};
-AGENTS.forEach(function (a, i) { AGI[a.id] = i; });
+var AGENTS = projectAgents;
+var live = null, liveId = null, fanVisible = true;
+var orbitCue = null, deckOn = false, modelOnly = false, splitDeck = false;
+function modelOnStage() { return fanVisible && (!deckOn || modelOnly || splitDeck); }
+function wantsSplitDeck() {
+  return !!(deckOn && !modelOnly && !L.narrow && L.beamX1 - L.beamX0 >= 440 && live && live.showFan &&
+    (live.materials?.length || live.display?.focusParts?.length));
+}
+var shortageFlags = new Float32Array(8), offsets = new Float32Array(24);
+var targetOffsets = new Float32Array(24), targets = new Float32Array(8), revealAt = new Float32Array(8);
+var partTint = fanProject.secs.map(function (s) { return tint(s.c, 0.4); });
 
 var JOBS = [fanProject];
 
@@ -323,227 +255,43 @@ function buildSlab() {
    ===================================================================== */
 function $(id) { return SR.getElementById(id); }
 var glc = $("gl"), fxc = $("fx"), board = $("board"), fitIn = $("fitIn"), nr = $("nr"), mid = $("mid");
-var swBox = $("sws"), loomBox = $("loom"), secsBox = $("secs"), slabBox = $("slabs"), dlBox = $("dl"), logBox = $("log"), codeBox = $("code");
-var stepEls = [].slice.call(SR.querySelectorAll("#steps li"));
+var loomBox = $("loom");
 function pad(n, w) { n = String(n); while (n.length < w) n = "0" + n; return n; }
-function fmt(n) { return Math.round(n).toLocaleString("en-US"); }
-function esc(s) { return String(s).replace(/[&<>"]/g, function (c) { return { "&": "&amp;", "<": "&lt;", ">": "&gt;", "\"": "&quot;" }[c]; }); }
-function hms(d) { d = d || new Date(); return pad(d.getHours(), 2) + ":" + pad(d.getMinutes(), 2) + ":" + pad(d.getSeconds(), 2); }
-function mmss(s) { s = Math.max(0, Math.round(s)); return pad(Math.floor(s / 60), 2) + ":" + pad(s % 60, 2); }
 function hexA(h, a) { var n = parseInt(h.slice(1), 16); return "rgba(" + (n >> 16 & 255) + "," + (n >> 8 & 255) + "," + (n & 255) + "," + a + ")"; }
 function tint(h, k) { var n = parseInt(h.slice(1), 16), r = n >> 16 & 255, g = n >> 8 & 255, b = n & 255; return [Math.round(r + (255 - r) * k), Math.round(g + (255 - g) * k), Math.round(b + (255 - b) * k)]; }
 function rgbA(c, a) { return "rgba(" + c[0] + "," + c[1] + "," + c[2] + "," + a + ")"; }
 function hex3(h) { var n = parseInt(h.slice(1), 16); return [(n >> 16 & 255) / 255, (n >> 8 & 255) / 255, (n & 255) / 255]; }
 
-/* 机组阵列（左栏） */
-var SW = [];
-AGENTS.forEach(function (a, i) {
-  var d = document.createElement("div");
-  d.className = "sw"; d.style.setProperty("--c", a.c);
-  d.innerHTML = '<div class="sw-h"><span class="sid">U' + pad(i + 1, 2) + '</span><span class="nm">' + a.id.toUpperCase() + '</span><span class="role">' + a.role + '</span></div>' +
-    '<div class="sw-t">待命</div>' +
-    '<div class="sw-r"><span class="sw-tag">待命</span><div class="sw-m"><span class="bar"><i></i></span><span class="v">0.0</span></div><div class="sw-g">' + new Array(25).join("<i></i>") + '</div></div>';
-  swBox.appendChild(d);
-  SW.push({ el: d, t: d.querySelector(".sw-t"), tag: d.querySelector(".sw-tag"), bar: d.querySelector(".sw-m .bar i"), v: d.querySelector(".sw-m .v"), hist: d.querySelectorAll(".sw-g i"),
-    hv: [], rate: 0.6 + Math.random(), cls: "", txt: "", tagTxt: "", lastBeat: a.beat[0] });
-});
-
-/* 织机旁的标签（中栏两侧各 4 个） */
-var SPF = [[0.17, 336], [0.26, 290], [0.35, 352], [0.44, 304], [0.56, 304], [0.65, 352], [0.74, 290], [0.83, 336]];
-var SLOTY = [244, 300, 356, 412];
-var SLAB = [];
-(function () {
-  var left = [0, 1, 2, 3].sort(function (a, b) { return SPF[a][1] - SPF[b][1]; });
-  var right = [4, 5, 6, 7].sort(function (a, b) { return SPF[a][1] - SPF[b][1]; });
-  function mk(i, side, slot) {
-    var a = AGENTS[i], d = document.createElement("div");
-    d.className = "slab " + side; d.style.setProperty("--c", a.c); d.style.top = SLOTY[slot] + "px";
-    d.innerHTML = '<div class="h"><b>U' + pad(i + 1, 2) + '</b><span>' + a.id.toUpperCase() + '</span></div><div class="t">待命</div><div class="k">0.0 m/s</div>';
-    slabBox.appendChild(d);
-    SLAB[i] = { el: d, t: d.querySelector(".t"), k: d.querySelector(".k"), side: side, cls: "", txt: "" };
-  }
-  left.forEach(function (i, s) { mk(i, "l", s); });
-  right.forEach(function (i, s) { mk(i, "r", s); });
-})();
-
-/* 织机卡（中栏）与织片清单（右栏），每个项目重建 */
-var cardEls = [], secEls = [];
+var SPF = [[0.18, 318], [0.39, 365], [0.61, 365], [0.82, 318]];
+var cardEls = [], agentEls = [], pinEls = [];
+function makeButton(container, cls, label, handler) {
+  var b = document.createElement("button");
+  b.type = "button"; b.className = cls; b.textContent = label;
+  b.addEventListener("click", handler); container.appendChild(b); return b;
+}
+function select(type, index) {
+  host.dispatchEvent(new CustomEvent("scene-select", { detail: { type: type, index: index } }));
+}
 function buildJobDom() {
-  var j = job();
-  loomBox.innerHTML = ""; secsBox.innerHTML = ""; cardEls = []; secEls = [];
-  loomBox.style.gridTemplateColumns = "repeat(" + j.secs.length + ",minmax(0,1fr))";
-  j.secs.forEach(function (s, i) {
-    var a = AGENTS[AGI[s.ag]];
-    var b = document.createElement("button");
-    b.type = "button"; b.className = "lc idle"; b.setAttribute("data-s", i); b.style.setProperty("--c", a.c);
-    b.innerHTML = '<div class="lc-h"><b>U' + pad(AGI[s.ag] + 1, 2) + '</b><span>' + pad(i + 1, 2) + " · " + s.en + '</span></div><div class="lc-t">' + esc(s.task) + '</div><div class="lc-b"><span class="bar"><i></i></span><span class="p">0%</span></div>';
-    loomBox.appendChild(b);
-    cardEls.push({ el: b, bar: b.querySelector(".bar i"), p: b.querySelector(".p"), cls: "" });
-    var r = document.createElement("button");
-    r.type = "button"; r.className = "sr"; r.setAttribute("data-s", i); r.style.setProperty("--c", a.c);
-    r.innerHTML = '<span class="i">' + pad(i + 1, 2) + '</span><span class="n"><b>' + esc(s.n + " · " + s.task) + '</b><span><em>U' + pad(AGI[s.ag] + 1, 2) + " " + a.id + '</em> · ' + s.en + '</span></span><span class="bar"><i></i></span><span class="p">0%</span>';
-    secsBox.appendChild(r);
-    secEls.push({ el: r, bar: r.querySelector(".bar i"), p: r.querySelector(".p"), cls: "" });
+  if (cardEls.length) return;
+  AGENTS.forEach(function (agent, index) {
+    var b = makeButton($("agent-labels"), "sat-label", "", function () { select("agent", index); });
+    b.style.setProperty("--accent", agent.c);
+    var title = document.createElement("strong"), state = document.createElement("span");
+    title.textContent = agent.name; b.append(title, state);
+    agentEls.push({ el: b, state: state });
   });
-  $("pjId").textContent = j.id + " · " + j.kindName;
-  $("pjT").textContent = j.title;
-  $("pjMeta").textContent = pad(j.secs.length, 2) + " SECTIONS";
-  $("sbJob").textContent = j.id;
-  if (L.w > 1) layout();
+  fanProject.secs.forEach(function (part, index) {
+    var b = makeButton(loomBox, "part-card", "", function () { select("part", index); });
+    b.style.setProperty("--accent", part.c);
+    var title = document.createElement("b"), status = document.createElement("small");
+    title.textContent = part.n; b.append(title, status);
+    cardEls.push({ el:b, status:status });
+    var pin = makeButton($("part-pins"), "part-pin", "", function () { select("part", index); });
+    pin.hidden = true; pinEls.push(pin);
+  });
 }
 
-/* 事件流 */
-var LOG = [];
-function log(agentIdx, verb, text) {
-  LOG.unshift({ t: hms(), a: agentIdx, v: verb, x: text, fresh: true });
-  if (LOG.length > 14) LOG.length = 14;
-  if (!logBox) return;
-  logBox.innerHTML = LOG.map(function (r) {
-    var who = r.a == null ? '<span class="a" style="--c:#9cd0ff">CHIEF</span>' : '<span class="a" style="--c:' + AGENTS[r.a].c + '">U' + pad(r.a + 1, 2) + " " + AGENTS[r.a].id.slice(0, 4).toUpperCase() + "</span>";
-    return '<div class="lr' + (r.fresh ? " fresh" : "") + '"><span>' + r.t + "</span>" + who + '<span class="x">' + esc(r.v + " · " + r.x) + "</span></div>";
-  }).join("");
-  LOG.forEach(function (r) { r.fresh = false; });
-}
-
-/* 交付记录 */
-var DELIV = [];
-var TEL = { deliv: 0, silk: 0, knots: 0 };
-function renderDeliv() {
-  dlBox.innerHTML = DELIV.map(function (r) {
-    return '<div class="dr' + (r.fresh ? " new" : "") + '"><span>' + r.t + "</span><span>" + r.id + '</span><span class="t">' + esc(r.title) + '</span><span class="d">' + r.d + "</span></div>";
-  }).join("");
-  DELIV.forEach(function (r) { r.fresh = false; });
-  $("delivMeta").textContent = TEL.deliv + " TOTAL";
-}
-
-/* =====================================================================
-   5. 05 执行代码：织网脚本按阶段一直往下写（逐字敲出，当前行高亮，织网阶段换成丝光橙）
-   ===================================================================== */
-var KW_RE = /^(for|in|with|as|if|else|elif|assert|return|def|not|and|or|await|async|yield|True|False|None|while|try|except|lambda|import|from)$/;
-function tokenize(src) {
-  var out = [], m, re = /("[^"]*"?)|(#.*$)|([A-Za-z_][A-Za-z0-9_]*)|(\d+(?:\.\d+)?)|([^"#A-Za-z_\d]+)/g;
-  while ((m = re.exec(src))) {
-    if (m[1]) { var inner = m[1].replace(/"/g, ""); out.push([AGI.hasOwnProperty(inner) ? AGENTS[AGI[inner]].c : "xs", m[1]]); }
-    else if (m[2]) out.push(["xc", m[2]]);
-    else if (m[3]) out.push([KW_RE.test(m[3]) ? "xk" : src.charAt(re.lastIndex) === "(" ? "xf" : "", m[3]]);
-    else if (m[4]) out.push(["xn", m[4]]);
-    else out.push(["", m[5]]);
-  }
-  return out;
-}
-function lineHTML(Ln, upto) {
-  var h = "", left = upto, i, tk, take, s;
-  for (i = 0; i < Ln.t.length && left > 0; i++) {
-    tk = Ln.t[i]; take = Math.min(tk[1].length, left); left -= take; s = esc(tk[1].slice(0, take));
-    if (!tk[0]) h += s;
-    else if (tk[0].charAt(0) === "#") h += '<span style="color:' + tk[0] + '">' + s + "</span>";
-    else h += '<span class="' + tk[0] + '">' + s + "</span>";
-  }
-  return h || " ";
-}
-var CODE = { q: [], lines: [], n: 0, cur: null, chars: 0, pause: 0, idle: 0.3, hot: false, hlEl: null, si: 0, MAX: 40 };
-function cPush(src) { CODE.q.push(src); }
-function cNewLine(src) {
-  var C = CODE, t = tokenize(src), len = 0;
-  t.forEach(function (x) { len += x[1].length; });
-  C.n = C.n >= 9999 ? 1 : C.n + 1;
-  var li = document.createElement("li");
-  li.setAttribute("data-n", C.n); li.innerHTML = " ";
-  var Ln = { t: t, len: len, el: li, typed: 0 };
-  C.lines.push(Ln); codeBox.appendChild(li);
-  if (C.lines.length > C.MAX) { var o = C.lines.shift(); if (o.el.parentNode) o.el.parentNode.removeChild(o.el); }
-  codeBox.scrollTop = codeBox.scrollHeight;
-  var sc = codeBox.scrollTop > 0;
-  if (codeBox.classList.contains("sc") !== sc) codeBox.classList.toggle("sc", sc);
-  return Ln;
-}
-function cFinish(Ln) { if (Ln && Ln.typed < Ln.len) { Ln.typed = Ln.len; Ln.el.innerHTML = lineHTML(Ln, Ln.len); } }
-function setCur(tp) {
-  var C = CODE, Ln = C.lines[C.lines.length - 1]; if (!Ln) return;
-  var cls = "hl cur" + (tp ? " tp" : "") + (C.hot ? " hot" : "");
-  if (C.hlEl !== Ln.el) { if (C.hlEl) C.hlEl.className = ""; C.hlEl = Ln.el; }
-  if (Ln.el.className !== cls) Ln.el.className = cls;
-}
-function rpick(a) { return a[Math.floor(Math.random() * a.length)]; }
-function rint(a, b) { return a + Math.floor(Math.random() * (b - a + 1)); }
-function codePhase(k) {
-  var j = job(), n = j.secs.length;
-  if (k === "dispatch") {
-    if (CODE.n === 0) { cPush("from heavenworks import core, sat, loom, stage"); cPush(""); } else cPush("");
-    cPush("# ── " + j.id + " · " + j.title + " ──");
-    cPush('job = core.load("' + j.id + '", kind="' + j.kind + '")');
-    cPush("units = sat.link(" + AGENTS.length + ")");
-    cPush("for sec in job.sections:   # " + n + " 个织片");
-    CODE.si = 0;
-  } else if (k === "spin") {
-    cPush("silk = units.spin(rate=" + (3.6 + Math.random() * 1.4).toFixed(1) + ")   # 吐丝");
-    cPush("loom.attach(silk, heddles=" + n + ")");
-  } else if (k === "weave") {
-    cPush("with loom.weave(job, parallel=3) as w:");
-  } else if (k === "verify") {
-    cPush("report = stage.verify(tol=0.002)   # 全网校验");
-    cPush('assert report.broken == 0, "断丝"');
-  } else if (k === "deliver") {
-    cPush('core.deliver(job, to="CHIEF")');
-    cPush('archive("' + j.id + '")   # 交付 ✓');
-  } else if (k === "unravel") {
-    cPush("loom.release()   # 收网");
-  }
-}
-function codeSecStart(i) { var s = job().secs[i]; cPush('    w.start("' + s.en + '", by="' + s.ag + '")   # ' + s.task); }
-function codeSecDone(i) { var s = job().secs[i]; cPush("    w.commit(" + i + ")   # ✓ " + s.n + " " + fmt(curModel().secCount[i]) + " 结点"); }
-function codeFill() {
-  var k = PHASES[ST.ph], j = job(), a = AGENTS[rint(0, AGENTS.length - 1)], s;
-  if (k === "dispatch") {
-    if (CODE.si < j.secs.length) { s = j.secs[CODE.si]; cPush('    core.dispatch("' + s.en + '", to="' + s.ag + '")'); CODE.si++; }
-    else cPush("core.heartbeat()   # " + (0.8 + Math.random() * 0.1).toFixed(2) + " Hz");
-  }
-  else if (k === "spin") cPush(rpick([
-    'silk.tension("' + a.id + '", ' + (0.7 + Math.random() * 0.25).toFixed(2) + ")",
-    "silk.anchor(heddle=" + rint(0, j.secs.length - 1) + ")"
-  ]));
-  else if (k === "weave") {
-    var act = []; for (var q = 0; q < j.secs.length; q++) if (ST.prog[q] > 0 && ST.prog[q] < 1) act.push(q);
-    s = act.length ? j.secs[rpick(act)] : j.secs[0];
-    cPush(rpick([
-      '    w.knot("' + s.en + '", n=' + rint(48, 320) + ")",
-      '    w.pass("' + s.en + '", layer=' + rint(2, 18) + ")",
-      '    w.tension("' + s.ag + '", ' + (0.72 + Math.random() * 0.24).toFixed(2) + ")",
-      '    w.check("' + s.en + '", gap=0.00' + rint(1, 4) + ")   # ok"
-    ]));
-  }
-  else if (k === "verify") cPush("stage.scan(y=" + (Math.max(0, ST.verY)).toFixed(2) + ")   # " + rint(0, 2) + " 处微调");
-  else if (k === "deliver") cPush(rpick(['core.ack("' + a.id + '")', "core.notify(channels=" + rint(2, 5) + ")"]));
-  else cPush(rpick(["sat.idle()", "loom.clear(knots=" + rint(800, 4000) + ")"]));
-}
-function codeStep(dt) {
-  var C = CODE, Ln = C.cur;
-  C.hot = PHASES[ST.ph] === "weave";
-  if (C.q.length > 8) { cFinish(Ln); while (C.q.length > 3) cFinish(cNewLine(C.q.shift())); Ln = C.cur = null; }
-  if (Ln && Ln.typed < Ln.len) {
-    var backlog = Ln.len - Ln.typed, i;
-    for (i = 0; i < C.q.length; i++) backlog += C.q[i].length;
-    C.chars += dt * Math.min(280, 58 + backlog * 0.9);
-    var nt = Math.min(Ln.len, Math.floor(C.chars));
-    if (nt !== Ln.typed) { Ln.typed = nt; Ln.el.innerHTML = lineHTML(Ln, nt); }
-    if (Ln.typed >= Ln.len) C.pause = C.q.length ? 0.04 + Math.random() * 0.08 : 0.1 + Math.random() * 0.2;
-    setCur(true);
-    return;
-  }
-  if (C.pause > 0) { C.pause -= dt; setCur(false); return; }
-  if (!C.q.length) {
-    C.idle -= dt;
-    if (C.idle > 0) { setCur(false); return; }
-    C.idle = 0.2 + Math.random() * 0.55;
-    codeFill();
-  }
-  C.cur = cNewLine(C.q.shift()); C.chars = 0;
-  setCur(true);
-}
-
-/* =====================================================================
-   6. 机械：顶部总控机械 + 8 台织机（写实工业风：喷涂灰、铝件、橡胶、工业橙、金箔；WebGL 打光，部件可联动）
-   ===================================================================== */
 var NARROW = (host.clientWidth || window.innerWidth) < 760;
 var MO = [], curObj = null, curPart = null;
 var I3 = [1, 0, 0, 0, 1, 0, 0, 0, 1];
@@ -614,27 +362,6 @@ function boltRing(y, R, n, r, mat) { for (var k = 0; k < n; k++) { var a = k / n
 /* ---- 8 台织机：每个 Agent 一台真实造型的工业设备 ---- */
 (function buildUnits() {
   var k, a, p1, p2, e;
-  /* U01 code_smith · 挤出喷头：滑轨小车 + 散热片 + 风扇 + 黄铜喷嘴 */
-  obj({ emit: [0, -0.31, 0], top: [0, 0.6, 0], yaw: -0.55, pitch: 0.3, s: 1.12 });
-  part();
-  box([0, 0.55, 0], [0.92, 0.07, 0.12], M_ALU); box([0, 0.55, 0.062], [0.92, 0.022, 0.006], M_DARK);
-  box([0, 0.47, 0], [0.32, 0.08, 0.2], M_DARK);
-  [-0.12, 0.12].forEach(function (x) { cyl([x, 0.47, 0.104], 0.012, 0.01, M_ALU, AXZ, 8); });
-  box([0, 0.2, 0], [0.42, 0.42, 0.34], M_PAINT);
-  box([0, 0.2, 0.171], [0.36, 0.36, 0.004], M_DARK);
-  cyl([0, 0.22, 0.18], 0.15, 0.02, M_DARK, AXZ, 28); torus(0.138, 0.01, M_DARK, TT(AXZ, [0, 0.22, 0.196]), 32, 6);
-  box([0, 0.22, 0.2], [0.27, 0.008, 0.006], M_DARK); box([0, 0.22, 0.2], [0.008, 0.27, 0.006], M_DARK);
-  for (k = 0; k < 9; k++) box([0.25, 0.2, -0.14 + k * 0.035], [0.08, 0.36, 0.012], M_ALU);
-  box([-0.11, 0.39, 0.174], [0.13, 0.025, 0.006], M_ORANGE);
-  box([0.13, 0.39, 0.174], [0.03, 0.014, 0.006], M_LED);
-  box([0, -0.05, 0], [0.2, 0.08, 0.2], M_ALU);
-  box([0, -0.13, 0], [0.13, 0.08, 0.13], M_BRASS);
-  nozzle(-0.17, 0.045, M_BRASS);
-  pipe([[-0.15, 0.42, -0.12], [-0.25, 0.5, -0.14], [-0.38, 0.53, -0.1]], 0.018, M_RUBBER);
-  part({ ax: [0, 0, 1], pv: [0, 0.22, 0.19], sp: 12 });
-  for (k = 0; k < 5; k++) { a = k / 5 * TAU; box([0, 0, 0], [0.1, 0.035, 0.005], M_DARK, TT(rotAxis([0, 0, 1], a + 0.4), [Math.cos(a) * 0.07, 0.22 + Math.sin(a) * 0.07, 0.192])); }
-  cyl([0, 0.22, 0.195], 0.035, 0.02, M_RUBBER, AXZ, 16);
-
   /* U02 research · 激光雷达：吊装支架 + 旋转扫描头 + 底部透镜 */
   obj({ emit: [0, -0.25, 0], top: [0, 0.6, 0], yaw: 0.3, s: 1.12 });
   part();
@@ -648,29 +375,6 @@ function boltRing(y, R, n, r, mat) { for (var k = 0; k < n; k++) { var a = k / n
   torus(0.25, 0.008, M_DARK, TT(I3, [0, 0.3, 0]), 40, 5);
   box([0, 0.18, 0.235], [0.22, 0.17, 0.04], M_GLASS); box([0, 0.18, -0.235], [0.16, 0.12, 0.04], M_GLASS);
   box([0.09, 0.28, 0.25], [0.025, 0.012, 0.006], M_LED);
-
-  /* U03 builder · 四旋翼无人机：碳纤机臂 + 电机 + 桨叶 + 云台相机 */
-  obj({ emit: [0, -0.2, 0.06], top: [0, 0.14, 0], spin: 0.18, yaw: 0.3, pitch: 0.44, s: 1.28 });
-  part();
-  box([0, 0, 0], [0.3, 0.07, 0.22], M_DARK); box([0, 0.055, 0], [0.26, 0.05, 0.18], M_PAINT);
-  box([0, 0.1, -0.02], [0.16, 0.04, 0.12], M_RUBBER); box([0, 0.1, 0.042], [0.163, 0.04, 0.008], M_ORANGE);
-  box([0.1, 0.082, 0.09], [0.03, 0.01, 0.006], M_LED);
-  var hubs = [];
-  for (k = 0; k < 4; k++) {
-    a = (k + 0.5) / 4 * TAU; e = [Math.cos(a) * 0.47, 0.02, Math.sin(a) * 0.47]; hubs.push(e);
-    tube([Math.cos(a) * 0.12, 0, Math.sin(a) * 0.09], e, 0.02, M_DARK, 8);
-    cyl(e, 0.045, 0.07, M_ALU, null, 18); cyl([e[0], 0.068, e[2]], 0.04, 0.025, M_DARK, null, 18);
-    box([e[0], 0.02, e[2] + (e[2] > 0 ? 0.045 : -0.045)], [0.02, 0.012, 0.006], k < 2 ? M_LED : M_ORANGE);
-  }
-  [-1, 1].forEach(function (sd) {
-    tube([sd * 0.08, -0.03, -0.06], [sd * 0.12, -0.15, -0.09], 0.009, M_DARK, 8); tube([sd * 0.08, -0.03, 0.06], [sd * 0.12, -0.15, 0.09], 0.009, M_DARK, 8);
-    tube([sd * 0.12, -0.155, -0.15], [sd * 0.12, -0.155, 0.15], 0.011, M_DARK, 8);
-  });
-  box([0, -0.06, 0.06], [0.06, 0.04, 0.06], M_DARK); sph([0, -0.11, 0.07], 0.05, M_DARK, 18); cyl([0, -0.11, 0.115], 0.026, 0.02, M_GLASS, AXZ, 16);
-  for (k = 0; k < 4; k++) {
-    part({ ax: [0, 1, 0], pv: hubs[k], sp: 16 + k * 1.3 });
-    box([0, 0, 0], [0.36, 0.006, 0.03], M_RUBBER, TT(rotAxis([0, 1, 0], k * 0.7), [hubs[k][0], 0.088, hubs[k][2]]));
-  }
 
   /* U04 review · 通信卫星：金箔六棱舱 + 高增益天线 + 太阳翼 */
   obj({ emit: [0, -0.36, 0], top: [0, 0.52, 0], spin: 0.12, yaw: 0.6, s: 1.08 });
@@ -689,27 +393,6 @@ function boltRing(y, R, n, r, mat) { for (var k = 0; k < n; k++) { var a = k / n
     tube([sd * 0.22, 0.02, 0], [sd * 0.34, 0.02, 0], 0.012, M_ALU, 8); box([sd * 0.35, 0.02, 0], [0.03, 0.04, 0.04], M_DARK);
     box([sd * 0.62, 0.02, 0], [0.5, 0.012, 0.3], M_PANEL); box([sd * 0.62, 0.02, 0], [0.52, 0.007, 0.32], M_ALU);
   });
-
-  /* U05 data_ops · 倒装工业机械臂：吊装底座 + 回转 + 大臂 + 小臂 + 喷枪 */
-  obj({ emit: [0, -0.53, 0], ep: 3, top: [0, 0.6, 0], yaw: 0.75, s: 1.12 });
-  part();
-  box([0, 0.585, 0], [0.4, 0.035, 0.4], M_DARK);
-  [[-1, -1], [1, -1], [1, 1], [-1, 1]].forEach(function (q) { cyl([q[0] * 0.16, 0.61, q[1] * 0.16], 0.016, 0.02, M_ALU, null, 8); });
-  cyl([0, 0.53, 0], 0.14, 0.08, M_DARK, null, 28);
-  p1 = part({ ax: [0, 1, 0], osc: 0.7, of: 0.45 });
-  cyl([0, 0.44, 0], 0.13, 0.1, M_ORANGE, null, 28);
-  box([0, 0.33, 0], [0.16, 0.14, 0.18], M_ORANGE);
-  cyl([0, 0.31, 0], 0.085, 0.25, M_DARK, AXX, 22);
-  box([0.0, 0.42, 0.13], [0.06, 0.03, 0.006], M_LED);
-  p2 = part({ ax: [1, 0, 0], pv: [0, 0.31, 0], osc: 0.34, of: 0.7, ph: 0.4, pa: p1 });
-  box([0, 0.13, 0], [0.11, 0.34, 0.11], M_ORANGE);
-  cyl([0, -0.05, 0], 0.07, 0.17, M_DARK, AXX, 20);
-  pipe([[0.065, 0.27, 0.04], [0.07, 0.14, 0.06], [0.065, -0.02, 0.045]], 0.011, M_RUBBER);
-  p2 = part({ ax: [1, 0, 0], pv: [0, -0.05, 0], osc: 0.45, of: 0.95, ph: 1.6, pa: p2 });
-  box([0, -0.19, 0], [0.085, 0.24, 0.085], M_ORANGE);
-  cyl([0, -0.33, 0], 0.05, 0.05, M_DARK, null, 18);
-  torus(0.042, 0.008, M_LED, TT(I3, [0, -0.36, 0]), 20, 5);
-  nozzle(-0.36, 0.04, M_ALU);
 
   /* U06 designer · 云台检测相机：吊杆 + 水平旋转 + 俯仰 + 遮阳罩 */
   obj({ emit: [0, 0.07, 0.3], ep: 2, top: [0, 0.6, 0], yaw: 0.3, s: 1.18 });
@@ -742,23 +425,6 @@ function boltRing(y, R, n, r, mat) { for (var k = 0; k < n; k++) { var a = k / n
   torus(0.31, 0.011, M_ALU, TT(I3, [0, -0.1, 0]), 56, 6);
   for (k = 0; k < 3; k++) { a = k / 3 * TAU; box([Math.cos(a) * 0.31, -0.1, Math.sin(a) * 0.31], [0.05, 0.04, 0.05], M_DARK); box([Math.cos(a) * 0.335, -0.1, Math.sin(a) * 0.335], [0.012, 0.012, 0.012], M_LED); }
 
-  /* U08 deploy · 喷涂罐组：吊带 + 卧式压力罐 + 压力表 + 阀门手轮 + 分流歧管 */
-  obj({ emit: [0, -0.39, 0], top: [0, 0.54, 0], spin: 0.08, yaw: 0.5, s: 1.05 });
-  part();
-  box([0, 0.535, 0], [0.5, 0.03, 0.08], M_DARK);
-  tube([-0.18, 0.52, 0], [-0.18, 0.26, 0], 0.012, M_DARK, 8); tube([0.18, 0.52, 0], [0.18, 0.26, 0], 0.012, M_DARK, 8);
-  lathe([[0.0001, 0.36], [0.08, 0.35], [0.13, 0.32], [0.155, 0.27], [0.162, 0.2], [0.162, -0.2], [0.155, -0.27], [0.13, -0.32], [0.08, -0.35], [0.0001, -0.36]], 36, M_PAINT, TT(AXX, [0, 0.1, 0]), true);
-  torus(0.166, 0.012, M_DARK, TT(AXX, [-0.18, 0.1, 0]), 36, 6); torus(0.166, 0.012, M_DARK, TT(AXX, [0.18, 0.1, 0]), 36, 6);
-  box([-0.05, 0.1, 0.161], [0.12, 0.05, 0.006], M_ORANGE);
-  cyl([0.08, 0.12, 0.168], 0.045, 0.02, M_ALU, AXZ, 22); cyl([0.08, 0.12, 0.18], 0.037, 0.004, M_GLASS, AXZ, 22); box([0.09, 0.13, 0.183], [0.026, 0.004, 0.002], M_LED);
-  tube([-0.08, 0.26, 0], [-0.08, 0.33, 0], 0.018, M_BRASS, 10);
-  tube([0, -0.05, 0], [0, -0.17, 0], 0.024, M_ALU, 12);
-  box([0, -0.2, 0], [0.24, 0.06, 0.1], M_DARK);
-  nozzle(-0.23, 0.04, M_BRASS);
-  [-0.08, 0.08].forEach(function (x) { lathe([[0.0001, -0.23], [0.022, -0.23], [0.018, -0.29], [0.0001, -0.3]], 12, M_BRASS, TT(I3, [x, 0, 0])); });
-  part({ ax: [0, 1, 0], pv: [-0.08, 0.35, 0], sp: 0.9 });
-  torus(0.055, 0.009, M_ORANGE, TT(I3, [-0.08, 0.35, 0]), 24, 6);
-  box([-0.08, 0.35, 0], [0.11, 0.008, 0.012], M_DARK); box([-0.08, 0.35, 0], [0.012, 0.008, 0.11], M_DARK);
 })();
 
 /* ---- 总控：大型通信卫星 —— 金箔舱体、白色散热板、三联太阳翼、大口径高增益天线、8 个发射喇叭（各对准一台织机） ---- */
@@ -874,7 +540,8 @@ var VS_PRJ = [
   "attribute vec3 aP; attribute vec4 aM;",
   "uniform float uTime, uDpr, uPt, uVerify, uDel, uDis, uFocus, uGround, uFade;",
   "uniform mediump float uLine;",
-  "uniform float uProg[8]; uniform vec3 uCol[8];",
+  "uniform float uProg[8]; uniform vec3 uCol[8]; uniform vec3 uOffset[8];",
+  "uniform float uShortage[8]; uniform float uKitting;",
   "uniform vec3 uHP[8]; uniform vec3 uHC[8];",
   "uniform mat3 uView;",
   PROJ,
@@ -914,12 +581,12 @@ var VS_PRJ = [
   "    return;",
   "  }",
   "  int si = int(aM.x + 0.5);",
-  "  float pr = uProg[si];",
+  "  float pr = uProg[si]; float missing = uShortage[si];",
   "  float o = aM.y;",
   "  float lim = min(pr, 1.0 - uDis * 1.05);",
   "  float rev = smoothstep(o - 0.012, o, lim);",
   "  float front = (pr > 0.001 && pr < 0.999) ? exp(-sq((pr - o) * 55.0)) * step(o, pr + 0.01) : 0.0;",
-  "  vec3 pos = p;",
+  "  vec3 pos = p + uOffset[si];",
   "  float lost = clamp((o - (1.0 - uDis * 1.05)) * 8.0, 0.0, 1.0) * step(0.001, uDis);",
   "  pos += vec3((aM.z - 0.5) * 0.6, 0.25 + aM.z * 0.8, (fract(aM.z * 7.31) - 0.5) * 0.6) * lost * uDis;",
   "  pos.y += uDel * 0.03;",
@@ -939,6 +606,8 @@ var VS_PRJ = [
   "  if (uLine > 0.5) a = ((1.0 - rev) * 0.09 + rev * 0.2) * foc * uFade * (1.0 - uDis);",
   "  float edgeLight = (si == 3 || si == 6) ? 0.13 : 0.22;",
   "  vC = c; vA = a * mix(edgeLight, 1.0, clamp(front + lost, 0.0, 1.0));",
+  "  if (uKitting > 0.5 && pr < 0.001 && uLine > 0.5) { vC = vec3(0.36, 0.53, 0.66); vA = 0.35; }",
+  "  if (missing > 0.5) { vC = vec3(1.0, 0.29, 0.055); vA = uLine > 0.5 ? 0.87 : (aM.w < 1.5 ? 0.23 : 0.0); }",
   "  gl_PointSize = uPt * uDpr * k * (0.62 + aM.z * 0.8 + front * 1.8) * mix(1.0, 0.75, isFill);",
   "}"
 ].join("\n");
@@ -1024,14 +693,14 @@ var VS_SOLID = [
   "precision highp float;",
   "attribute vec3 aP; attribute vec3 aN; attribute vec4 aA;",
   "uniform mat3 uView; uniform mediump float uDel; uniform float uShortage[8]; varying mediump float vShort;",
-  "uniform float uProg[8]; uniform vec3 uCol[8];",
+  "uniform float uProg[8]; uniform vec3 uCol[8]; uniform vec3 uOffset[8];",
   PROJ,
   "varying vec3 vN; varying vec3 vW; varying vec4 vA; varying float vPr; varying vec3 vC;",
   "void main(){",
   "  int si = int(aA.x + 0.5);",
   "  vPr = aA.z > 1.5 ? 2.0 : uProg[si]; vShort = uShortage[si];",
   "  vC = aA.z > 1.5 ? vec3(0.5) : uCol[si];",
-  "  vec3 p = aP; if (aA.z < 1.5) p.y += uDel * 0.03;",
+  "  vec3 p = aP; if (aA.z < 1.5) { p += uOffset[si]; p.y += uDel * 0.03; }",
   "  vec3 pv = uView * p; float k; vec2 sp = toScreen(pv, k); gl_Position = toClip(sp); gl_Position.z = clamp(-pv.z * 0.1, -0.99, 0.99);",
   "  vN = uView * aN; vW = aP; vA = aA;",
   "}"
@@ -1060,7 +729,7 @@ var FS_SOLID = [
   "  } else {",
   "    vec3 alb = mix(vec3(0.44, 0.45, 0.48), vC, 0.1);",
   "    if (vA.x < 0.5 || abs(vA.x - 2.0) < 0.5) alb = vec3(0.12, 0.22, 0.25); if (abs(vA.x - 4.0) < 0.5) alb = vec3(0.055, 0.54, 0.57); if (abs(vA.x - 5.0) < 0.5) alb = vec3(0.68, 0.32, 0.12);",
-  "    if (vShort > 0.5) alb = vec3(1.0, 0.29, 0.025);",
+  "    if (vShort > 0.5) discard;",
   "    alb *= 1.0 + (h3(floor(vW * 140.0)) - 0.5) * 0.12;",
   "    col = shade(n, alb, vA.z > 0.5 ? 0.6 : 0.3, vA.z > 0.5 ? 60.0 : 26.0);",
   "    float age = lim - o;",
@@ -1070,7 +739,7 @@ var FS_SOLID = [
   "    col += (vC * warm * 0.45 + mix(vC, vec3(1.0, 0.95, 0.85), 0.5) * front * 2.2) * fk;",
   "    if (uVerify > -1.0) { float vq = (vW.y - uVerify) * 14.0; col += vec3(0.45, 0.72, 1.0) * exp(-vq * vq) * 0.8; }",
   "    col += uDel * vec3(0.1, 0.16, 0.24) * (0.5 + 0.5 * sin(uTime * 4.0 + vW.y * 10.0));",
-  "    if (uFocus >= 0.0 && abs(vA.x - uFocus) > 0.5) col *= 0.35;",
+  "    if (uFocus >= 0.0 && abs(vA.x - uFocus) > 0.5) col *= 0.65;",
   "  }",
   "  col = pow(max(col, vec3(0.0)), vec3(0.4545));",
   "  gl_FragColor = vec4(col, 1.0);",
@@ -1165,7 +834,7 @@ function layout() {
   if (host.hidden || host.clientWidth < 2) return;
   appR = host.getBoundingClientRect();
   L.w = Math.max(1, appR.width); L.h = Math.max(1, appR.height);
-  L.narrow = L.w < 760 || L.w / L.h < 1.05;
+  L.narrow = L.w <= 860 || L.w / L.h <= 1;
   nr.classList.toggle("narrow", L.narrow);
   var fr = fitIn.getBoundingClientRect();
   L.bs = Math.min(fr.width / 1920, fr.height / 1080) || 0.2;
@@ -1177,29 +846,40 @@ function layout() {
   fxc.width = glc.width; fxc.height = glc.height;
   var i;
   if (!L.narrow) {
+    var sideWidth = $("chat").getBoundingClientRect().width;
+    mid.style.left = mid.style.right = ((sideWidth + 22) / L.bs) + "px";
     var mx = mid.offsetLeft, mw = mid.offsetWidth, bs = L.bs;
     var B2 = function (bx, by) { return [L.frX + bx * bs, L.frY + by * bs]; };
     var cc = B2(mx + mw / 2, 146);
     L.core = { x: cc[0], y: cc[1], S: 70 * bs };
     L.spS = 0.92 * bs; L.uS = 61 * bs;
-    for (i = 0; i < 8; i++) { var p = B2(mx + SPF[i][0] * mw, SPF[i][1]); L.sp[i] = { x: p[0], y: p[1] }; }
+    for (i = 0; i < AGENTS.length; i++) { var p = B2(mx + SPF[i][0] * mw, SPF[i][1]); L.sp[i] = { x: p[0], y: p[1] }; }
     L.cards = cardEls.map(function (c) { return rel(c.el); });
     var lr = rel(loomBox);
     L.beamY = lr.y - 9 * bs; L.beamX0 = lr.x - 10 * bs; L.beamX1 = lr.x + lr.w + 10 * bs;
     var sc = B2(mx + mw / 2, mid.offsetHeight - 142);
     L.stg = { x: sc[0], y: sc[1], S: Math.min(mw * 0.158, 178) * bs };
-    for (i = 0; i < 8; i++) L.slab[i] = rel(SLAB[i].el);
     L.labs = true;
   } else {
     var w = L.w, h = L.h;
-    L.core = { x: w / 2, y: 74 + h * 0.08, S: Math.min(w, h) * 0.07 };
+    L.core = { x: w / 2, y: 72 + h * 0.045, S: Math.min(w, h) * 0.07 };
     L.spS = clamp(w / 900, 0.36, 0.6); L.uS = 52 * L.spS;
-    for (i = 0; i < 8; i++) L.sp[i] = { x: w * (0.09 + i * 0.117), y: L.core.y + L.core.S * 2.4 + (i % 2 ? 0 : 22 * L.spS) + 16 };
+    for (i = 0; i < AGENTS.length; i++) L.sp[i] = { x: w * (0.135 + i * 0.243), y: L.core.y + L.core.S * 2.9 + (i % 2 ? 0 : 22 * L.spS) + 16 };
     var n = job().secs.length, x0 = w * 0.07, bw = w * 0.86 / n;
-    L.cards = []; for (i = 0; i < n; i++) L.cards.push({ x: x0 + i * bw + 2, y: h * 0.45, w: bw - 4, h: 0 });
-    L.beamY = h * 0.45; L.beamX0 = x0; L.beamX1 = w - x0;
-    L.stg = { x: w / 2, y: h * (host.hasAttribute("data-record") ? 0.54 : 0.74), S: Math.min(w * 0.22, h * 0.12) };
+    L.cards = []; for (i = 0; i < n; i++) L.cards.push({ x: x0 + i * bw + 2, y: h * 0.43, w: bw - 4, h: 0 });
+    L.beamY = h * 0.43; L.beamX0 = x0; L.beamX1 = w - x0;
+    L.stg = { x: w / 2, y: h * 0.73, S: Math.min(w * 0.22, h * 0.12) };
     L.labs = false;
+  }
+  var corridor = Math.max(1, L.beamX1 - L.beamX0);
+  splitDeck = wantsSplitDeck();
+  host.toggleAttribute("data-deck-split", splitDeck);
+  host.style.setProperty("--deck-width", corridor + "px");
+  host.style.setProperty("--deck-y", Math.round(L.beamY + (L.narrow ? 16 : 15 * L.bs)) + "px");
+  if (splitDeck) {
+    L.stg.x += corridor * .27;
+    L.stg.S *= .56;
+    L.stg.y -= L.h * .035;
   }
 }
 
@@ -1237,21 +917,9 @@ function planJob() {
   }
   ST.weaveT = mx + 0.5;
 }
-function secOfAgent(a) { var s = job().secs; for (var i = 0; i < s.length; i++) if (AGI[s[i].ag] === a) return i; return -1; }
 function enterPhase() {
-  var k = PHASES[ST.ph], j = job();
-  if (k === "dispatch") { ST.pulse = 0; log(null, "DISPATCH", "下达 " + j.id + " " + j.title + " · " + j.secs.length + " 个织片"); }
-  if (k === "spin") log(null, "SPIN", "机组吐丝 · 挂上 " + j.secs.length + " 个织位");
-  if (k === "weave") log(null, "WEAVE", "开始织网 · 3 路并行");
-  if (k === "verify") log(AGI[j.check], "VERIFY", "全网校验 · " + fmt(curModel().n) + " 个结点");
-  if (k === "deliver") { TEL.deliv++; ST.pulse = 0; log(null, "DELIVER", "交付 " + j.id + " " + j.title + " ✓"); addDelivery(j); }
-  if (k === "unravel") log(null, "RESET", "收网 · 准备下一个项目");
-  codePhase(k);
-}
-function addDelivery(j) {
-  DELIV.unshift({ t: hms().slice(0, 5), id: j.id, title: j.title, d: mmss((now - ST.jobT0)), fresh: true });
-  if (DELIV.length > 4) DELIV.length = 4;
-  renderDeliv();
+  var k = PHASES[ST.ph];
+  if (k === "dispatch" || k === "deliver") ST.pulse = 0;
 }
 function nextJob() {
   ST.job = (ST.job + 1) % JOBS.length;
@@ -1259,8 +927,8 @@ function nextJob() {
   DROPS.length = 0; SPL.length = 0;
   planJob(); uploadModel(); syncCols(); buildJobDom(); buildStrands(); enterPhase();
 }
-function startSec(i) { var s = job().secs[i]; ST.startF[i] = 1; log(AGI[s.ag], "WEAVE", pad(i + 1, 2) + " " + s.n + " ← " + s.task); codeSecStart(i); }
-function doneSec(i) { var s = job().secs[i]; ST.doneF[i] = 1; ST.prog[i] = 1; log(AGI[s.ag], "COMMIT", s.task + " 完成 · " + fmt(curModel().secCount[i]) + " 结点"); codeSecDone(i); }
+function startSec(i) { ST.startF[i] = 1; }
+function doneSec(i) { ST.doneF[i] = 1; ST.prog[i] = 1; }
 function updateState(dt) {
   var k = PHASES[ST.ph], dur = phDur(k), n = job().secs.length, i;
   ST.t += dt;
@@ -1285,7 +953,7 @@ function updateState(dt) {
       if (q >= 1 && !ST.doneF[i]) doneSec(i);
       if (q > 0 && q < 1) act++;
     }
-    TEL.silk += dt * 0.0042 * act; TEL.knots += dt * (90 + Math.random() * 140) * act;
+
   }
   else if (k === "verify") { ST.grow = 1; ST.verY = -0.06 + 1.26 * ease(p); for (i = 0; i < n; i++) ST.prog[i] = 1; }
   else if (k === "deliver") { ST.grow = 1; ST.del = Math.sin(Math.PI * clamp(p, 0, 1)); }
@@ -1295,37 +963,30 @@ function updateState(dt) {
   if (ST.focus >= 0) { ST.focusT -= dt; if (ST.focusT <= 0) ST.focus = -1; }
 }
 /* 每台织机当前在干什么：act 0~1 决定部件转速、发光强度、丝光亮度 */
-function spiderState(a) {
-  var k = PHASES[ST.ph], j = job(), si = secOfAgent(a), chk = AGI[j.check] === a;
-  if (k === "dispatch") return si >= 0 ? { act: 0.45, st: "接令", en: "RECV", sec: si } : { act: 0.25, st: "待命", en: "IDLE", sec: -1 };
-  if (k === "spin") return si >= 0 ? { act: 0.75, st: "吐丝", en: "SPIN", sec: si } : { act: 0.3, st: "待命", en: "IDLE", sec: -1 };
-  if (k === "weave") {
-    if (si < 0) return { act: chk ? 0.35 : 0.2, st: chk ? "巡检" : "待命", en: chk ? "PATROL" : "IDLE", sec: -1 };
-    var p = ST.prog[si];
-    if (p > 0 && p < 1) return { act: 1, st: "织网", en: "WEAVE", sec: si };
-    if (p >= 1) return { act: 0.28, st: "完成", en: "DONE", sec: si };
-    return { act: 0.4, st: "待织", en: "QUEUE", sec: si };
+function spiderState(index) {
+  var status = live && live.agents ? live.agents[AGENTS[index].id] : "";
+  if (orbitCue && live) {
+    var id = AGENTS[index].id, on = orbitCue.role === id;
+    var seen = orbitCue.done.includes(id);
+    var state = on ? "运行中" : seen ? (status === "失败" || status === "部分完成" ? status : "完成") : "待命";
+    return { act: on ? 1 : .28, st: state };
   }
-  if (k === "verify") return chk ? { act: 1, st: "校验", en: "VERIFY", sec: -1 } : { act: 0.25, st: "完成", en: "DONE", sec: si };
-  if (k === "deliver") return { act: 0.5, st: "交付", en: "DELIVER", sec: si };
-  return { act: 0.2, st: "收网", en: "RESET", sec: si };
+  var active = status === "运行中" || (!live && PHASES[ST.ph] === "weave");
+  return { act: active ? 1 : 0.28, st: live ? (status || "待命") : ["识别提问","检索证据","核对依据","汇总报告"][index] };
 }
 
-/* =====================================================================
-   10. 2D：数据雨、总控刻度、牵引线、光丝、织机光梁、垂丝、机械光效、标签引线
-   ===================================================================== */
 var SPP = [], SPS = [];
 var BOB = AGENTS.map(function (a, i) { return mulberry32(700 + i * 17)() * TAU; });
 var MACT = 0.5, ZERO3 = [0, 0, 0];
 function computeSpiders(t) {
-  for (var i = 0; i < 8; i++) {
+  for (var i = 0; i < AGENTS.length; i++) {
     var b = L.sp[i]; if (!b) continue;
     var s = spiderState(i); SPS[i] = s;
     var y = b.y - (1 - ST.desc) * 12 * L.bs + Math.sin(t * 0.9 + BOB[i]) * 4 * L.bs + (s.act > 0.9 ? Math.sin(t * 7 + i) * 1 * L.bs : 0);
     SPP[i] = { x: b.x + Math.sin(t * 0.37 + i * 2.1) * 2.5 * L.bs, y: y, sc: L.spS, act: s.act, ex: 0, ey: 0, tx: 0, ty: 0 };
   }
   var k = PHASES[ST.ph], pulse = ST.pulse >= 0 ? Math.sin(Math.PI * ST.pulse) : 0;
-  MACT = k === "dispatch" || k === "deliver" ? 0.85 + 0.15 * pulse : 0.45 + 0.4 * pulse;
+  MACT = orbitCue ? (orbitCue.role === 'dispatch' ? 1 : .72) : k === "dispatch" || k === "deliver" ? 0.85 + 0.15 * pulse : 0.45 + 0.4 * pulse;
 }
 /* 机械的整体朝向与部件联动（子部件跟着父部件走：机械臂、云台）；活跃度越高转得越快 */
 function updateMachines(dt, t) {
@@ -1344,7 +1005,7 @@ function updateMachines(dt, t) {
       else { pt.R = Rl; pt.T = Tl; }
     }
   }
-  for (i = 0; i < 8; i++) { var sp = SPP[i]; if (!sp) continue; var e = projObj(i, MO[i].emit, MO[i].ep), tp = projObj(i, MO[i].top, 0); sp.ex = e[0]; sp.ey = e[1]; sp.tx = tp[0]; sp.ty = tp[1]; }
+  for (i = 0; i < AGENTS.length; i++) { var sp = SPP[i]; if (!sp) continue; var e = projObj(i, MO[i].emit, MO[i].ep), tp = projObj(i, MO[i].top, 0); sp.ex = e[0]; sp.ey = e[1]; sp.tx = tp[0]; sp.ty = tp[1]; }
 }
 function projObj(i, p, pi) {
   var o = MO[i], pos = i === MASTER ? L.core : SPP[i], sc = (i === MASTER ? L.core.S : L.uS) * o.s;
@@ -1364,9 +1025,11 @@ function mkStrand(a, c, own, rr, chk) {
 function buildStrands() {
   STR = [];
   var j = job(), n = j.secs.length, rr = mulberry32(77 + ST.job * 31), i, k, a;
-  for (i = 0; i < n; i++) { a = AGI[j.secs[i].ag]; for (k = 0; k < 9; k++) STR.push(mkStrand(a, i, true, rr)); }
-  for (a = 0; a < 8; a++) for (k = 0; k < 5; k++) STR.push(mkStrand(a, Math.floor(rr() * n), false, rr));
-  var ca = AGI[j.check]; for (i = 0; i < n; i++) STR.push(mkStrand(ca, i, false, rr, true));
+  for (a = 0; a < AGENTS.length; a++) {
+    for (i = 0; i < n; i++) {
+      for (k = 0; k < 4; k++) STR.push(mkStrand(a, i, k < 2, rr, a === 2));
+    }
+  }
   SGEO = new Float32Array(STR.length * STRN * 2 * 10);
   var idx = new Uint16Array(STR.length * (STRN - 1) * 6), q = 0;
   for (i = 0; i < STR.length; i++) for (k = 0; k < STRN - 1; k++) { var b = (i * STRN + k) * 2; idx[q++] = b; idx[q++] = b + 1; idx[q++] = b + 3; idx[q++] = b; idx[q++] = b + 3; idx[q++] = b + 2; }
@@ -1375,6 +1038,11 @@ function buildStrands() {
 }
 /* 光丝强度：0~1 是平时一直亮着的光束；超过 1 的部分是「开工激光」（白热芯 + 闪烁 + 高速光团） */
 function strandInt(s, k) {
+  if (orbitCue && live) {
+    if (orbitCue.role === AGENTS[s.a].id) return s.own ? 2.0 : .72;
+    return s.own ? .46 : .24;
+  }
+  if (live) return (SPS[s.a] && SPS[s.a].act > 0.9) ? (shortageFlags[s.c] ? 1.8 : 0.88) : (live.agents && live.agents[AGENTS[s.a].id] === "完成" ? 0.47 : 0.22);
   var base = s.own ? 0.5 : (s.chk ? 0.26 : 0.4);
   if (k === "spin") return s.own ? 1.65 : base;
   if (k === "weave") { var p = ST.prog[s.c], on = p > 0 && p < 1; if (s.own && on) return 2.0; return on ? 0.6 : base; }
@@ -1445,9 +1113,9 @@ function drawBeam(c, t) {
   for (i = 0; i < L.cards.length && i < j.secs.length; i++) {
     var p = ST.prog[i], on = PHASES[ST.ph] === "weave" && p > 0 && p < 1, chk = PHASES[ST.ph] === "verify";
     if (!on && !chk && PHASES[ST.ph] !== "spin") continue;
-    var cd = L.cards[i], cx = cd.x + cd.w / 2, a = AGI[j.secs[i].ag], rr = (on ? 80 : 50) * bs * (1 + 0.08 * Math.sin(t * 6 + i));
+    var cd = L.cards[i], cx = cd.x + cd.w / 2, a = i, rr = (on ? 80 : 50) * bs * (1 + 0.08 * Math.sin(t * 6 + i));
     var g3 = c.createRadialGradient(0, 0, 0, 0, 0, rr);
-    g3.addColorStop(0, "rgba(255,252,245," + (on ? 0.55 : 0.25) + ")"); g3.addColorStop(0.25, rgbA(TINT[a], on ? 0.45 : 0.2)); g3.addColorStop(1, rgbA(TINT[a], 0));
+    g3.addColorStop(0, "rgba(255,252,245," + (on ? 0.55 : 0.25) + ")"); g3.addColorStop(0.25, rgbA(partTint[a], on ? 0.45 : 0.2)); g3.addColorStop(1, rgbA(partTint[a], 0));
     c.save(); c.translate(cx, y); c.scale(1, 0.26); c.fillStyle = g3; c.beginPath(); c.arc(0, 0, rr, 0, TAU); c.fill(); c.restore();
   }
 }
@@ -1467,7 +1135,7 @@ function stepDrops(dt) {
     dropAcc[i] += dt * rate;
     while (dropAcc[i] >= 1) {
       dropAcc[i] -= 1;
-      if (DROPS.length < 180) DROPS.push({ i: i, jx: Math.random() - 0.5, t: 0, dur: 0.48 + Math.random() * 0.22, on: on, tg: on ? null : (p >= 1 ? randPoint(i) : curModel().anchors[i]) });
+      if (modelOnStage() && DROPS.length < 180) DROPS.push({ i: i, jx: Math.random() - 0.5, t: 0, dur: 0.48 + Math.random() * 0.22, on: on, tg: on ? null : (p >= 1 ? randPoint(i) : curModel().anchors[i]) });
     }
     var wgt = on ? 1.2 + 0.15 * Math.sin(now * 9 + i) : (p >= 1 ? 0.8 : 0.5);
     if (k === "unravel") wgt *= 1 - ST.dis;
@@ -1477,48 +1145,49 @@ function stepDrops(dt) {
     var pad = [-2.0 + 4.0 * (i + 0.5) / j.secs.length, 0, -0.78 + 0.12 * Math.sin(i * 2.1)], tgp = on ? frontPoint(i) : pad, hs = HSM[i];
     if (!hs || hs.job !== ST.job) hs = HSM[i] = { x: tgp[0], z: tgp[2], job: ST.job };
     var kk = Math.min(1, dt * 3.2); hs.x += (tgp[0] - hs.x) * kk; hs.z += (tgp[2] - hs.z) * kk;
-    HEADS[i] = { p: [hs.x, 0, hs.z], w: wgt, c: hex3(AGENTS[AGI[j.secs[i].ag]].c) };
+    HEADS[i] = { p: [hs.x, 0, hs.z], w: wgt, c: hex3(j.secs[i].c) };
   }
 }
 function drawDrops(c, dt) {
+  if (!modelOnStage()) return;
   var j = job(), bs = Math.max(0.5, L.bs), ph = PHASES[ST.ph], i, k;
   for (i = 0; i < j.secs.length; i++) {
     var cd = L.cards[i]; if (!cd) continue;
     if (ph === "dispatch" && i >= ST.cardsOn) continue;
-    var a = AGI[j.secs[i].ag], p = ST.prog[i], tg = (ph === "weave" && p > 0 && p < 1) ? frontPoint(i) : curModel().anchors[i], sp = projStage(tg);
+    var a = i, p = ST.prog[i], tg = (ph === "weave" && p > 0 && p < 1) ? frontPoint(i) : curModel().anchors[i], sp = projStage(tg);
     var x0 = cd.x + cd.w / 2, y0 = cd.y + cd.h + 1;
-    var g = c.createLinearGradient(x0, y0, sp[0], sp[1]); g.addColorStop(0, hexA(AGENTS[a].c, 0.42)); g.addColorStop(1, hexA(AGENTS[a].c, 0.06));
+    var g = c.createLinearGradient(x0, y0, sp[0], sp[1]); g.addColorStop(0, hexA(j.secs[a].c, 0.42)); g.addColorStop(1, hexA(j.secs[a].c, 0.06));
     c.strokeStyle = g; c.lineWidth = 0.9 * bs; c.beginPath(); c.moveTo(x0, y0 + 9 * bs); c.lineTo(sp[0], sp[1]); c.stroke();
-    var gd0 = c.createRadialGradient(x0, y0 + 9 * bs, 0, x0, y0 + 9 * bs, 9 * bs); gd0.addColorStop(0, "rgba(255,252,245,0.95)"); gd0.addColorStop(0.3, rgbA(TINT[a], 0.55)); gd0.addColorStop(1, hexA(AGENTS[a].c, 0));
+    var gd0 = c.createRadialGradient(x0, y0 + 9 * bs, 0, x0, y0 + 9 * bs, 9 * bs); gd0.addColorStop(0, "rgba(255,252,245,0.95)"); gd0.addColorStop(0.3, rgbA(partTint[a], 0.55)); gd0.addColorStop(1, hexA(j.secs[a].c, 0));
     c.fillStyle = gd0; c.beginPath(); c.arc(x0, y0 + 9 * bs, 9 * bs, 0, TAU); c.fill();
     if (!L.narrow) {
       var an = Math.atan2(sp[1] - y0, sp[0] - x0);
       c.save(); c.translate(x0, y0 + 9 * bs); c.rotate(an); c.globalCompositeOperation = "source-over";
-      c.font = "500 " + Math.round(7.5 * bs) + "px JetBrains Mono, ui-monospace, monospace"; c.fillStyle = hexA(AGENTS[a].c, 0.75);
+      c.font = "500 " + Math.round(7.5 * bs) + "px JetBrains Mono, ui-monospace, monospace"; c.fillStyle = hexA(j.secs[a].c, 0.75);
       c.fillText(j.secs[i].en, 14 * bs, -4 * bs); c.restore();
     }
   }
   for (k = DROPS.length - 1; k >= 0; k--) {
     var d = DROPS[k], cd2 = L.cards[d.i]; if (!cd2 || d.i >= j.secs.length) { DROPS.splice(k, 1); continue; }
     d.t += dt / d.dur;
-    var ag = AGI[j.secs[d.i].ag], e = projStage(d.on ? frontPoint(d.i) : d.tg);
+    var ag = d.i, e = projStage(d.on ? frontPoint(d.i) : d.tg);
     var X0 = cd2.x + cd2.w * (0.5 + d.jx * 0.04), Y0 = cd2.y + cd2.h + 9 * bs;
     if (d.t >= 1) { DROPS.splice(k, 1); if (SPL.length < 140) SPL.push({ x: e[0], y: e[1], t: 0, a: ag, big: d.on }); continue; }
     var tt = d.t, yy = Y0 + (e[1] - Y0) * tt * tt, xx = X0 + (e[0] - X0) * (tt * tt * (3 - 2 * tt));
     var t2 = Math.max(0, tt - 0.1), y2 = Y0 + (e[1] - Y0) * t2 * t2, x2 = X0 + (e[0] - X0) * (t2 * t2 * (3 - 2 * t2));
-    var gd = c.createLinearGradient(x2, y2, xx, yy); gd.addColorStop(0, hexA(AGENTS[ag].c, 0)); gd.addColorStop(1, rgbA(TINT[ag], 0.9));
+    var gd = c.createLinearGradient(x2, y2, xx, yy); gd.addColorStop(0, hexA(j.secs[ag].c, 0)); gd.addColorStop(1, rgbA(partTint[ag], 0.9));
     c.strokeStyle = gd; c.lineWidth = 1.8 * bs; c.beginPath(); c.moveTo(x2, y2); c.lineTo(xx, yy); c.stroke();
     var r = (d.on ? 5.5 : 4) * bs, gh = c.createRadialGradient(xx, yy, 0, xx, yy, r);
-    gh.addColorStop(0, "rgba(255,252,245,0.95)"); gh.addColorStop(0.3, rgbA(TINT[ag], 0.6)); gh.addColorStop(1, hexA(AGENTS[ag].c, 0));
+    gh.addColorStop(0, "rgba(255,252,245,0.95)"); gh.addColorStop(0.3, rgbA(partTint[ag], 0.6)); gh.addColorStop(1, hexA(j.secs[ag].c, 0));
     c.fillStyle = gh; c.beginPath(); c.arc(xx, yy, r, 0, TAU); c.fill();
   }
   for (k = SPL.length - 1; k >= 0; k--) {
     var s = SPL[k]; s.t += dt / (s.big ? 0.55 : 0.45);
     if (s.t >= 1) { SPL.splice(k, 1); continue; }
     var rr = (3 + (s.big ? 17 : 10) * s.t) * bs, al = 1 - s.t;
-    c.strokeStyle = rgbA(TINT[s.a], 0.85 * al); c.lineWidth = 1.2 * bs;
+    c.strokeStyle = rgbA(partTint[s.a], 0.85 * al); c.lineWidth = 1.2 * bs;
     c.beginPath(); c.ellipse(s.x, s.y, rr, rr * 0.36, 0, 0, TAU); c.stroke();
-    if (s.t < 0.3) { var gs2 = c.createRadialGradient(s.x, s.y, 0, s.x, s.y, 13 * bs); gs2.addColorStop(0, "rgba(255,250,240," + (0.9 * (1 - s.t / 0.3)) + ")"); gs2.addColorStop(1, hexA(AGENTS[s.a].c, 0)); c.fillStyle = gs2; c.beginPath(); c.arc(s.x, s.y, 13 * bs, 0, TAU); c.fill(); }
+    if (s.t < 0.3) { var gs2 = c.createRadialGradient(s.x, s.y, 0, s.x, s.y, 13 * bs); gs2.addColorStop(0, "rgba(255,250,240," + (0.9 * (1 - s.t / 0.3)) + ")"); gs2.addColorStop(1, hexA(j.secs[s.a].c, 0)); c.fillStyle = gs2; c.beginPath(); c.arc(s.x, s.y, 13 * bs, 0, TAU); c.fill(); }
   }
 }
 /* 薄板中央的小字（参考视频里的 STATE 标注） */
@@ -1526,8 +1195,8 @@ function drawStateLabel(c) {
   if (L.narrow) return;
   var p = projStage([0, 0, 0.98]), bs = Math.max(0.5, L.bs);
   c.font = "500 " + Math.round(8.5 * bs) + "px JetBrains Mono, ui-monospace, monospace"; c.textAlign = "center";
-  c.fillStyle = "rgba(225,232,245,0.6)"; c.fillText("STATE  ·  ONE SHARED BUILD", p[0], p[1]);
-  c.fillStyle = "rgba(160,172,190,0.45)"; c.fillText(job().id + " · " + job().kindName, p[0], p[1] + 12 * bs);
+  c.fillStyle = "rgba(225,232,245,0.6)"; c.fillText(live ? (fanVisible ? "FAZEMES  /  齐套核对" : "FAZEMES  /  本轮依据") : "FAZEMES  /  装配演示", p[0], p[1]);
+  c.fillStyle = "rgba(160,172,190,0.45)"; c.fillText(live ? (live.orderCode || "") : job().title, p[0], p[1] + 12 * bs);
   c.textAlign = "left";
 }
 /* 织造台下沿的彩色漏光（参考视频里石板底部的紫 / 绿 / 粉色光） */
@@ -1554,15 +1223,45 @@ function drawSlabGlow(c, t) {
 function drawDrag(c, t) {
   var k = PHASES[ST.ph], bs = Math.max(0.5, L.bs), i;
   var hot = k === "dispatch" ? 1 : (k === "deliver" ? 0.8 : 0.35);
-  for (i = 0; i < 8; i++) {
+  for (i = 0; i < AGENTS.length; i++) {
     var sp = SPP[i]; if (!sp) continue;
-    var p0 = projObj(MASTER, PORT_TIP[i], 0);
+    var p0 = projObj(MASTER, PORT_TIP[[0, 2, 5, 7][i]], 0);
     var x0 = p0[0], y0 = p0[1], tx = sp.tx, ty = sp.ty;
     var qx = (x0 + tx) / 2, qy = (y0 + ty) / 2 + 16 * bs;
     c.setLineDash([]); c.lineWidth = 0.8 * bs; c.strokeStyle = "rgba(205,222,255,0.22)";
     c.beginPath(); c.moveTo(x0, y0); c.quadraticCurveTo(qx, qy, tx, ty); c.stroke();
     c.fillStyle = hexA(AGENTS[i].c, 0.85); c.fillRect(x0 - 1.5 * bs, y0 - 1.5 * bs, 3 * bs, 3 * bs);
-    if (RM) continue;
+    if (orbitCue && live) {
+      var active = orbitCue.role === AGENTS[i].id, dispatch = orbitCue.role === "dispatch";
+      var strength = active ? .83 : dispatch ? .32 : .13;
+      // Fan out from the existing transmitter sockets. Opposite travel shows the return channel.
+      for (var ray = -2; ray <= 2; ray++) {
+        c.lineWidth = (active && ray === 0 ? 2 : .9) * bs;
+        c.strokeStyle = ray === 0 && active ? "rgba(255,245,221,.84)" : rgbA(TINT[i], strength * .72);
+        var bend = ray * 12 * bs;
+        c.beginPath(); c.moveTo(x0 + ray * bs, y0); c.quadraticCurveTo(qx + bend, qy + bend, tx + ray * bs, ty); c.stroke();
+        if (!RM) {
+          c.setLineDash([7 * bs, (38 + 8 * Math.abs(ray)) * bs]);
+          c.lineDashOffset = (ray % 2 ? -1 : 1) * t * (active ? 135 : 60) + ray * 13;
+          c.strokeStyle = rgbA(TINT[i], strength); c.stroke(); c.setLineDash([]);
+        }
+      }
+      if (!gl) {
+        for (var strand = 0; strand < 9; strand++) {
+          var end = L.beamX0 + (L.beamX1 - L.beamX0) * (strand + .5) / 9;
+          c.strokeStyle = rgbA(TINT[i], active ? .86 : .22);
+          c.beginPath(); c.moveTo(sp.ex, sp.ey); c.quadraticCurveTo((sp.ex + end) / 2, L.beamY, end, L.beamY); c.stroke();
+        }
+      }
+      if (active && orbitCue.backtrack && i === 1 && SPP[2]) {
+        var from = SPP[2];
+        c.lineWidth = 2 * bs; c.strokeStyle = rgbA(TINT[i], .84);
+        if (!RM) { c.setLineDash([8 * bs, 9 * bs]); c.lineDashOffset = -t * 90; }
+        c.beginPath(); c.moveTo(from.tx, from.ty); c.quadraticCurveTo((from.tx + tx)/2, ty - 34 * bs, tx, ty); c.stroke(); c.setLineDash([]);
+      }
+      continue;
+    }
+    if (RM || (live && sp.act < 0.9)) continue;
     c.setLineDash([5 * bs, 60 * bs]);
     c.lineDashOffset = (k === "deliver" ? 1 : -1) * t * (k === "dispatch" ? 170 : 70) - i * 29;
     c.lineWidth = 1.8 * bs; c.strokeStyle = rgbA(TINT[i], 0.85 * hot);
@@ -1643,8 +1342,8 @@ function drawUnitFx(c, i, t) {
 }
 function drawMasterFx(c, t) {
   var bs = Math.max(0.5, L.bs), pulse = ST.pulse >= 0 ? Math.sin(Math.PI * ST.pulse) : 0;
-  for (var i = 0; i < 8; i++) {
-    var q = projObj(MASTER, PORT_TIP[i], 0), qr = (5 + 7 * MACT) * bs;
+  for (var i = 0; i < AGENTS.length; i++) {
+    var q = projObj(MASTER, PORT_TIP[[0, 2, 5, 7][i]], 0), qr = (5 + 7 * MACT) * bs;
     var gq = c.createRadialGradient(q[0], q[1], 0, q[0], q[1], qr);
     gq.addColorStop(0, rgbA(TINT[i], 0.7 * (0.4 + 0.6 * MACT))); gq.addColorStop(1, hexA(AGENTS[i].c, 0));
     c.fillStyle = gq; c.beginPath(); c.arc(q[0], q[1], qr, 0, TAU); c.fill();
@@ -1654,158 +1353,75 @@ function drawMasterFx(c, t) {
   g2.addColorStop(0, "rgba(230,242,255,0.8)"); g2.addColorStop(1, "rgba(150,200,255,0)");
   c.fillStyle = g2; c.beginPath(); c.arc(e[0], e[1], er, 0, TAU); c.fill();
 }
-function drawLeaders(c) {
-  if (!L.labs) return;
-  var bs = Math.max(0.5, L.bs), i;
-  for (i = 0; i < 8; i++) {
-    var r = L.slab[i], sp = SPP[i]; if (!r || !sp) continue;
-    var left = SLAB[i].side === "l", act = sp.act;
-    var lx = left ? r.x + r.w : r.x, ly = r.y + r.h / 2, ex = sp.x + (left ? -1 : 1) * L.uS * 0.55, ey = sp.y;
-    c.strokeStyle = hexA(AGENTS[i].c, 0.18 + act * 0.42); c.lineWidth = 1;
-    c.beginPath(); c.moveTo(lx, ly); c.lineTo(lx + (left ? 14 : -14) * bs, ly); c.lineTo(ex, ey); c.stroke();
-    c.fillStyle = hexA(AGENTS[i].c, 0.5 + act * 0.5); c.fillRect(ex - 1.5, ey - 1.5, 3, 3);
-  }
+var demoPhase = { dispatch: '准备装配', spin: '光丝定位', weave: '逐件成形', verify: '整机校验', deliver: '装配完成', unravel: '准备重播' };
+function setTxt(el, value) { if (el.textContent !== value) el.textContent = value; }
+function position(el, x, y) {
+  el.style.left = Math.round(x) + "px"; el.style.top = Math.round(y) + "px";
 }
-
-/* =====================================================================
-   11. DOM 刷新（低频）
-   ===================================================================== */
-var uiAcc = 0, beatAcc = 0, fpsAcc = 0, fpsN = 0, fpsVal = 60, histAcc = 0;
-var EYE = { dispatch: "下达任务 · DISPATCH", spin: "机组吐丝 · SPINNING", weave: "正在织网 · NOW WEAVING", verify: "全网校验 · VERIFYING", deliver: "交付卫星 · DELIVERING", unravel: "收网 · RELEASING" };
-var CAP = { dispatch: "DISPATCHING", spin: "SPINNING", weave: "WEAVING", verify: "VERIFYING", deliver: "RECEIVING", unravel: "LISTENING" };
-var CST = { dispatch: "下令中", spin: "吐丝中", weave: "织网中", verify: "校验中", deliver: "接收交付", unravel: "待命" };
-function stepIndex(k) { return k === "dispatch" ? 0 : k === "spin" ? 1 : k === "weave" ? 2 : k === "verify" ? 3 : 4; }
-function stepProgress(k) {
-  if (k === "deliver") return ST.t / (PD.deliver + PD.unravel);
-  if (k === "unravel") return (PD.deliver + ST.t) / (PD.deliver + PD.unravel);
-  return ST.t / phDur(k);
-}
-function setCls(o, cls, base) { if (o.cls !== cls) { o.cls = cls; o.el.className = base + (cls ? " " + cls : ""); } }
-function setTxt(el, s) { if (el.textContent !== s) el.textContent = s; }
-function updateUI(dt) {
-  var k = PHASES[ST.ph], j = job(), m = curModel(), n = j.secs.length, si = stepIndex(k), i;
-  stepEls.forEach(function (li, idx) {
-    var cls = idx < si ? "done" : idx === si ? "on" + (idx === 2 ? " hot" : "") : "";
-    if (li.className !== cls) li.className = cls;
-    li.querySelector("i").style.setProperty("--p", idx < si ? 1 : idx === si ? clamp(stepProgress(k), 0, 1).toFixed(3) : 0);
+var anchors = [[-.28,.12,.12],[-.07,.56,-.14],[-.12,1.08,-.25],[-.53,1.3,-.13],[.37,1.32,.08],[0,1.05,.16],[.53,.79,.12]];
+function updateUI() {
+  var k = PHASES[ST.ph], count = 0;
+  var master = $("master-label");
+  position(master, L.core.x, L.core.y + L.core.S * 1.16);
+  setTxt($("coreSt"), orbitCue && live ? orbitCue.title : live ? live.stage : demoPhase[k]);
+  AGENTS.forEach(function (agent, i) {
+    var node = agentEls[i], sp = SPP[i];
+    if (sp) position(node.el, sp.x, sp.y + L.uS * .70);
+    var status = spiderState(i).st;
+    setTxt(node.state, "子 Agent · " + status);
+    node.el.classList.toggle("active", status === "运行中");
+    node.el.classList.toggle("waiting", !!orbitCue && status === "待命");
   });
-  setTxt($("coreCap"), host.hasAttribute("data-record") ? "REPLAY" : CAP[k]);
-  setTxt($("coreSt"), host.hasAttribute("data-record") ? "回放" : CST[k]);
-  setTxt($("codeMeta"), j.id + " · " + k.toUpperCase());
-  var doneN = 0, knots = 0, startedN = 0;
-  for (i = 0; i < n; i++) { if (ST.prog[i] >= 1) doneN++; if (ST.prog[i] > 0) startedN++; knots += ST.prog[i] * m.secCount[i]; }
-  if (k === "unravel") { doneN = n; knots = m.n; }
-  var lineKnots = m.secCount.reduce(function (sum, count) { return sum + count; }, 0);
-  var jp = k === "unravel" ? 1 : clamp(knots / lineKnots, 0, 1);
-  setTxt($("pjPct"), Math.round(jp * 100) + "%");
-  $("pjBar").style.width = (jp * 100).toFixed(1) + "%";
-  $("mSilk").innerHTML = fmt(knots * 0.41) + "<small>m</small>";
-  setTxt($("mKnot"), fmt(knots));
-  setTxt($("mSec"), doneN + "/" + n);
-  setTxt($("mEl"), mmss((now - ST.jobT0)));
-  setTxt($("cQ"), String(k === "dispatch" ? n - ST.cardsOn + 3 : k === "weave" ? n - startedN : 0));
-  $("cHb").innerHTML = (0.8 + 0.06 * Math.sin(now * 0.7) + Math.random() * 0.02).toFixed(2) + "<small>Hz</small>";
-  $("cTen").innerHTML = (ST.tension * 1.8 + Math.random() * 0.04).toFixed(2) + "<small>kN</small>";
-  for (i = 0; i < cardEls.length; i++) {
-    var ce = cardEls[i], se = secEls[i], p = ST.prog[i], on = k === "weave" && p > 0 && p < 1, dn = p >= 1 || k === "unravel";
-    var vis = k !== "dispatch" || i < ST.cardsOn;
-    var cls = (!vis ? "idle" : on ? "on" : dn ? "done" : "") + (ST.focus === i ? " focus" : "");
-    setCls(ce, cls, "lc");
-    var pc = dn ? 100 : Math.round(p * 100);
-    setTxt(ce.p, (k === "verify" && dn) ? "✓ OK" : pc + "%");
-    ce.bar.style.width = pc + "%";
-    setCls(se, (on ? "on" : dn ? "done" : "") + (ST.focus === i ? " focus" : ""), "sr");
-    setTxt(se.p, pc + "%");
-    se.bar.style.width = pc + "%";
-  }
-  for (i = 0; i < 8; i++) {
-    var st = SPS[i] || spiderState(i), g = SW[i], sl = SLAB[i], a = AGENTS[i];
-    var tgtRate = st.act * (3.2 + Math.random() * 1.8);
-    g.rate += (tgtRate - g.rate) * Math.min(1, dt * 6) + (Math.random() - 0.5) * 0.35 * st.act;
-    g.rate = Math.max(0.05, g.rate);
-    var cls2 = st.act >= 0.9 ? "on" : (st.en === "DONE" ? "done" : "");
-    setCls(g, cls2, "sw");
-    var task = st.sec >= 0 ? j.secs[st.sec].task : (st.en === "VERIFY" || st.en === "PATROL" ? "全网巡检 · " + j.title : g.lastBeat);
-    setTxt(g.t, task);
-    setTxt(g.tag, st.st + " " + st.en);
-    g.bar.style.width = clamp(g.rate / 6, 0.02, 1) * 100 + "%";
-    setTxt(g.v, g.rate.toFixed(1));
-    setCls(sl, st.act >= 0.9 ? "on" : "", "slab " + sl.side);
-    setTxt(sl.t, st.sec >= 0 ? j.secs[st.sec].n + " · " + st.st : st.st + " · " + a.role);
-    setTxt(sl.k, st.en + " · " + g.rate.toFixed(1) + " m/s");
-  }
-  var act = 0; for (i = 0; i < 8; i++) if (SPS[i] && SPS[i].act >= 0.9) act++;
-  setTxt($("swMeta"), act + " WEAVING · 8 ONLINE");
-  setTxt($("sSilk"), TEL.silk.toFixed(2)); setTxt($("sKnot"), fmt(TEL.knots));
-  setTxt($("sbDel"), fmt(TEL.deliv)); setTxt($("sbSilk"), TEL.silk.toFixed(2)); setTxt($("sbKnot"), fmt(TEL.knots));
-  setTxt($("clock"), hms());
-  renderHeat();
-  setTxt($("mCap"), EYE[k] + " · " + j.title); setTxt($("mJob"), j.id); setTxt($("mProg"), doneN + " / " + n); setTxt($("mDel"), fmt(TEL.deliv));
-}
-
-/* 03 光丝活动：8 台织机 × 最近 30 秒（每格 2.5s）的喷射强度热力格，最右一列是 NOW（与神经星环同款） */
-var HEATN = 12, HEAT_SLOT = 2.5, heatAcc = 0, heatCv = $("heat"), heatX = heatCv ? heatCv.getContext("2d") : null;
-var HEAT = AGENTS.map(function () { var r = [], c; for (c = 0; c < HEATN; c++) r.push(Math.random() < 0.25 ? Math.random() * 0.12 : 0.3 + Math.random() * 0.7); return r; });
-var heatCur = AGENTS.map(function () { return 0; });
-function stepHeat(dt) {
-  var i;
-  for (i = 0; i < AGENTS.length; i++) { var st = SPS[i]; heatCur[i] += dt * (st ? (st.act >= 0.9 ? 1 : st.act * 0.75) : 0.2) * (0.7 + Math.random() * 0.6); }
-  heatAcc += dt;
-  if (heatAcc >= HEAT_SLOT) { for (i = 0; i < AGENTS.length; i++) { HEAT[i].push(clamp(heatCur[i] / HEAT_SLOT, 0, 1)); HEAT[i].shift(); heatCur[i] = 0; } heatAcc = 0; }
-}
-function heatCol(v) {
-  if (v < 0.05) return "rgba(186,212,240,0.05)";
-  var k = clamp(v, 0, 1);
-  return "rgba(" + Math.round(30 + 136 * k) + "," + Math.round(70 + 171 * k) + "," + Math.round(100 + 155 * k) + "," + (0.22 + 0.68 * k).toFixed(2) + ")";
-}
-function renderHeat() {
-  if (!heatX || L.narrow) return;
-  var w = heatCv.clientWidth, h = heatCv.clientHeight; if (w < 4 || h < 4) return;
-  var kx = clamp((window.devicePixelRatio || 1) * L.bs, 1, 3), bw = Math.round(w * kx), bh = Math.round(h * kx);
-  if (heatCv.width !== bw || heatCv.height !== bh) { heatCv.width = bw; heatCv.height = bh; }
-  var x = heatX, lw = 84, cols = HEATN + 1, cw = (w - lw - 2) / cols, rows = AGENTS.length, rh = (h - 18) / rows, r, c;
-  x.setTransform(kx, 0, 0, kx, 0, 0); x.clearRect(0, 0, w, h);
-  x.textBaseline = "middle"; x.textAlign = "left";
-  for (r = 0; r < rows; r++) {
-    var y = r * rh, st = SPS[r], on = st && st.act >= 0.9;
-    x.font = "700 9.5px JetBrains Mono, ui-monospace, monospace";
-    x.fillStyle = on ? AGENTS[r].c : hexA(AGENTS[r].c, 0.72);
-    x.fillText(AGENTS[r].id.toUpperCase(), 0, y + rh / 2);
-    for (c = 0; c < cols; c++) {
-      var v = c < HEATN ? HEAT[r][c] : heatCur[r] / Math.max(0.35, heatAcc);
-      x.fillStyle = heatCol(v);
-      x.fillRect(lw + c * cw + 1, y + 1.5, cw - 3, rh - 3);
+  var lanes = [[], []];
+  cardEls.forEach(function (card, i) {
+    var p = ST.prog[i] || 0, row = live && live.parts && live.parts[i];
+    if (p >= 1) count++;
+    var label = live ? (row ? row.label : "待核对") : p >= 1 ? "成形" : p > 0 ? Math.round(p * 100) + "%" : "待装配";
+    setTxt(card.status, label); card.el.dataset.state = row ? row.state : "";
+    var pin = pinEls[i];
+    var marked = !!(live && live.display && live.display.focusParts && live.display.focusParts.indexOf(i) >= 0);
+    pin.hidden = !modelOnStage() || (!marked && (!row || row.state !== "short"));
+    if (!pin.hidden) {
+      pin.classList.toggle("inspect", marked);
+      var caption = marked ? (live.display.kind === "assembly" ? "安装位置" : "观察位置") : row.label;
+      setTxt(pin, (marked ? fanProject.secs[i].n : row.name || fanProject.secs[i].n) + " · " + caption);
+      pin.dataset.part = i;
+      var a = anchors[i], point = projStage(a);
+      var side = (i === 2 || i % 2 === 1) ? -1 : 1;
+      var w = pin.offsetWidth, h = pin.offsetHeight;
+      var x = L.stg.x + side * (L.stg.S * 0.92 + w * 0.45);
+      x = splitDeck ? clamp(x, L.beamX0 + (L.beamX1 - L.beamX0) * .55 + w / 2, L.beamX1 - w / 2) :
+        clamp(x, w / 2 + 4, L.w - w / 2 - 4);
+      lanes[side < 0 ? 0 : 1].push({ el:pin, point:point, x:x, y:point[1], h:h, marked:marked });
     }
-  }
-  x.strokeStyle = "rgba(166,241,255,0.8)"; x.lineWidth = 1;
-  x.strokeRect(lw + HEATN * cw + 0.5, 0.5, cw - 2, rows * rh - 1);
-  x.font = "500 8.5px JetBrains Mono, ui-monospace, monospace"; x.fillStyle = "#6b7685";
-  x.fillText("-30s", lw, h - 7);
-  x.fillText("强度 / 满载", lw + cw * 4.2, h - 7);
-  x.textAlign = "right"; x.fillStyle = "#a6f1ff"; x.fillText("NOW", w - 2, h - 7); x.textAlign = "left";
-}
-function pushHist() {
-  for (var i = 0; i < SW.length; i++) {
-    var g = SW[i], st = SPS[i] || { act: 0.3 };
-    g.hv.push(clamp(st.act * (0.3 + Math.random() * 0.8) + Math.random() * 0.12, 0.04, 1));
-    if (g.hv.length > g.hist.length) g.hv.shift();
-    var off = g.hist.length - g.hv.length;
-    for (var b = 0; b < g.hist.length; b++) { var v = b >= off ? g.hv[b - off] : 0; g.hist[b].style.height = Math.max(6, Math.round(v * 100)) + "%"; }
-  }
-}
-function heartbeat() {
-  var i = Math.floor(Math.random() * AGENTS.length), a = AGENTS[i], b = a.beat[Math.floor(Math.random() * a.beat.length)];
-  SW[i].lastBeat = b;
-  log(i, ["SYNC", "FETCH", "KNOT", "CHECK", "EMBED"][Math.floor(Math.random() * 5)], b);
+  });
+  // Route each callout from its 3D anchor to an independent, clickable label.
+  lanes.forEach(function (lane) {
+    var edge = L.beamY + (L.narrow ? 10 : 70 * L.bs);
+    lane.sort(function (a, b) { return a.y - b.y; });
+    lane.forEach(function (tag) {
+      tag.y = Math.max(tag.y, edge + tag.h / 2);
+      edge = tag.y + tag.h / 2 + 5;
+    });
+    edge = L.h - (L.narrow ? 58 : 26);
+    for (var i = lane.length - 1; i >= 0; i--) {
+      var tag = lane[i];
+      tag.y = Math.min(tag.y, edge - tag.h / 2);
+      edge = tag.y - tag.h / 2 - 5;
+      position(tag.el, tag.x, tag.y);
+      fx.save(); fx.strokeStyle = tag.marked ? "#8adbd4" : "rgba(254,164,92,.85)"; fx.lineWidth = 1;
+      if (tag.marked) { fx.setLineDash([4,3]); fx.beginPath(); fx.arc(tag.point[0],tag.point[1],8,0,TAU); fx.stroke(); }
+      fx.beginPath(); fx.moveTo(tag.point[0],tag.point[1]); fx.lineTo(tag.x,tag.y); fx.stroke();
+      fx.fillStyle=tag.marked ? "#a0f1e5" : "#ffad6f"; fx.beginPath(); fx.arc(tag.point[0],tag.point[1],2.7,0,TAU); fx.fill(); fx.restore();
+    }
+  });
+  setTxt($("assembly-state"), orbitCue && !modelOnly ? orbitCue.title : live ? (live.display ? live.display.title : fanVisible ? "本单齐套装配示意" : "本轮查询依据") : demoPhase[k] + " · " + count + " / 7");
 }
 
-/* =====================================================================
-   12. WebGL 绘制
-   ===================================================================== */
 var progArr = new Float32Array(8), colArr = new Float32Array(24), hpArr = new Float32Array(24), hcArr = new Float32Array(24);
 function syncCols() {
   var j = job();
-  for (var i = 0; i < 8; i++) { var col = i < j.secs.length ? hex3(AGENTS[AGI[j.secs[i].ag]].c) : [1, 1, 1]; colArr[i * 3] = col[0]; colArr[i * 3 + 1] = col[1]; colArr[i * 3 + 2] = col[2]; }
+  for (var i = 0; i < 8; i++) { var col = i < j.secs.length ? hex3(j.secs[i].c) : [1, 1, 1]; colArr[i * 3] = col[0]; colArr[i * 3 + 1] = col[1]; colArr[i * 3 + 2] = col[2]; }
 }
 function drawFanSurfaces(time) {
   var solid = SOLIDS[ST.job];
@@ -1820,6 +1436,7 @@ function drawFanSurfaces(time) {
   gl.uniformMatrix3fv(U(shader, "uView"), false, VIEW);
   gl.uniform1fv(U(shader, "uProg[0]"), progArr);
   gl.uniform1fv(U(shader, "uShortage[0]"), shortageFlags);
+  gl.uniform3fv(U(shader, "uOffset[0]"), offsets);
   gl.uniform3fv(U(shader, "uCol[0]"), colArr);
   gl.uniform1f(U(shader, "uTime"), time);
   gl.uniform1f(U(shader, "uVerify"), ST.verY);
@@ -1866,6 +1483,7 @@ function drawGL(t) {
   gl.uniform1f(U(P, "uTime"), t); gl.uniform1f(U(P, "uDpr"), dpr); gl.uniform1f(U(P, "uPt"), L.narrow ? 2.0 : 1.85);
   gl.uniform1f(U(P, "uVerify"), ST.verY); gl.uniform1f(U(P, "uDel"), ST.del); gl.uniform1f(U(P, "uDis"), ST.dis);
   gl.uniform1f(U(P, "uFocus"), ST.focus); gl.uniform1f(U(P, "uFade"), 1);
+  gl.uniform1f(U(P, "uKitting"), live && !live.display ? 1 : 0); gl.uniform1fv(U(P, "uShortage[0]"), shortageFlags); gl.uniform3fv(U(P, "uOffset[0]"), offsets);
   gl.uniform1fv(U(P, "uProg[0]"), progArr); gl.uniform3fv(U(P, "uCol[0]"), colArr);
   gl.uniform3fv(U(P, "uHP[0]"), hpArr); gl.uniform3fv(U(P, "uHC[0]"), hcArr);
   gl.uniform1f(U(P, "uGround"), 1);
@@ -1876,6 +1494,7 @@ function drawGL(t) {
   gl.uniform1f(U(P, "uGround"), 2);
   attr(P, "aP", B.cP, 3); attr(P, "aM", B.cM, 4); gl.drawArrays(gl.POINTS, 0, CLOUD.n);
   unbindAll();
+  if (modelOnStage()) {
   drawFanSurfaces(t);
   gl.useProgram(P);
   gl.uniform1f(U(P, "uGround"), 0);
@@ -1883,6 +1502,7 @@ function drawGL(t) {
   gl.uniform1f(U(P, "uLine"), 1); gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, B.mI); gl.drawElements(gl.LINES, m.ni, gl.UNSIGNED_SHORT, 0);
   gl.uniform1f(U(P, "uLine"), 0); gl.drawArrays(gl.POINTS, 0, m.n);
   unbindAll();
+  }
   /* 喷射光丝 */
   drawStrandsGL(t);
   /* 机械 */
@@ -1929,7 +1549,8 @@ function frame(ts) {
   now += sdt;
   if (!dragging) { yawDrag += yawVel * dt; pitchDrag += pitchVel * dt; yawVel *= Math.pow(0.04, dt); pitchVel *= Math.pow(0.04, dt); }
   VIEW = viewMat(dt);
-  if (!inspection) updateState(sdt);
+  if (live) animateMaterials(sdt);
+  else if (!inspection) updateState(sdt);
   computeSpiders(now);
   updateMachines(dt, now);
   var c = fx, d = L.dpr;
@@ -1949,30 +1570,58 @@ function frame(ts) {
   drawDeliverBeam(c, now);
   c.globalCompositeOperation = "source-over";
   c.globalCompositeOperation = "lighter";
-  for (var i = 0; i < 8; i++) drawUnitFx(c, i, now);
+  for (var i = 0; i < AGENTS.length; i++) drawUnitFx(c, i, now);
   drawMasterFx(c, now);
   c.globalCompositeOperation = "source-over";
-  drawLeaders(c);
   if (gl) drawGL(now);
-  codeStep(dt);
-  stepHeat(sdt);
-  uiAcc += dt; beatAcc += dt; fpsAcc += dt; fpsN++; histAcc += dt;
-  if (uiAcc > 0.12) { updateUI(uiAcc); uiAcc = 0; }
-  if (histAcc > 0.14) { pushHist(); histAcc = 0; }
-  if (beatAcc > 1.5) { beatAcc = Math.random() * 0.6; if (PHASES[ST.ph] !== "weave" || Math.random() < 0.5) heartbeat(); }
-  if (fpsAcc > 0.5) { fpsVal = Math.round(fpsN / fpsAcc); fpsAcc = 0; fpsN = 0; setTxt($("sFps"), String(fpsVal)); }
+  updateUI();
 }
 
 /* =====================================================================
    14. 交互：拖动 / 滚轮 / 双击 / 视角 / 全屏 / 点织位聚焦
    ===================================================================== */
 var inspection = false;
-var shortageFlags = new Float32Array(8);
-host.setFanShortages = function (parts) {
-  shortageFlags.fill(0);
-  parts.forEach(function (index) {
-    if (Number.isInteger(index) && index >= 0 && index < job().secs.length) shortageFlags[index] = 1;
+// Only the latest kitting snapshot can set material state. Visual easing never advances a work order.
+host.applyRun = function (run) {
+  var changed = !live || liveId !== run.id;
+  live = run; liveId = run.id; inspection = false; fanVisible = run.showFan;
+  if (changed) {
+    ST.prog.fill(0); offsets.fill(0); ST.focus = -1;
+    DROPS.length = 0; SPL.length = 0; ST.jobT0 = now;
+  }
+  ST.ph = 2; ST.grow = 1; ST.desc = 1; ST.verY = -9;
+  ST.dis = 0; ST.del = 0; ST.cardsOn = job().secs.length;
+  var mounted = [];
+  if (run.display) {
+    var count = run.display.assembledParts == null ? job().secs.length : run.display.assembledParts;
+    shortageFlags.fill(0); targets.fill(0); offsets.fill(0); targetOffsets.fill(0);
+    for (var part = 0; part < job().secs.length; part++) ST.prog[part] = fanVisible && part < count ? 1 : 0;
+  } else job().secs.forEach(function (sec, i) {
+    var row = run.parts && run.parts[i], ready = row && row.state === "ready";
+    shortageFlags[i] = row && row.state === "short" ? 1 : 0;
+    if (ready && (changed || !targets[i])) revealAt[i] = now + (RM ? 0 : i * 0.14);
+    targets[i] = ready ? 1 : 0;
+    if (!ready) ST.prog[i] = 0;
+    mounted[i] = ready && sec.needs.every(function (index) { return mounted[index]; });
+    var waiting = ready && !mounted[i];
+    targetOffsets[i * 3] = waiting ? (0.32 + 0.13 * i) : 0;
+    targetOffsets[i * 3 + 1] = waiting ? 0.05 : 0;
+    targetOffsets[i * 3 + 2] = waiting ? 0.09 * i : 0;
+    if (changed || !ready || (waiting && ST.prog[i] === 0)) offsets.set(targetOffsets.subarray(i*3,i*3+3),i*3);
   });
+  host.toggleAttribute("data-list-only", !fanVisible);
+  if (deckOn && splitDeck !== wantsSplitDeck()) layout();
+  syncButtons(); computeSpiders(now); updateUI();
+};
+function animateMaterials(dt) {
+  for (var i = 0; i < job().secs.length; i++) {
+    if (targets[i] && now >= revealAt[i]) ST.prog[i] = Math.min(1, ST.prog[i] + dt * (0.62 - i * 0.045));
+    for (var j = i*3; j < i*3+3; j++) offsets[j] += (targetOffsets[j] - offsets[j]) * Math.min(1, dt*4);
+  }
+}
+host.focusPart = function (i) {
+  var marks = live && live.display && live.display.focusParts;
+  ST.focus = Number.isInteger(i) && i >= 0 ? i : marks && marks.length === 1 ? marks[0] : -1;
 };
 function holdProgress(fraction, part) {
   inspection = true;
@@ -1993,8 +1642,17 @@ function holdProgress(fraction, part) {
 }
 host.showFanProgress = holdProgress;
 host.layoutFan = layout;
+host.setFlowCue = function (cue) { orbitCue = cue; };
+host.setFlowDeck = function (on, onlyModel) {
+  var changed = deckOn !== on || modelOnly !== onlyModel;
+  deckOn = on; modelOnly = onlyModel;
+  host.toggleAttribute("data-deck", deckOn);
+  host.toggleAttribute("data-model-only", modelOnly);
+  if (changed) layout();
+};
 host.startFanAssembly = function () {
-  inspection = false; ST.focus = -1; ST.dis = 0; ST.del = 0; nextJob(); syncButtons();
+  live = null; liveId = null; fanVisible = true; shortageFlags.fill(0); offsets.fill(0); targets.fill(0);
+  host.removeAttribute("data-list-only"); inspection = false; ST.focus = -1; ST.dis = 0; ST.del = 0; nextJob(); syncButtons();
 };
 
 var dragging = false, lastX = 0, lastY = 0;
@@ -2010,13 +1668,11 @@ glc.addEventListener("pointerup", endDrag); glc.addEventListener("pointercancel"
 function resetView() { yawDrag = 0; pitchDrag = 0; yawVel = 0; pitchVel = 0; zoom = 1; }
 glc.addEventListener("dblclick", resetView);
 glc.addEventListener("wheel", function (e) { e.preventDefault(); zoom = clamp(zoom * Math.exp(-e.deltaY * 0.0012), 0.7, 1.4); }, { passive: false });
-function focusSec(i) { ST.focus = i; ST.focusT = 6; host.dispatchEvent(new CustomEvent("fan-part", { detail: i })); }
-loomBox.addEventListener("click", function (e) { var b = e.target.closest(".lc"); if (b) focusSec(+b.getAttribute("data-s")); });
-secsBox.addEventListener("click", function (e) { var b = e.target.closest(".sr"); if (b) focusSec(+b.getAttribute("data-s")); });
 function syncButtons() {
-  SR.querySelectorAll('[data-act="inspect"]').forEach(function (b) { b.textContent = inspection ? "重播织造" : "看完整风扇"; });
+  SR.querySelectorAll('[data-act="inspect"]').forEach(function (b) { b.textContent = inspection ? "重播装配" : "看完整风扇"; });
   [].forEach.call(SR.querySelectorAll('[data-f="mode"]'), function (b) { b.textContent = MODES[modeI].zh; }); }
 function act(name) {
+  if (live && name === "inspect") return;
   if (name === "mode") { modeI = (modeI + 1) % MODES.length; yawDrag = 0; pitchDrag = 0; yawVel = 0; pitchVel = 0; }
   else if (name === "inspect") { if (inspection) host.startFanAssembly(); else holdProgress(1, -1); }
   else if (name === "full") {
@@ -2038,26 +1694,11 @@ document.addEventListener("keydown", function (e) {
 });
 
 /* ---------- 开场 ---------- */
-renderDeliv();
 planJob(); syncCols(); buildJobDom(); buildStrands(); uploadModel();
-ST.jobT0 = 0;
-enterPhase();
-for (var w = 0; w < 4; w++) heartbeat();
-setTxt($("clock"), hms()); setInterval(function () { if (!host.hidden) setTxt($("clock"), hms()); }, 1000);
+ST.jobT0 = 0; enterPhase();
 syncButtons();
-var roT = 0;
-new ResizeObserver(function () { clearTimeout(roT); roT = setTimeout(layout, 60); }).observe(host);
+new ResizeObserver(layout).observe(host);
 if (document.fonts && document.fonts.ready) document.fonts.ready.then(function () { layout(); });
 layout();
-for (var w2 = 0; w2 < 24; w2++) pushHist();
-// 调试用：document.getElementById('host-works').__jump('weave') / .__next() / .__ff(5)
-host.__jump = function (phase) {
-  var i = PHASES.indexOf(phase), n = job().secs.length, q; if (i < 0) return;
-  for (q = 0; q < n; q++) { var dn = i > 2; ST.prog[q] = dn ? 1 : 0; ST.doneF[q] = dn ? 1 : 0; ST.startF[q] = dn ? 1 : 0; }
-  ST.ph = i; ST.t = 0; ST.grow = 1; ST.desc = 1; enterPhase();
-};
-host.__next = function () { nextJob(); };
-host.__ff = function (sec) { for (var t = 0; t < sec; t += 0.05) { now += 0.05; updateState(0.05); computeSpiders(now); updateMachines(0.05, now); stepDrops(0.05); codeStep(0.05); } };
-host.__st = function () { var m = curModel(); return { job: job().id, phase: PHASES[ST.ph], t: ST.t, pts: m.n, idx: m.ni, ground: GROUND.n, mesh: MO.map(function (o) { return o.V.length / 3; }).join(","), prog: ST.prog.slice(), heads: HEADS.map(function (h) { return [+h.p[0].toFixed(2), +h.w.toFixed(2), +h.p[2].toFixed(2)]; }) }; };
 requestAnimationFrame(frame);
 }

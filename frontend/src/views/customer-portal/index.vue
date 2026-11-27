@@ -8,6 +8,7 @@
       >
       <div v-if="account" class="portal-user"
         ><span>{{ account.clientName }} · {{ account.displayName }}</span
+        ><el-button plain @click="consultOpen = true">产品咨询</el-button
         ><el-button text @click="logout">退出登录</el-button></div
       >
       <a v-else href="/login" class="staff-entry">员工登录</a>
@@ -241,10 +242,20 @@
         ></template
       >
     </el-drawer>
+    <el-dialog
+      v-if="account && consultOpen"
+      v-model="consultOpen"
+      title="FazeMES 产品咨询"
+      fullscreen
+      destroy-on-close
+    >
+      <FanWorksWorkbench customer />
+    </el-dialog>
   </div>
 </template>
 
 <script setup lang="ts">
+import { defineAsyncComponent } from 'vue'
 import MesQuantityInput from '@/views/mes/components/MesQuantityInput.vue'
 import { minQuantity, quantityUnits, quantityText, sumQuantities } from '@/utils/mesQuantity'
 import { money } from '@/views/mes/cost/format'
@@ -262,6 +273,10 @@ import {
 } from '@/api/mes/portal'
 
 defineOptions({ name: 'CustomerPortal' })
+const FanWorksWorkbench = defineAsyncComponent(
+  () => import('@/views/mes/assistant/FanWorksWorkbench.vue')
+)
+const consultOpen = ref(false)
 type Tab = 'catalog' | 'requests' | 'orders'
 const account = ref<PortalIdentity | undefined>(readPortalSession()?.account)
 const loginForm = reactive<{ tenantId?: number; username: string; password: string }>({
@@ -367,6 +382,7 @@ async function login() {
   }
 }
 async function logout() {
+  consultOpen.value = false
   try {
     await CustomerPortalApi.logout()
   } catch (reason) {

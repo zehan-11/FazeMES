@@ -1,18 +1,23 @@
+const projectAgents = [
+  { id: 'parse', name: '问题解析 Agent', role: '识别问题、型号与查询范围', c: '#8cc8ff' },
+  { id: 'evidence', name: '证据检索 Agent', role: '检索知识、图谱、产品与业务记录', c: '#8fe3b9' },
+  { id: 'assess', name: '深度研判 Agent', role: '核对依据，定位部件与下一步', c: '#f2b872' },
+  { id: 'report', name: '报告生成 Agent', role: '汇总本轮答复、数据与引用，生成报告', c: '#b9a6ff' }
+]
 /* FazeMES table fan. The order of these parts is also the loom's section order. */
 const fanProject = {
   id: 'FAN-07',
   title: '台式电风扇 · 七部件装配',
   kind: 'fan',
   kindName: 'FAN / 电风扇',
-  check: 'review',
   secs: [
-    { n: '底座', en: 'BASE', task: '定位防滑底座', ag: 'builder' },
-    { n: '立柱', en: 'STAND', task: '锁紧立柱与支架', ag: 'data_ops' },
-    { n: '电机', en: 'MOTOR', task: '定位电机与转轴', ag: 'code_smith' },
-    { n: '后网罩', en: 'REAR', task: '固定后网罩', ag: 'scout' },
-    { n: '扇叶', en: 'BLADES', task: '装入三片弧形扇叶', ag: 'designer' },
-    { n: '锁帽', en: 'HUB', task: '旋紧叶轮锁帽', ag: 'research' },
-    { n: '前网罩', en: 'FRONT', task: '合拢防护网圈', ag: 'deploy' }
+    { n: '底座', en: 'BASE', task: '定位防滑底座', c: '#f2b872', needs: [] },
+    { n: '立柱', en: 'STAND', task: '锁紧立柱与支架', c: '#72d4d0', needs: [0] },
+    { n: '电机', en: 'MOTOR', task: '定位电机与转轴', c: '#8fe3b9', needs: [1] },
+    { n: '后网罩', en: 'REAR', task: '固定后网罩', c: '#d6df7c', needs: [2] },
+    { n: '扇叶', en: 'BLADES', task: '装入三片弧形扇叶', c: '#b9a6ff', needs: [2, 3] },
+    { n: '锁帽', en: 'HUB', task: '旋紧叶轮锁帽', c: '#8cc8ff', needs: [4] },
+    { n: '前网罩', en: 'FRONT', task: '合拢防护网圈', c: '#ff9f8c', needs: [3, 5] }
   ]
 }
 
