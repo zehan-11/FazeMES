@@ -58,15 +58,15 @@ defineExpose({ stop: camera.stop })
     <div class="capture-actions">
       <el-button
         :loading="state.loading"
-        :disabled="disabled || state.loading"
+        :disabled="!active || disabled || state.loading"
         :type="state.ready ? undefined : 'primary'"
         @click="startPreview"
         >开启摄像头</el-button
       >
-      <el-button type="primary" :disabled="!state.ready || disabled" @click="capture">{{
+      <el-button type="primary" :disabled="!active || !state.ready || disabled" @click="capture">{{
         captureLabel
       }}</el-button>
-      <el-button :disabled="disabled" @click="camera.stop()">关闭摄像头</el-button>
+      <el-button @click="camera.stop()">关闭摄像头</el-button>
     </div>
   </div>
 </template>

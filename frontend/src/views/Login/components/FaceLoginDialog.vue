@@ -22,9 +22,10 @@ const capture = async (image: string) => {
       emit('update:modelValue', false)
       emit('success', result)
     }
-  } catch {
+  } catch (cause) {
     if (current === generation)
-      error.value = '核验未通过：请确认已录入本人人脸、画面清晰，或使用密码登录。'
+      error.value =
+        cause instanceof Error ? cause.message : '核验未完成，可重新采集或使用密码登录。'
   } finally {
     if (current === generation) working.value = false
   }
@@ -69,7 +70,10 @@ onBeforeUnmount(() => {
     />
     <el-alert v-if="error" class="mt-16px" :title="error" type="error" :closable="false" />
     <p class="face-login-note"
-      >尚未录入时，请先密码登录，在 MES 系统 → 本人人脸登录中完成绑定。该实现不含硬件活体检测。</p
+      >首次使用请先密码登录，从右上角头像打开「人脸登录设置」。核验采用单人正脸，不含活体检测。</p
+    >
+    <template #footer
+      ><el-button @click="emit('update:modelValue', false)">返回密码登录</el-button></template
     >
   </el-dialog>
 </template>

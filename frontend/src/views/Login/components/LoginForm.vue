@@ -169,7 +169,7 @@ const iconLock = useIcon({ icon: 'ep:lock' })
 const formLogin = ref()
 const { validForm } = useFormValid(formLogin)
 const { setLoginState, getLoginState } = useLoginState()
-const { currentRoute, push } = useRouter()
+const { currentRoute, push, replace } = useRouter()
 const permissionStore = usePermissionStore()
 const redirect = ref<string>('')
 const loginLoading = ref(false)
@@ -228,14 +228,26 @@ const openFaceLogin = async () => {
     message.warning('请先填写需要核验的账号')
     return
   }
-  await getTenantId()
-  faceLoginOpen.value = true
+  try {
+    await getTenantId()
+    faceLoginOpen.value = true
+  } catch {
+    message.warning('无法确认租户，请检查租户名称或稍后重试')
+  }
 }
 const handleFaceLogin = async (result: TokenType) => {
-  authUtil.setToken(result)
+  const route = currentRoute.value
+  const requested = route.query.redirect
   const target =
-    redirect.value.startsWith('/') && !redirect.value.startsWith('//') ? redirect.value : '/'
-  await push(target)
+    typeof requested === 'string' && requested.startsWith('/') && !requested.startsWith('//')
+      ? requested
+      : '/'
+  // The shared guard uses the login page's redirect when choosing the employee landing page.
+  if (requested !== undefined && (target === '/' || target === '/index')) {
+    await replace({ path: route.path, query: { ...route.query, redirect: undefined } })
+  }
+  authUtil.setToken(result)
+  await push(target === '/index' ? '/' : target)
 }
 // 记住我
 const getLoginFormCache = () => {

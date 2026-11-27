@@ -17,9 +17,9 @@ public class FaceTemplateCipher {
     private final Path keyFile;
     private final SecureRandom random = new SecureRandom();
     public FaceTemplateCipher(@Value("${mes.face-auth.master-key-file:.runtime/face-auth/master.key}") String keyFile) { this.keyFile=Path.of(keyFile); }
-    private synchronized byte[] key() throws Exception {
-        Path parent=keyFile.toAbsolutePath().getParent(); Files.createDirectories(parent);
-        if(!Files.exists(keyFile)) {
+    private synchronized byte[] key(boolean create) throws Exception {
+        if(create && !Files.exists(keyFile)) {
+            Files.createDirectories(keyFile.toAbsolutePath().getParent());
             byte[] fresh=new byte[32]; random.nextBytes(fresh);
             try { Files.writeString(keyFile,Base64.getEncoder().encodeToString(fresh),StandardOpenOption.CREATE_NEW); }
             catch(FileAlreadyExistsException ignored) { }
@@ -35,7 +35,7 @@ public class FaceTemplateCipher {
             for(float[] v:vectors){ validate(v);for(float f:v)plain.putFloat(f); }
             byte[] iv=new byte[12];random.nextBytes(iv);
             Cipher cipher=Cipher.getInstance("AES/GCM/NoPadding");
-            cipher.init(Cipher.ENCRYPT_MODE,new SecretKeySpec(key(),"AES"),new GCMParameterSpec(128,iv));
+            cipher.init(Cipher.ENCRYPT_MODE,new SecretKeySpec(key(true),"AES"),new GCMParameterSpec(128,iv));
             cipher.updateAAD((tenant+":"+user).getBytes(StandardCharsets.UTF_8));
             byte[] sealed=cipher.doFinal(plain.array());
             return Base64.getEncoder().encodeToString(ByteBuffer.allocate(iv.length+sealed.length).put(iv).put(sealed).array());
@@ -46,7 +46,7 @@ public class FaceTemplateCipher {
             byte[] all=Base64.getDecoder().decode(encrypted);
             if(all.length<28||all.length>4096)throw new IllegalArgumentException();
             Cipher cipher=Cipher.getInstance("AES/GCM/NoPadding");
-            cipher.init(Cipher.DECRYPT_MODE,new SecretKeySpec(key(),"AES"),new GCMParameterSpec(128,Arrays.copyOf(all,12)));
+            cipher.init(Cipher.DECRYPT_MODE,new SecretKeySpec(key(false),"AES"),new GCMParameterSpec(128,Arrays.copyOf(all,12)));
             cipher.updateAAD((tenant+":"+user).getBytes(StandardCharsets.UTF_8));
             ByteBuffer plain=ByteBuffer.wrap(cipher.doFinal(Arrays.copyOfRange(all,12,all.length)));
             int count=plain.getInt();

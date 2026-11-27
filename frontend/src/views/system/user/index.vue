@@ -124,6 +124,9 @@
             :show-overflow-tooltip="true"
           />
           <el-table-column label="手机号码" align="center" prop="mobile" width="120" />
+          <el-table-column v-if="canManageFace" label="人脸绑定" min-width="108">
+            <template #default="{ row }">{{ faceStates[row.id] ? bindingLabels[faceStates[row.id].status] : '状态待刷新' }}</template>
+          </el-table-column>
           <el-table-column label="状态" key="status">
             <template #default="scope">
               <el-switch
@@ -158,12 +161,21 @@
                   v-hasPermi="[
                     'system:user:delete',
                     'system:user:update-password',
-                    'system:permission:assign-user-role'
+                    'system:permission:assign-user-role',
+                    'mes:face:manage'
                   ]"
                 >
                   <el-button type="primary" link><Icon icon="ep:d-arrow-right" /> 更多</el-button>
                   <template #dropdown>
                     <el-dropdown-menu>
+                      <el-dropdown-item v-if="canManageFace" command="suspend"
+                        :disabled="!faceStates[scope.row.id] || faceStates[scope.row.id].status === 'ADMIN_SUSPENDED'">
+                        停用刷脸
+                      </el-dropdown-item>
+                      <el-dropdown-item v-if="canManageFace" command="require-reenroll"
+                        :disabled="!faceStates[scope.row.id] || faceStates[scope.row.id].status === 'REENROLL_REQUIRED'">
+                        要求本人重录
+                      </el-dropdown-item>
                       <el-dropdown-item
                         command="handleDelete"
                         v-if="checkPermi(['system:user:delete'])"
@@ -214,6 +226,7 @@ import { dateFormatter } from '@/utils/formatTime'
 import download from '@/utils/download'
 import { CommonStatusEnum } from '@/utils/constants'
 import * as UserApi from '@/api/system/user'
+import { FaceApi, bindingLabels, type BindingStatus, type FaceDecision } from '@/api/mes/face'
 import UserForm from './UserForm.vue'
 import UserImportForm from './UserImportForm.vue'
 import UserAssignRoleForm from './UserAssignRoleForm.vue'
@@ -227,6 +240,9 @@ const { t } = useI18n() // 国际化
 const loading = ref(true) // 列表的加载中
 const total = ref(0) // 列表的总页数
 const list = ref([]) // 列表的数
+const faceStates = ref<Record<number, BindingStatus>>({})
+const canManageFace = computed(() => checkPermi(['system:user:query']) && checkPermi(['mes:face:manage']))
+let listGeneration = 0
 const queryParams = reactive({
   pageNo: 1,
   pageSize: 10,
@@ -240,13 +256,21 @@ const queryFormRef = ref() // 搜索的表单
 
 /** 查询列表 */
 const getList = async () => {
+  const generation = ++listGeneration
   loading.value = true
+  faceStates.value = {}
   try {
     const data = await UserApi.getUserPage(queryParams)
+    if (generation !== listGeneration) return
     list.value = data.list
     total.value = data.total
+    if (canManageFace.value && data.list.length) {
+      const ids = data.list.map((user: UserApi.UserVO) => user.id)
+      const states = await FaceApi.adminStatus(ids)
+      if (generation === listGeneration) faceStates.value = states
+    }
   } finally {
-    loading.value = false
+    if (generation === listGeneration) loading.value = false
   }
 }
 
@@ -314,8 +338,31 @@ const handleExport = async () => {
 }
 
 /** 操作分发 */
+const handleFaceDecision = async (action: FaceDecision, row: UserApi.UserVO) => {
+  const binding = faceStates.value[row.id]
+  if (!binding || !canManageFace.value) return
+  const title = action === 'suspend' ? '停用刷脸' : '要求本人重录'
+  const detail = action === 'suspend' ? '员工将无法刷脸或自行重新绑定。' : '旧绑定立即失效，员工可用密码登录后重新录入。'
+  let reason: string
+  try {
+    const result = await ElMessageBox.prompt(`${row.username} · ${detail}`, title, {
+      inputPlaceholder: '填写处理原因（最多 160 字）',
+      inputValidator: (value) => (!!value?.trim() && value.trim().length <= 160) || '请填写 1 至 160 字的原因',
+      confirmButtonText: title, cancelButtonText: '取消'
+    })
+    reason = result.value.trim()
+  } catch { return }
+  try {
+    await FaceApi.decide(row.id, action, reason, binding.revision, crypto.randomUUID())
+    message.success('人脸绑定状态已更新')
+  } finally { await getList() }
+}
 const handleCommand = (command: string, row: UserApi.UserVO) => {
   switch (command) {
+    case 'suspend':
+    case 'require-reenroll':
+      handleFaceDecision(command, row)
+      break
     case 'handleDelete':
       handleDelete(row.id)
       break

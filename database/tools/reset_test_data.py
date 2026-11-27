@@ -333,7 +333,15 @@ def reset(ctx, keep_manual=False):
              'system_sms_log','system_sms_code','system_mail_log','system_social_user_bind','system_social_user',
              'infra_api_access_log','infra_api_error_log','infra_job_log','infra_file','infra_file_content']
     try:
+        if not keep_manual and 'mes_face_cleanup' in ctx.meta:
+            # Preserve the means to erase external samples even if PostgreSQL is offline during a reset.
+            ctx.execute("""INSERT INTO mes_face_cleanup(tenant_id,user_id,template_version,due_at)
+                SELECT tenant_id,user_id,active_version,CURRENT_TIMESTAMP(6) FROM mes_face_credential
+                WHERE storage_kind='PGVECTOR' AND active_version IS NOT NULL
+                ON DUPLICATE KEY UPDATE due_at=CURRENT_TIMESTAMP(6)""")
         for table in sorted(ctx.meta):
+            if table == 'mes_face_cleanup':
+                continue
             if keep_manual and table in MANUAL_CONFIG:
                 continue
             if table.startswith(('mes_','yudao_demo')) or table in cleanup:

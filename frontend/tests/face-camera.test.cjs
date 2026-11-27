@@ -110,4 +110,8 @@ test('camera playback and permission failures clear streams and expose a usable 
   h.requests[1].reject(new Error('denied'))
   await retry
   assert.match(h.states.at(-1).message, /无法打开/)
+  const denied = h.camera.start()
+  h.requests[2].reject({ name: 'NotAllowedError' })
+  await denied
+  assert.match(h.states.at(-1).message, /权限被拒绝.*密码登录/)
 })

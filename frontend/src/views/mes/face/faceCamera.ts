@@ -49,13 +49,24 @@ export function createFaceCamera(
           return
         }
         update({ ready: true, loading: false, message: '请保持单人正脸，光线清晰' })
-      } catch {
+      } catch (error) {
         release(next)
         if (disposed || current !== generation) return
         stream = undefined
         const video = getVideo()
         if (video) video.srcObject = null
-        update({ ready: false, loading: false, message: '无法打开摄像头，请检查设备及浏览器权限' })
+        const denied =
+          typeof error === 'object' &&
+          error !== null &&
+          'name' in error &&
+          error.name === 'NotAllowedError'
+        update({
+          ready: false,
+          loading: false,
+          message: denied
+            ? '摄像头权限被拒绝。可在浏览器地址栏允许后重试，也可使用密码登录。'
+            : '无法打开摄像头，请检查设备及浏览器权限，或使用密码登录。'
+        })
       }
     },
     capture() {

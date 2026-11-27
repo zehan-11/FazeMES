@@ -26,6 +26,9 @@ class FaceTemplateCipherTest {
         // A fresh service instance uses the same persisted key, while IVs remain unique per encryption.
         String sealed=cipher.encrypt(1,42,List.of(vector(7)));
         assertArrayEquals(vector(7),cipher().decrypt(1,42,sealed).get(0));
+        Files.delete(directory.resolve("master.key"));
+        assertThrows(IllegalStateException.class,()->cipher().decrypt(1,42,sealed));
+        assertFalse(Files.exists(directory.resolve("master.key")));
     }
     @Test
     void aadPreventsTemplateExchangeAcrossTenantsAndAccountsAndRejectsBitFlips() {
