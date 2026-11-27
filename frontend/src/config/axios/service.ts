@@ -32,7 +32,14 @@ export const isRelogin = { show: false }
 // Share refresh work with business requests and the idle media-cookie renewal timer.
 let refreshing: Promise<void> | undefined
 // 请求白名单，无须 token 的接口
-const whiteList: string[] = ['/login', '/refresh-token']
+const anonymousAuthPaths = new Set(['/system/auth/login', '/system/auth/refresh-token'])
+
+declare module 'axios' {
+  interface AxiosRequestConfig {
+    /** The caller displays request failures inline. Authentication recovery still applies. */
+    inlineError?: boolean
+  }
+}
 
 // 创建axios实例
 const service: AxiosInstance = axios.create({
@@ -52,10 +59,9 @@ service.interceptors.request.use(
     const isVisitTenant = config.headers.get('isVisitTenant') !== false
     config.headers.delete('isVisitTenant')
     // 是否需要设置 token；命中白名单的接口（如 /login）不带 token
-    let isToken = (config!.headers || {}).isToken !== false
-    if (isToken && whiteList.some((v) => config.url?.includes(v))) {
-      isToken = false
-    }
+    const path = config.url?.split(/[?#]/, 1)[0] ?? ''
+    const isToken = config.headers.get('isToken') !== false && !anonymousAuthPaths.has(path)
+    config.headers.delete('isToken')
     if (getAccessToken() && isToken) {
       config.headers.Authorization = 'Bearer ' + getAccessToken() // 让每个请求携带自定义 token
       // A business response may immediately mount an image/SOP. Finish the matching browser
@@ -165,6 +171,8 @@ service.interceptors.response.use(
       retryConfig.authRetried = true
       if (config.headers?.isEncrypt) config.headers.isEncrypted = true
       return service(retryConfig)
+    } else if (config.inlineError && code !== 0 && code !== 200) {
+      return Promise.reject(new Error(msg))
     } else if (code === 500) {
       ElMessage.error(t('sys.api.errMsg500'))
       return Promise.reject(new Error(msg))
@@ -193,7 +201,7 @@ service.interceptors.response.use(
     } else if (message.includes('Request failed with status code')) {
       message = t('sys.api.apiRequestFailed') + message.substr(message.length - 3)
     }
-    ElMessage.error(message)
+    if (!error.config?.inlineError) ElMessage.error(message)
     return Promise.reject(error)
   }
 )
@@ -232,8 +240,8 @@ const handleAuthorized = () => {
   const { t } = useI18n()
   if (!isRelogin.show) {
     // 如果已经到登录页面则不进行弹窗提示
-    if (window.location.href.includes('login')) {
-      return
+    if (window.location.pathname === '/login') {
+      return Promise.reject(t('sys.api.timeoutMessage'))
     }
     isRelogin.show = true
     ElMessageBox.confirm(t('sys.api.timeoutMessage'), t('common.confirmTitle'), {

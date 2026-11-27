@@ -21,8 +21,8 @@ export const GraphApi = {
       params: { after, limit: 500 },
       signal
     }),
-  overview: (limit = 8, signal?: AbortSignal) =>
-    request.get<GraphPayload>({ url: `${base}/overview`, params: { limit }, signal }),
+  overview: (limit = 8, signal?: AbortSignal, inlineError = false) =>
+    request.get<GraphPayload>({ url: `${base}/overview`, params: { limit }, signal, inlineError }),
   search: (query: string, signal?: AbortSignal) =>
     request.get<GraphSearch>({ url: `${base}/search`, params: { query, limit: 30 }, signal }),
   node: (id: string) => request.get<GraphEntity>({ url: `${base}/node`, params: { id } }),

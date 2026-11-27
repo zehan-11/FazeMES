@@ -14,7 +14,7 @@
       </div>
       <hr class="my-4" />
       <div class="flex">
-        <el-input v-model="server" disabled>
+        <el-input :model-value="server.href" readonly>
           <template #prepend>服务地址</template>
         </el-input>
         <el-button :type="getIsOpen ? 'danger' : 'primary'" @click="toggleConnectStatus">
@@ -70,24 +70,31 @@
 <script lang="ts" setup>
 import { formatDate } from '@/utils/formatTime'
 import { useWebSocket } from '@vueuse/core'
-import { getRefreshToken } from '@/utils/auth'
+import { getAccessToken } from '@/utils/auth'
 import * as UserApi from '@/api/system/user'
 
 defineOptions({ name: 'InfraWebSocket' })
 
 const message = useMessage() // 消息弹窗
 
-const server = ref(
-  (import.meta.env.VITE_BASE_URL + '/infra/ws').replace('http', 'ws') +
-    '?token=' +
-    getRefreshToken() // 使用 getRefreshToken() 方法，而不使用 getAccessToken() 方法的原因：WebSocket 无法方便的刷新访问令牌
-) // WebSocket 服务地址
+const server = new URL((import.meta.env.VITE_BASE_URL || '') + '/infra/ws', window.location.origin)
+server.protocol = server.protocol === 'https:' ? 'wss:' : 'ws:'
+// Only the public application protocol is negotiated. The access credential stays out of URLs.
+const protocols = ['fazemes.v1']
+const updateCredential = () => {
+  const token = getAccessToken()
+  protocols.splice(1)
+  if (token) protocols.push('bearer.' + token)
+  return Boolean(token)
+}
+updateCredential()
 const getIsOpen = computed(() => status.value === 'OPEN') // WebSocket 连接是否打开
 const getTagType = computed(() => (getIsOpen.value ? 'success' : 'danger')) // WebSocket 连接的展示类型
 
 /** 发起 WebSocket 连接 */
-const { status, data, send, close, open } = useWebSocket(server.value, {
-  autoReconnect: true,
+const { status, data, send, close, open } = useWebSocket(server.href, {
+  protocols,
+  autoReconnect: { retries: (attempt) => attempt < 3 && updateCredential() },
   heartbeat: true
 })
 
@@ -170,7 +177,7 @@ const handlerSend = () => {
 const toggleConnectStatus = () => {
   if (getIsOpen.value) {
     close()
-  } else {
+  } else if (updateCredential()) {
     open()
   }
 }

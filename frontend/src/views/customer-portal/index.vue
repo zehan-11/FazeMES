@@ -449,21 +449,23 @@ onMounted(() => {
 </script>
 
 <style scoped lang="scss">
-html.dark .customer-portal:has(> .portal-shell) {
+html.dark .customer-portal {
   color: var(--fm-text);
   background: var(--fm-skylight), var(--fm-curtain);
   .portal-header, .portal-nav {
     background: var(--fm-sidebar);
     border-color: var(--fm-line);
   }
-  .product-card, .request-card, .production-order {
+  .login-card, .product-card, .request-card, .production-order {
     background: var(--fm-card-glass);
     border-color: var(--fm-line);
     box-shadow: inset 0 1px var(--fm-highlight);
   }
   .product-placeholder, .review-feedback { background: var(--fm-slot); }
   .portal-nav button.active { background: var(--fm-raised); color: var(--fm-text); }
-  .portal-brand { color: var(--fm-text); }
+  .portal-brand, .login-intro h1 { color: var(--fm-text); }
+  .login-card > p, .login-intro p, .staff-entry, .intro-kicker { color: var(--fm-secondary); }
+  .intro-features span { color: var(--fm-text); background: var(--fm-raised); }
   .product-placeholder, .portal-nav button, .workspace-heading p, .portal-brand em,
   .nav-note, .portal-nav > p, .specification, .product-description, .order-dates,
   .request-line small, .customer-note, .reference-price small, .review-feedback small {

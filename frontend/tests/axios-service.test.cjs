@@ -59,7 +59,8 @@ function setup(data, options = {}) {
     { filename }
   )
   const request = () =>
-    module.exports.service.get('/mes/insight/incident', {
+    module.exports.service.get(options.url || '/mes/insight/incident', {
+      inlineError: options.inlineError,
       adapter: async (config) => ({
         data: options.responseData ? options.responseData(config) : data,
         status: 200,
@@ -71,6 +72,25 @@ function setup(data, options = {}) {
     })
   return { request, notifications }
 }
+
+test('login-log requests retain authentication while the login endpoint stays anonymous', async () => {
+  for (const [url, expected] of [
+    ['/system/auth/login?redirect=1', undefined],
+    ['/system/login-log/page', 'Bearer active'],
+    ['/system/login-log/export-excel', 'Bearer active']
+  ]) {
+    await setup(undefined, { url, accessToken: 'active', responseData(config) {
+      assert.equal(config.headers.Authorization, expected)
+      return { code: 0 }
+    } }).request()
+  }
+})
+
+test('inline error handling preserves the failure without a second global notification', async () => {
+  const { request, notifications } = setup({ code: 1047150000, msg: '图谱服务暂不可用' }, { inlineError: true })
+  await assert.rejects(request, /图谱服务暂不可用/)
+  assert.deepEqual(notifications, [])
+})
 
 test('business validation preserves the backend reason for page error handling', async () => {
   const { request, notifications } = setup({ code: 400, msg: '请先指定负责人' })

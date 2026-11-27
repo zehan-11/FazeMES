@@ -202,11 +202,11 @@ export default defineComponent({
       return []
     }
 
+    const menuCollapsed = computed(
+      () => menuMode.value !== 'horizontal' && !isTwoColumnLayout(layout.value) && collapse.value
+    )
     const defaultOpeneds = computed(() => {
-      if (unref(menuMode) === 'horizontal') {
-        return []
-      }
-      if (props.rootOnly) {
+      if (menuMode.value === 'horizontal' || props.rootOnly || menuCollapsed.value) {
         return []
       }
       const targetPath = normalizeMenuTargetPath(unref(activeMenu))
@@ -429,11 +429,7 @@ export default defineComponent({
           defaultOpeneds={unref(defaultOpeneds)}
           mode={unref(menuMode)}
           menuTrigger={props.rootOnly && unref(menuMode) === 'horizontal' ? 'click' : 'hover'}
-          collapse={
-            unref(menuMode) === 'horizontal' || isTwoColumnLayout(unref(layout))
-              ? false
-              : unref(collapse)
-          }
+          collapse={menuCollapsed.value}
           uniqueOpened={unref(menuMode) === 'horizontal' ? false : unref(uniqueOpened)}
           backgroundColor={unref(menuBgColor)}
           ellipsis={unref(menuMode) === 'horizontal' ? true : undefined}

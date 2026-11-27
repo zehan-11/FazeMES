@@ -1,32 +1,47 @@
 package cn.iocoder.yudao.framework.websocket.core.security;
 
 import cn.iocoder.yudao.framework.security.core.LoginUser;
-import cn.iocoder.yudao.framework.security.core.filter.TokenAuthenticationFilter;
+import cn.iocoder.yudao.framework.common.biz.system.oauth2.OAuth2TokenCommonApi;
+import cn.iocoder.yudao.framework.common.biz.system.oauth2.dto.OAuth2AccessTokenCheckRespDTO;
+import cn.iocoder.yudao.framework.common.exception.ServiceException;
+import lombok.RequiredArgsConstructor;
 import cn.iocoder.yudao.framework.security.core.util.SecurityFrameworkUtils;
 import cn.iocoder.yudao.framework.websocket.core.util.WebSocketFrameworkUtils;
 import org.springframework.http.server.ServerHttpRequest;
 import org.springframework.http.server.ServerHttpResponse;
 import org.springframework.web.socket.WebSocketHandler;
-import org.springframework.web.socket.WebSocketSession;
+import org.springframework.web.socket.WebSocketHttpHeaders;
 import org.springframework.web.socket.server.HandshakeInterceptor;
 
+import java.util.List;
 import java.util.Map;
 
-/**
- * 登录用户的 {@link HandshakeInterceptor} 实现类
- *
- * 流程如下：
- * 1. 前端连接 websocket 时，会通过拼接 ?token={token} 到 ws:// 连接后，这样它可以被 {@link TokenAuthenticationFilter} 所认证通过
- * 2. {@link LoginUserHandshakeInterceptor} 负责把 {@link LoginUser} 添加到 {@link WebSocketSession} 中
- *
- * @author 芋道源码
- */
+/** Authenticate the upgrade and bind its verified principal to the socket session. */
+@RequiredArgsConstructor
 public class LoginUserHandshakeInterceptor implements HandshakeInterceptor {
+
+    public static final String PROTOCOL = "fazemes.v1";
+    private final OAuth2TokenCommonApi tokenApi;
 
     @Override
     public boolean beforeHandshake(ServerHttpRequest request, ServerHttpResponse response,
                                    WebSocketHandler wsHandler, Map<String, Object> attributes) {
         LoginUser loginUser = SecurityFrameworkUtils.getLoginUser();
+        if (loginUser == null) {
+            List<String> protocols = new WebSocketHttpHeaders(request.getHeaders()).getSecWebSocketProtocol();
+            if (protocols.size() == 2 && PROTOCOL.equals(protocols.get(0)) && protocols.get(1).startsWith("bearer.")) {
+                try {
+                    OAuth2AccessTokenCheckRespDTO token = tokenApi.checkAccessToken(protocols.get(1).substring(7));
+                    if (token != null) {
+                        loginUser = new LoginUser().setId(token.getUserId()).setUserType(token.getUserType())
+                                .setTenantId(token.getTenantId()).setInfo(token.getUserInfo())
+                                .setScopes(token.getScopes()).setExpiresTime(token.getExpiresTime());
+                    }
+                } catch (ServiceException invalidToken) {
+                    return false;
+                }
+            }
+        }
         if (loginUser == null) {
             return false;
         }

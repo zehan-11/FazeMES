@@ -81,7 +81,7 @@ async function libraryMetric(): Promise<Metric> {
   }
 }
 async function graphMetric(): Promise<Metric> {
-  const graph = await GraphApi.overview(24)
+  const graph = await GraphApi.overview(24, undefined, true)
   return {
     value: graph.nodes.length + ' 个实体 · ' + graph.relations.length + ' 条关系',
     detail: graph.hasMore ? '当前预览范围 · 进入图谱查看全部' : '当前账号可见图谱'

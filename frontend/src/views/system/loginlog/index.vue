@@ -56,7 +56,10 @@
 
   <!-- 列表 -->
   <ContentWrap>
-    <el-table v-loading="loading" :data="list">
+    <el-alert v-if="loadFailed" type="error" title="登录日志加载失败" :closable="false" show-icon>
+      <el-button link type="primary" @click="getList">重新加载</el-button>
+    </el-alert>
+    <el-table v-else v-loading="loading" :data="list">
       <el-table-column label="日志编号" align="center" prop="id" />
       <el-table-column label="登录类型" align="center" prop="logType">
         <template #default="scope">
@@ -93,6 +96,7 @@
     </el-table>
     <!-- 分页 -->
     <Pagination
+      v-if="!loadFailed"
       :total="total"
       v-model:page="queryParams.pageNo"
       v-model:limit="queryParams.pageSize"
@@ -115,6 +119,8 @@ defineOptions({ name: 'SystemLoginLog' })
 const message = useMessage() // 消息弹窗
 
 const loading = ref(true) // 列表的加载中
+const loadFailed = ref(false)
+let requestVersion = 0
 const total = ref(0) // 列表的总页数
 const list = ref([]) // 列表的数据
 const queryParams = reactive({
@@ -129,13 +135,18 @@ const exportLoading = ref(false) // 导出的加载中
 
 /** 查询列表 */
 const getList = async () => {
+  const version = ++requestVersion
   loading.value = true
+  loadFailed.value = false
   try {
     const data = await LoginLogApi.getLoginLogPage(queryParams)
+    if (version !== requestVersion) return
     list.value = data.list
     total.value = data.total
+  } catch {
+    if (version === requestVersion) loadFailed.value = true
   } finally {
-    loading.value = false
+    if (version === requestVersion) loading.value = false
   }
 }
 

@@ -1,5 +1,6 @@
 package cn.iocoder.yudao.framework.websocket.config;
 
+import cn.iocoder.yudao.framework.common.biz.system.oauth2.OAuth2TokenCommonApi;
 import cn.iocoder.yudao.framework.mq.redis.config.YudaoRedisMQConsumerAutoConfiguration;
 import cn.iocoder.yudao.framework.mq.redis.core.RedisMQTemplate;
 import cn.iocoder.yudao.framework.websocket.core.handler.JsonWebSocketMessageHandler;
@@ -33,6 +34,8 @@ import org.springframework.web.socket.config.annotation.EnableWebSocket;
 import org.springframework.web.socket.config.annotation.WebSocketConfigurer;
 import org.springframework.web.socket.server.HandshakeInterceptor;
 
+import org.springframework.web.socket.server.support.DefaultHandshakeHandler;
+
 import java.util.List;
 
 /**
@@ -50,17 +53,20 @@ public class YudaoWebSocketAutoConfiguration {
     public WebSocketConfigurer webSocketConfigurer(HandshakeInterceptor[] handshakeInterceptors,
                                                    WebSocketHandler webSocketHandler,
                                                    WebSocketProperties webSocketProperties) {
+        DefaultHandshakeHandler handler = new DefaultHandshakeHandler();
+        handler.setSupportedProtocols(LoginUserHandshakeInterceptor.PROTOCOL);
         return registry -> registry
                 // 添加 WebSocketHandler
                 .addHandler(webSocketHandler, webSocketProperties.getPath())
+                .setHandshakeHandler(handler)
                 .addInterceptors(handshakeInterceptors)
                 // 允许跨域，否则前端连接会直接断开
                 .setAllowedOriginPatterns("*");
     }
 
     @Bean
-    public HandshakeInterceptor handshakeInterceptor() {
-        return new LoginUserHandshakeInterceptor();
+    public HandshakeInterceptor handshakeInterceptor(OAuth2TokenCommonApi tokenApi) {
+        return new LoginUserHandshakeInterceptor(tokenApi);
     }
 
     @Bean
