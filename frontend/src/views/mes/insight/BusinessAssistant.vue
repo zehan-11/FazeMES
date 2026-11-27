@@ -69,6 +69,7 @@
       />
       <p v-if="turn.answer.modelWarning" class="note">{{ turn.answer.modelWarning }}</p>
       <small class="note">查询时间 {{ formatTime(turn.answer.generatedAt) }}</small>
+      <FanWorksReplay :record="turn" />
       <div v-if="turn.answer.status === 'CLARIFY'" class="clarification">
         <p>{{ turn.answer.clarification?.prompt }}</p>
         <el-button
@@ -138,6 +139,7 @@
 </template>
 
 <script setup lang="ts">
+import { defineAsyncComponent } from 'vue'
 import { InsightApi, type Draft } from '@/api/mes/insight'
 import {
   isStockEvidence,
@@ -151,6 +153,7 @@ import LegacyBusinessEvidence from './LegacyBusinessEvidence.vue'
 import AgentResult from './AgentResult.vue'
 import MarkdownView from '@/components/MarkdownView/index.vue'
 
+const FanWorksReplay = defineAsyncComponent(() => import('@/views/mes/assistant/FanWorksReplay.vue'))
 const props = defineProps<{ active: boolean }>()
 const emit = defineEmits<{ draft: [value: Draft]; navigate: [topic: string] }>()
 const router = useRouter()

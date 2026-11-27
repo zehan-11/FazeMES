@@ -101,8 +101,9 @@
                 >{{ analysis.workOrderName }} · {{ orderStatusText(analysis.workOrderStatus) }} ·
                 分析时间 {{ formatDate(analysis.analyzedAt) }}</span
               ></div
-            ><div class="analysis-actions"
-              ><el-button
+            ><div class="analysis-actions">
+              <FanWorksReplay :record="analysis" />
+              <el-button
                 v-hasPermi="['mes:kitting:reserve']"
                 type="primary"
                 :disabled="analysis.workOrderStatus !== 1 || analysis.status === 'NO_BOM'"
@@ -316,6 +317,7 @@
 </template>
 
 <script setup lang="ts">
+import { defineAsyncComponent } from 'vue'
 import type { FormInstance } from 'element-plus'
 import { formatQuantity } from '@/utils/mesQuantity'
 import { formatDate } from '@/utils/formatTime'
@@ -328,6 +330,7 @@ import {
   type KittingEvent,
   type KittingFollowup
 } from '@/api/mes/pro/kitting'
+const FanWorksReplay = defineAsyncComponent(() => import('@/views/mes/assistant/FanWorksReplay.vue'))
 defineOptions({ name: 'MesProKitting' })
 const route = useRoute()
 const router = useRouter()

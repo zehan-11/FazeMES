@@ -19,6 +19,9 @@
       <el-tab-pane v-if="canBusiness" label="业务 Agent" name="business">
         <BusinessAssistant :active="tab === 'business'" @navigate="openBusinessAnalysis" />
       </el-tab-pane>
+      <el-tab-pane v-if="canBusiness || canChat || canKnowledge" label="天工开物" name="works">
+        <FanWorksWorkbench v-if="tab === 'works'" />
+      </el-tab-pane>
       <el-tab-pane v-if="canChat || canKnowledge" label="知识助手" name="chat">
         <div class="assistant-layout" :class="{ 'assistant-without-sidebar': !canChat }">
           <aside class="assistant-sidebar" v-if="canChat">
@@ -805,6 +808,7 @@
     append-to-body
     :body-style="{ padding: '0' }"
   >
+    <FanWorksReplay v-if="journeyData" :record="journeyData" />
     <WorkflowJourney v-if="journeyVisible" :journey="journeyData" @source="openJourneySource" />
   </el-dialog>
   <el-dialog v-model="previewVisible" title="原文与分块" width="85%"
@@ -880,6 +884,8 @@ import { checkPermi } from '@/utils/permission'
 import { formatAssistantTime as time } from './assistantTime'
 import BusinessAssistant from '@/views/mes/insight/BusinessAssistant.vue'
 
+const FanWorksWorkbench = defineAsyncComponent(() => import('./FanWorksWorkbench.vue'))
+const FanWorksReplay = defineAsyncComponent(() => import('./FanWorksReplay.vue'))
 const KnowledgeGraph = defineAsyncComponent(() => import('@/views/mes/graph/KnowledgeGraph.vue'))
 
 defineOptions({ name: 'MesAssistant' })
@@ -912,7 +918,7 @@ onActivated(() => {
   if (!wasDeactivated) return
   wasDeactivated = false
   if (tab.value === 'graph') void graphView.value?.replayLaunch()
-  else moduleIntro.value = !reducedMotion.matches
+  else moduleIntro.value = tab.value !== 'works' && !reducedMotion.matches
 })
 
 const canChat = checkPermi(['mes:assistant:chat'])
@@ -927,6 +933,7 @@ const availableTabs = [
   (canKnowledge || canManage) && 'graph',
   canBusiness.value && 'business',
   (canChat || canKnowledge) && 'chat',
+  (canBusiness.value || canChat || canKnowledge) && 'works',
   (canKnowledge || canManage) && 'knowledge',
   canConfig.value && 'config'
 ].filter((item): item is string => Boolean(item))
@@ -938,7 +945,7 @@ const tab = ref(
 )
 
 const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)')
-const moduleIntro = ref(tab.value !== 'graph' && !reducedMotion.matches)
+const moduleIntro = ref(tab.value !== 'graph' && tab.value !== 'works' && !reducedMotion.matches)
 watch(tab, () => { moduleIntro.value = false })
 
 const businessRouter = useRouter()
