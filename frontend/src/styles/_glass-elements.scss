@@ -29,10 +29,10 @@
       --el-table-expanded-cell-bg-color: var(--fm-surface);
       --el-table-header-bg-color: var(--fm-table-head);
       --el-table-header-text-color: var(--fm-table-label);
-      --el-table-text-color: var(--fm-secondary);
-      --el-table-border-color: var(--fm-divider);
-      --el-table-row-hover-bg-color: var(--fm-hover);
-      --el-table-current-row-bg-color: var(--fm-hover);
+      --el-table-text-color: var(--fm-table-ink);
+      --el-table-border-color: var(--fm-table-rule);
+      --el-table-row-hover-bg-color: var(--fm-table-hover);
+      --el-table-current-row-bg-color: var(--fm-table-hover);
       --el-table-fixed-box-shadow: none;
       --el-table-fixed-left-column: 5px 0 8px -6px var(--fm-strong-line);
       --el-table-fixed-right-column: -5px 0 8px -6px var(--fm-strong-line);
@@ -59,7 +59,12 @@
       }
     }
     .el-table th.el-table__cell {
+      color: var(--fm-table-label);
+      font-weight: 650;
       background-color: var(--fm-table-head);
+    }
+    .el-table .el-table__empty-text {
+      color: var(--fm-table-empty);
     }
     .el-table__body .el-table__cell {
       transition: background-color var(--fm-motion);
@@ -73,6 +78,8 @@
     }
 
     :is(.el-input, .el-textarea, .el-select, .el-date-editor, .el-cascader, .el-input-tag) {
+      --el-input-placeholder-color: var(--fm-placeholder);
+      --el-text-color-placeholder: var(--fm-placeholder);
       --el-input-bg-color: var(--fm-slot);
       --el-input-border-radius: 9px;
       --el-input-border-color: var(--fm-strong-line);
@@ -112,6 +119,13 @@
     .el-date-editor .el-range-input {
       background: transparent;
       color: var(--fm-text);
+    }
+    :is(.el-input__inner, .el-range-input, .el-textarea__inner, .el-select__input)::placeholder {
+      color: var(--fm-placeholder);
+      opacity: 1;
+    }
+    .el-select__placeholder.is-transparent {
+      color: var(--fm-placeholder);
     }
     .el-input-group__append,
     .el-input-group__prepend {
@@ -302,9 +316,11 @@
       --el-button-hover-text-color: var(--fm-danger-hover);
       --el-link-text-color: var(--fm-tone-danger);
       --el-link-hover-text-color: var(--fm-danger-hover);
+      --el-button-active-text-color: var(--fm-danger-hover);
       color: var(--fm-tone-danger);
       &:is(:hover, :focus-visible) {
         color: var(--fm-danger-hover);
+        text-shadow: 0 0 8px color-mix(in srgb, var(--fm-danger-hover) 42%, transparent);
       }
     }
     .el-link {

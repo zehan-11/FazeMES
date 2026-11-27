@@ -72,8 +72,8 @@ defineExpose({ stop: camera.stop })
 </template>
 <style scoped>
 .face-capture {
-  --ring: #8ad6ff;
-  --ring-inner: #45d9ee;
+  --ring: #5cebff;
+  --ring-inner: color-mix(in srgb, var(--ring) 68%, white);
   --outer-speed: 26s;
   --inner-speed: 23s;
   --sweep-speed: 6.5s;
@@ -103,7 +103,9 @@ defineExpose({ stop: camera.stop })
   overflow: hidden;
   border: 1px solid var(--fm-strong-line);
   border-radius: 16px;
-  background: radial-gradient(ellipse at 50% 46%, rgb(0 176 222 / 16%), transparent 62%), var(--fm-card);
+  background:
+    radial-gradient(ellipse at 50% 46%, color-mix(in srgb, var(--ring) 13%, transparent), transparent 66%),
+    var(--fm-card-glass);
   backdrop-filter: var(--fm-card-filter);
   box-shadow:
     inset 0 1px var(--fm-highlight),
@@ -148,11 +150,11 @@ defineExpose({ stop: camera.stop })
   width: 54%;
   aspect-ratio: 1;
   overflow: hidden;
-  border: 1px solid color-mix(in srgb, var(--ring) 50%, transparent);
+  border: 1px solid color-mix(in srgb, var(--ring) 64%, transparent);
   border-radius: 50%;
   box-shadow:
-    0 0 24px rgb(80 189 251 / 13%),
-    inset 0 0 22px rgb(80 189 251 / 9%);
+    0 0 24px color-mix(in srgb, var(--ring) 17%, transparent),
+    inset 0 0 22px color-mix(in srgb, var(--ring) 12%, transparent);
 }
 .face-capture .face-guide::after {
   content: '';
@@ -161,8 +163,8 @@ defineExpose({ stop: camera.stop })
   left: 0;
   width: 100%;
   height: 26%;
-  border-bottom: 1px solid rgb(100 226 248 / 75%);
-  background: linear-gradient(transparent, rgb(48 196 232 / 22%));
+  border-bottom: 1px solid color-mix(in srgb, var(--ring) 80%, transparent);
+  background: linear-gradient(transparent, color-mix(in srgb, var(--ring) 24%, transparent));
   animation: face-scan var(--sweep-speed) ease-in-out infinite alternate;
 }
 .is-confirmed .face-guide {
@@ -203,8 +205,9 @@ defineExpose({ stop: camera.stop })
   }
 }
 .face-capture p {
+  margin: 10px 0;
   font-size: 13px;
-  color: var(--el-text-color-secondary);
+  color: var(--fm-secondary);
   text-align: center;
 }
 

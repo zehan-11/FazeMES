@@ -1,6 +1,6 @@
 <template>
   <div class="mes-workspace">
-    <el-card shadow="never" class="mb-16px fm-stagger">
+    <el-card shadow="never" class="mb-16px fm-stagger fm-optical-rim">
       <div class="welcome">
         <div>
           <div class="eyebrow">FazeMES / 生产执行</div>

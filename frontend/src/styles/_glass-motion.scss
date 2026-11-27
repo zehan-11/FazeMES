@@ -12,69 +12,81 @@
   overflow: hidden;
   contain: strict;
   pointer-events: none;
-  background: var(--fm-curtain);
-  &::after {
+  background: var(--fm-skylight), var(--fm-sea-glow), var(--fm-curtain);
+}
+
+// The perspective plane stays below the reading area. The mask also softens its horizon.
+.ambient-floor {
+  position: absolute;
+  inset: auto 0 0;
+  height: 34%;
+  overflow: hidden;
+  perspective: 360px;
+  perspective-origin: 50% 0;
+  mask-image: linear-gradient(to top, rgba(0, 0, 0, 0.9), rgba(0, 0, 0, 0.35) 55%, transparent);
+  &::before {
     content: '';
     position: absolute;
-    inset: 0;
-    opacity: 0.18;
-    background: radial-gradient(circle, var(--fm-dot-ink) 0.65px, transparent 1px) 0 0 / 28px 28px;
-  }
-  i {
-    position: absolute;
-    width: 82%;
-    height: 92%;
-    background: radial-gradient(ellipse at center, var(--glow), transparent 70%);
-    animation: fm-aurora-drift var(--period) ease-in-out infinite alternate;
-  }
-  .aurora-blue {
-    --glow: var(--fm-aurora-blue);
-    --period: 24s;
-    top: -35%;
-    left: -25%;
-  }
-  .aurora-cyan {
-    --glow: var(--fm-aurora-cyan);
-    --period: 28s;
-    right: -23%;
-    bottom: -37%;
-    animation-direction: alternate-reverse;
+    inset: auto -100% 0;
+    height: 280%;
+    transform: rotateX(62deg);
+    transform-origin: center bottom;
+    background-image:
+      linear-gradient(90deg, var(--fm-floor-line) 1px, transparent 1px),
+      linear-gradient(var(--fm-floor-line) 1px, transparent 1px);
+    background-size: 74px 48px;
+    background-position: center bottom;
   }
 }
-@keyframes fm-aurora-drift {
-  from {
-    transform: translate3d(-4%, 0, 0) scale(1);
-  }
-  to {
-    transform: translate3d(7%, 8%, 0) scale(1.12);
-  }
+
+// Anchor the traces to the workspace edges in every sidebar layout.
+.v-layout-content-scrollbar {
+  background-image: var(--fm-circuits, url('@/assets/patterns/workspace-circuits.svg'));
+  background-size: 100% 100%;
+  background-repeat: no-repeat;
 }
-body:has(> .module-intro) .ambient-particles,
-.v-layout:has(.mes-assistant-page.is-graph, .production-screen) .ambient-particles {
-  display: none;
+
+.ambient-stars > i {
+  position: absolute;
+  width: var(--size, 15px);
+  aspect-ratio: 1;
+  background:
+    radial-gradient(circle, #fff 0, #d8f7ff 6%, transparent 19%),
+    linear-gradient(90deg, transparent, #dcf6ff 50%, transparent) center / 100% 1px no-repeat,
+    linear-gradient(transparent, #d3f4ff 50%, transparent) center / 1px 100% no-repeat;
+  filter: drop-shadow(0 0 3px rgb(145 226 255 / 55%));
+  opacity: 0.56;
+  animation: fm-star-breathe var(--period) ease-in-out var(--delay) infinite;
+  &:nth-child(1) { left: 89%; top: 8%; --size: 21px; --period: 6s; --delay: -1s; }
+  &:nth-child(2) { left: 97%; top: 36%; --period: 7.6s; --delay: -4s; }
+  &:nth-child(3) { left: 3%; top: 27%; --size: 12px; --period: 5.2s; --delay: -3s; }
+  &:nth-child(4) { left: 12%; top: 63%; --period: 6.8s; --delay: -2.2s; }
+  &:nth-child(5) { left: 92%; top: 76%; --size: 11px; --period: 4.8s; --delay: -3.4s; }
 }
-body:has(> .module-intro) .fazemes-ambient-backdrop i,
-.v-layout:has(.mes-assistant-page.is-graph, .production-screen) .fazemes-ambient-backdrop i {
-  animation-play-state: paused;
+@keyframes fm-star-breathe {
+  0%, 100% { opacity: 0.23; transform: scale(0.9); }
+  50% { opacity: 0.82; transform: scale(1.06); }
+}
+
+// Tabs can change in place without navigating. Hiding the canvas also puts its render loop to sleep.
+.v-layout:has(.mes-assistant-page.is-graph, .production-screen),
+body:has(> .module-intro) .v-layout {
+  --fm-circuits: none;
+  .fazemes-ambient-backdrop { display: none; }
 }
 
 .glass-page-enter-active {
-  transition:
-    opacity 200ms ease,
-    transform 200ms var(--fm-ease);
-}
-.glass-page-leave-active {
-  transition: opacity 200ms ease;
+  transition: opacity 160ms ease-out, transform 160ms var(--fm-ease);
 }
 .glass-page-enter-from {
-  opacity: 0;
-  transform: translateY(10px);
+  opacity: 0.35;
+  transform: translateY(6px);
 }
-.glass-page-leave-to {
-  opacity: 0;
+// Leave the outgoing page at full brightness until the incoming view is ready.
+.glass-page-leave-active {
+  transition: none;
 }
-// The graph has its own camera and entry animations, including when activated from KeepAlive.
-.fm-workspace:has(> .mes-assistant-page.is-graph) {
+.fm-workspace:has(> .mes-assistant-page.is-graph, > .production-screen) {
   transition: none;
   transform: none;
   opacity: 1;
@@ -217,7 +229,7 @@ body:has(> .module-intro) .fazemes-ambient-backdrop i,
 }
 @keyframes fm-card-arrive {
   from {
-    opacity: 0;
+    opacity: 0.72;
     translate: 0 8px;
   }
   to {
@@ -258,7 +270,7 @@ body:has(> .module-intro) .fazemes-ambient-backdrop i,
     .fm-stagger, .fm-live-dot::after { animation: none; }
     .fm-live-dot::after { opacity: 0; }
   }
-  .fazemes-ambient-backdrop i,
+  .ambient-stars > i,
   .ai-beacon::before {
     animation: none;
   }

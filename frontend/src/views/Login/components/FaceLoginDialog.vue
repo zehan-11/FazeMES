@@ -46,7 +46,7 @@ onBeforeUnmount(() => {
 </script>
 <template>
   <el-dialog
-    class="fm-face-login-dialog"
+    class="fm-face-login-dialog fm-optical-rim"
     :model-value="modelValue"
     title="本人人脸登录"
     width="min(600px, 94vw)"

@@ -6,37 +6,48 @@
 /* Workspace surfaces and Element Plus share these tokens, including overlays teleported to body. */
 :root,
 .fm-face-login-dialog {
-  --fm-base: #05142e;
-  --fm-depth: #030b1c;
-  --fm-surface: #0a2246;
-  --fm-raised: #12345b;
-  --fm-curtain: radial-gradient(ellipse at 18% 12%, #0d2f66 0%, #05142e 48%, #030b1c 100%);
-  --fm-aurora-blue: rgba(0, 212, 255, 0.22);
-  --fm-aurora-cyan: rgba(37, 99, 235, 0.24);
-  --fm-dot-ink: #97caff;
-  --fm-card: rgba(7, 24, 54, 0.34);
-  --fm-card-glass: var(--fm-card);
-  --fm-card-over: rgba(12, 38, 82, 0.48);
-  --fm-card-filter: blur(14px) saturate(175%);
-  --fm-chrome-filter: blur(18px) saturate(165%);
+  --fm-base: #0d295e;
+  --fm-depth: #081a3f;
+  --fm-surface: #183966;
+  --fm-raised: #234879;
+  --fm-curtain: linear-gradient(145deg, #0d295e 0%, #143a7e 42%, #0c2556 76%, #081a3f 100%);
+  --fm-skylight: radial-gradient(ellipse 60% 45% at 88% 4%, rgba(150, 220, 255, 0.24) 0%, rgba(56, 165, 255, 0.10) 45%, transparent 75%);
+  --fm-sea-glow: radial-gradient(ellipse 62% 58% at 4% 98%, rgba(37, 118, 255, 0.20), transparent 74%);
+  --fm-floor-line: rgba(120, 200, 255, 0.14);
+  --fm-card: rgba(176, 212, 255, 0.10);
+  --fm-card-glass: linear-gradient(180deg, rgba(205, 232, 255, 0.14) 0%, rgba(120, 178, 245, 0.08) 100%);
+  --fm-card-over: rgba(176, 218, 255, 0.06);
+  --fm-card-filter: blur(16px) saturate(165%);
+  --fm-chrome-filter: blur(18px);
+  --fm-header-beam: linear-gradient(90deg, transparent 5%, rgba(72, 185, 255, 0.45) 35%, rgba(225, 248, 255, 0.92) 50%, rgba(72, 185, 255, 0.45) 65%, transparent 95%);
+  --fm-rim-core: #f6fdff;
+  --fm-rim-ice: rgba(138, 221, 255, 0.66);
+  --fm-rim-bloom: rgba(166, 228, 255, 0.27);
+  --fm-champagne: #ffd166;
   --fm-overlay-filter: blur(22px) saturate(180%);
   --fm-overlay: rgba(8, 32, 63, 0.83);
   --fm-slot: rgba(8, 18, 40, 0.55);
-  --fm-header: rgba(5, 24, 52, 0.64);
+  --fm-header: rgba(12, 36, 77, 0.54);
+  --fm-sidebar: rgba(9, 28, 68, 0.56);
   --fm-header-tint: #14294a;
   --fm-menu-tint: #0d1526;
   --fm-chrome-line: rgba(147, 197, 255, 0.16);
-  --fm-line: rgba(56, 210, 255, 0.24);
+  --fm-line: rgba(175, 224, 255, 0.28);
   --fm-divider: rgb(148 197 255 / 13%);
   --fm-strong-line: rgba(148, 197, 255, 0.24);
-  --fm-highlight: rgba(145, 235, 255, 0.36);
+  --fm-highlight: rgba(255, 255, 255, 0.30);
   --fm-overlay-highlight: rgba(255, 255, 255, 0.28);
   --fm-text: #f2f8ff;
   --fm-secondary: #a6c8eb;
   --fm-muted: #8badd1;
-  --fm-table-label: #c8ddfb;
-  --fm-table-head: rgba(14, 165, 233, 0.12);
-  --fm-table-fixed: #102949;
+  --fm-table-label: #fff;
+  --fm-table-ink: #f4f9ff;
+  --fm-table-empty: #c2ddfb;
+  --fm-table-head: rgba(160, 212, 255, 0.16);
+  --fm-table-rule: rgba(170, 218, 255, 0.14);
+  --fm-table-hover: rgba(110, 200, 255, 0.16);
+  --fm-placeholder: rgba(195, 222, 255, 0.58);
+  --fm-table-fixed: #284879;
   --fm-hover: rgba(56, 189, 248, 0.1);
   --fm-stripe: transparent;
   --fm-blue-ink: #a9d7ff;
@@ -58,7 +69,7 @@
   --fm-dot: rgb(121 172 240 / 10%);
   --fm-halo: rgb(37 99 235 / 14%);
   --fm-cyan-halo: rgb(21 117 150 / 11%);
-  --fm-shadow: 0 8px 28px rgba(3, 12, 32, 0.28);
+  --fm-shadow: 0 10px 32px rgba(4, 18, 52, 0.26);
   --fm-float-shadow: 0 18px 50px rgb(2 12 34 / 36%);
   --fm-scrim: rgb(4 16 40 / 56%);
   --fm-ease: cubic-bezier(0.4, 0, 0.2, 1);
@@ -66,8 +77,8 @@
   --fm-panel-radius: 13px;
   --fm-tone-success: #34e8a8;
   --fm-tone-warning: #fbbf54;
-  --fm-tone-danger: #ff7b89;
-  --fm-danger-hover: #ffa0aa;
+  --fm-tone-danger: #ff8b99;
+  --fm-danger-hover: #ffb3bc;
 }
 html.light,
 html.light .fm-face-login-dialog {
@@ -78,9 +89,20 @@ html.light .fm-face-login-dialog {
   --fm-primary-ink: #10375c;
   --fm-glow-edge: #087499;
   --fm-button-edge: rgb(42 108 155 / 38%);
-  --fm-aurora-blue: rgb(74 146 235 / 19%);
-  --fm-aurora-cyan: rgb(78 187 195 / 13%);
-  --fm-dot-ink: #7e9fc6;
+  --fm-skylight: radial-gradient(ellipse 60% 45% at 88% 4%, rgb(255 255 255 / 80%), transparent 75%);
+  --fm-sea-glow: radial-gradient(ellipse at 4% 98%, rgb(133 189 244 / 18%), transparent 74%);
+  --fm-floor-line: rgb(59 123 184 / 14%);
+  --fm-header-beam: linear-gradient(90deg, transparent 5%, #87b6db 35%, #f9fdff 50%, #87b6db 65%, transparent 95%);
+  --fm-rim-core: #fff;
+  --fm-rim-ice: rgb(104 178 219 / 65%);
+  --fm-rim-bloom: rgb(93 168 218 / 18%);
+  --fm-champagne: #825800;
+  --fm-sidebar: var(--fm-header);
+  --fm-table-ink: var(--fm-text);
+  --fm-table-empty: var(--fm-secondary);
+  --fm-table-rule: var(--fm-divider);
+  --fm-table-hover: var(--fm-hover);
+  --fm-placeholder: var(--fm-muted);
   --fm-chrome-line: rgb(60 104 161 / 20%);
   --fm-overlay-highlight: rgb(255 255 255 / 98%);
   --fm-secondary-button: rgb(130 178 236 / 12%);
@@ -156,6 +178,7 @@ html.light .fm-face-login-dialog {
   --fm-card-filter: none;
   --fm-overlay-filter: blur(15px);
   --fm-overlay-highlight: var(--fm-highlight);
+  --fm-placeholder: var(--fm-muted);
   --fm-secondary-button: var(--fm-slot);
   --fm-focus: #3b82f6;
   --fm-focus-halo: rgb(59 130 246 / 14%);
@@ -199,7 +222,7 @@ html:is(.dark, .light) .fm-face-login-dialog {
   --top-header-hover-color: var(--fm-hover);
   --top-header-text-color: var(--fm-secondary);
   --top-tool-border-color: var(--fm-line);
-  --left-menu-bg-color: var(--fm-header);
+  --left-menu-bg-color: var(--fm-sidebar);
   --left-menu-bg-light-color: transparent;
   --left-menu-bg-active-color: rgb(71 145 255 / 17%);
   --left-menu-collapse-bg-active-color: var(--left-menu-bg-active-color);
@@ -214,8 +237,8 @@ html:root.dark,
 html.dark .fm-face-login-dialog {
   --el-color-success: #34e8a8;
   --el-color-warning: #fbbf54;
-  --el-color-danger: #ff7b89;
-  --el-color-error: #ff7b89;
+  --el-color-danger: var(--fm-tone-danger);
+  --el-color-error: var(--fm-tone-danger);
   --el-color-info: #98abc5;
 }
 html:root.dark:where(:has(.v-login)) {
@@ -291,9 +314,10 @@ html:root.dark:where(:has(.v-login)) {
 .fm-workspace .mes-workspace .eyebrow {
   color: var(--fm-blue-ink);
 }
-.fm-workspace .mes-assistant-page.fm-panel {
-  // Leave the page-sized backing clear enough for the document cards to sample the light below.
-  background: rgb(from var(--fm-card) r g b / 16%);
+.fm-workspace .mes-assistant-page.fm-panel,
+.fm-workspace .face-enrollment.el-card {
+  // Apply the frost filter on the individual panels only to avoid doubling the saturation.
+  background: var(--fm-card-glass);
   backdrop-filter: none;
 }
 .fm-workspace .assistant-method--segmented {
@@ -313,7 +337,26 @@ html:root.dark:where(:has(.v-login)) {
   }
 }
 .v-layout .v-footer {
+  position: relative;
   background: transparent;
+}
+.fm-optical-rim {
+  position: relative;
+}
+.fm-optical-rim::after,
+.v-layout .v-footer::after {
+  content: '';
+  position: absolute;
+  z-index: 2;
+  inset: 0;
+  pointer-events: none;
+  border-radius: inherit;
+  --edge: linear-gradient(90deg, transparent, var(--fm-rim-ice) 33%, var(--fm-rim-core) 50%, var(--fm-rim-ice) 67%, transparent);
+  background:
+    var(--edge) center top / 46% 1.5px no-repeat,
+    var(--edge) center bottom / 40% 1.5px no-repeat,
+    radial-gradient(ellipse at center top, var(--fm-rim-bloom), transparent 68%) center top / 44% 7px no-repeat,
+    radial-gradient(ellipse at center bottom, var(--fm-rim-bloom), transparent 68%) center bottom / 38% 5px no-repeat;
 }
 .v-layout .layout-border__right::after,
 .v-layout .layout-border__bottom::after {
@@ -329,6 +372,20 @@ html:root.dark:where(:has(.v-login)) {
     color-mix(in srgb, var(--fm-header-tint) 14%, transparent)
   );
   backdrop-filter: var(--fm-chrome-filter);
+}
+.v-layout .v-tool-header::after,
+.v-layout .fm-layout-frame > .layout-border__bottom::after {
+  content: '';
+  position: absolute;
+  inset: auto 0 0;
+  width: 100%;
+  height: 1px;
+  transform: none;
+  pointer-events: none;
+  background: var(--fm-header-beam);
+}
+.v-layout .fm-layout-frame > .layout-border__bottom .v-tool-header::after {
+  content: none;
 }
 .fm-header-path,
 .fm-header-actions {
@@ -405,7 +462,7 @@ html:root.dark:where(:has(.v-login)) {
   background-color: var(--left-menu-bg-color);
   background-image: linear-gradient(
     170deg,
-    color-mix(in srgb, var(--fm-menu-tint) 16%, transparent),
+    color-mix(in srgb, var(--fm-menu-tint) 7%, transparent),
     transparent 65%
   );
   box-shadow: inset -1px 0 var(--fm-chrome-line);

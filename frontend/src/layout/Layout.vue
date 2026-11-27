@@ -58,11 +58,7 @@ export default defineComponent({
           'w-[100%] h-[100%] relative'
         ]}
       >
-        <div class="fazemes-ambient-backdrop" aria-hidden="true">
-          <i class="aurora-blue" />
-          <i class="aurora-cyan" />
-          <AmbientParticles />
-        </div>
+        <AmbientParticles />
         <div class="fm-layout-frame">
           {mobile.value && !collapse.value ? (
             <div

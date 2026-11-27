@@ -127,7 +127,7 @@ onBeforeUnmount(() => {
       v-for="(card, i) in cards"
       :key="card.key"
       v-tech-card
-      class="capability fm-hud fm-auto-scan fm-stagger"
+      class="capability fm-hud fm-auto-scan fm-stagger fm-optical-rim"
       :style="{ '--i': i }"
       :class="card.key"
       type="button"

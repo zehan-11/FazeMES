@@ -5,7 +5,8 @@
     :class="{
       'is-graph': tab === 'graph',
       'is-embedded': embedded,
-      'fm-panel': !embedded && tab !== 'graph'
+      'fm-panel': !embedded && tab !== 'graph',
+      'fm-optical-rim': !embedded && tab === 'knowledge'
     }"
   >
     <header class="assistant-nav"
@@ -1765,6 +1766,7 @@ onMounted(async () => {
   color: var(--fm-text);
 }
 .mes-assistant-page.is-graph {
+  background-color: #020618;
   display: flex;
   flex: 1 1 0;
   min-height: 0;

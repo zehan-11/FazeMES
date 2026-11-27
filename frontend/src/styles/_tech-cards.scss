@@ -126,7 +126,8 @@
       border-color: var(--fm-primary-edge);
     }
     .fm-tech-card.is-lit:not(.camera-frame) {
-      background: var(--fm-card-over);
+      background: var(--fm-card-glass);
+      background-color: var(--fm-card-over);
     }
     .is-lit > .fm-card-optics::before,
     .is-lit > .fm-card-optics::after {

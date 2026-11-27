@@ -64,7 +64,7 @@ const timestamp = (doc: ListedDocument) =>
       <div v-for="(doc, i) in visibleDocuments" :key="doc.id" class="document-slot">
         <article
           v-tech-card
-          class="document-card fm-hud fm-stagger"
+          class="document-card fm-hud fm-stagger fm-optical-rim"
           :style="{ '--i': Math.min(i, 7) }"
         >
           <header>

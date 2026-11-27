@@ -66,14 +66,15 @@ onBeforeUnmount(() => {
 })
 </script>
 <template>
-  <ContentWrap title="本人人脸登录">
+  <ContentWrap class="face-enrollment" title="本人人脸登录">
     <el-alert
       title="先使用密码登录，再为当前账号录入本人人脸。登录时填写账号后进行一对一核验。"
       type="info"
       :closable="false"
     />
     <div class="face-settings">
-      <div class="enrollment-viewport">
+      <section class="enrollment-viewport fm-panel fm-optical-rim" aria-labelledby="face-preview-title">
+        <h3 id="face-preview-title">人脸取景</h3>
         <FaceCapture
           :disabled="saving || images.length >= 3"
           :processing="enrollmentFeedback === 'processing'"
@@ -89,8 +90,8 @@ onBeforeUnmount(() => {
             >重新采集</el-button
           >
         </div>
-      </div>
-      <section v-tech-card class="enrollment-settings fm-hud">
+      </section>
+      <section v-tech-card class="enrollment-settings fm-panel fm-hud fm-optical-rim">
         <h3>当前账号绑定</h3>
         <p class="face-status">
           <el-tag :type="status?.ready ? 'success' : 'warning'">{{
@@ -139,9 +140,9 @@ onBeforeUnmount(() => {
 <style scoped>
 .face-settings {
   display: grid;
-  grid-template-columns: minmax(300px, 1.2fr) minmax(280px, 1fr);
-  gap: 30px;
-  padding: 24px 0;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 320px), 1fr));
+  gap: clamp(14px, 2vw, 24px);
+  margin-top: 18px;
 }
 
 .sample-actions {
@@ -150,27 +151,22 @@ onBeforeUnmount(() => {
   justify-content: center;
   margin-top: 12px;
   font-size: 12px;
-  color: var(--el-text-color-secondary);
+  color: var(--fm-secondary);
 }
 
-.enrollment-viewport {
-  min-width: 0;
-}
+.enrollment-viewport,
 .enrollment-settings {
-  align-self: start;
   min-width: 0;
   padding: clamp(16px, 2vw, 26px);
-  border: 1px solid var(--fm-line);
-  border-radius: var(--fm-panel-radius);
-  background: var(--fm-card-glass);
-  box-shadow:
-    inset 0 1px var(--fm-highlight),
-    var(--fm-shadow);
-  backdrop-filter: var(--fm-card-filter);
 }
-.enrollment-settings h3 {
-  margin: 0;
+.face-settings h3 {
+  margin: 0 0 16px;
   color: var(--fm-text);
+  font-size: 16px;
+}
+.enrollment-viewport :deep(.camera-frame) {
+  backdrop-filter: none;
+  box-shadow: inset 0 1px var(--fm-highlight);
 }
 .face-status,
 .face-step {
@@ -202,7 +198,7 @@ onBeforeUnmount(() => {
 .enrollment-settings p {
   font-size: 13px;
   line-height: 1.8;
-  color: var(--el-text-color-secondary);
+  color: color-mix(in srgb, var(--fm-text) 75%, var(--fm-secondary));
 }
 
 .consent {
@@ -221,9 +217,4 @@ onBeforeUnmount(() => {
   gap: 12px;
 }
 
-@media (width <= 900px) {
-  .face-settings {
-    grid-template-columns: 1fr;
-  }
-}
 </style>
