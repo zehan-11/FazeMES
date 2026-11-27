@@ -524,9 +524,9 @@ export const JSON_PARAMS_INPUT_CONSTANTS = {
   PLACEHOLDER: '请输入JSON格式的参数',
   JSON_FORMAT_CORRECT: 'JSON 格式正确',
   QUICK_FILL_LABEL: '快速填充：',
-  EXAMPLE_DATA_BUTTON: '示例数据',
+  EXAMPLE_DATA_BUTTON: '填入参考值',
   CLEAR_BUTTON: '清空',
-  VIEW_EXAMPLE_TITLE: '查看参数示例',
+  VIEW_EXAMPLE_TITLE: '查看参数格式',
   COMPLETE_JSON_FORMAT: '完整 JSON 格式：',
   REQUIRED_TAG: '必填',
 
@@ -538,11 +538,11 @@ export const JSON_PARAMS_INPUT_CONSTANTS = {
 
   // 类型相关标题
   TITLES: {
-    SERVICE: (name?: string) => `${name || '服务'} - 输入参数示例`,
-    EVENT: (name?: string) => `${name || '事件'} - 输出参数示例`,
-    PROPERTY: '属性设置 - 参数示例',
-    CUSTOM: (name?: string) => `${name || '自定义'} - 参数示例`,
-    DEFAULT: '参数示例'
+    SERVICE: (name?: string) => `${name || '服务'} - 输入参数格式`,
+    EVENT: (name?: string) => `${name || '事件'} - 输出参数格式`,
+    PROPERTY: '属性设置 - 参数格式',
+    CUSTOM: (name?: string) => `${name || '自定义'} - 参数格式`,
+    DEFAULT: '参数格式'
   },
 
   // 参数标签

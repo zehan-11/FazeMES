@@ -68,7 +68,7 @@
           </el-button>
         </template>
       </el-table-column>
-      <el-table-column label="设备名称" align="center" prop="machineryName" />
+      <el-table-column label="设备名称" align="center" :formatter="$catalogCell" prop="machineryName" />
       <el-table-column label="品牌" align="center" prop="machineryBrand" />
       <el-table-column label="规格型号" align="center" prop="machinerySpecification" />
       <el-table-column label="计划名称" align="center" prop="planName" />

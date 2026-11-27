@@ -5,10 +5,10 @@ export default {
       content: {
         newsItem: [
           {
-            title: '示例图文标题',
-            author: '示例作者',
-            digest: '示例图文摘要',
-            content: '示例图文内容',
+            title: '图文标题',
+            author: '作者',
+            digest: '图文摘要',
+            content: '图文正文',
             contentSourceUrl: 'https://example.com',
             thumbMediaId: 'r6ryvl6LrxBU0miaST4Y-pIcmK-zAAId-9TGgy-DrSLhjVuWbuT3ZBjk9K1yQ0Dn',
             showCoverPic: 0,
@@ -18,10 +18,10 @@ export default {
             thumbUrl: '/placeholder-image.svg'
           },
           {
-            title: '示例图文标题',
-            author: '示例作者',
-            digest: '示例图文摘要',
-            content: '示例图文内容',
+            title: '图文标题',
+            author: '作者',
+            digest: '图文摘要',
+            content: '图文正文',
             contentSourceUrl: 'https://example.com',
             thumbMediaId: 'r6ryvl6LrxBU0miaST4Y-pIcmK-zAAId-9TGgy-DrSLhjVuWbuT3ZBjk9K1yQ0Dn',
             showCoverPic: 0,
@@ -39,10 +39,10 @@ export default {
       content: {
         newsItem: [
           {
-            title: '示例图文标题',
-            author: '示例作者',
-            digest: '示例图文摘要',
-            content: '示例图文内容',
+            title: '图文标题',
+            author: '作者',
+            digest: '图文摘要',
+            content: '图文正文',
             contentSourceUrl: 'https://example.com',
             thumbMediaId: 'r6ryvl6LrxBU0miaST4Y-pIcmK-zAAId-9TGgy-DrSLhjVuWbuT3ZBjk9K1yQ0Dn',
             showCoverPic: 0,
@@ -60,10 +60,10 @@ export default {
       content: {
         newsItem: [
           {
-            title: '示例图文标题',
-            author: '示例作者',
-            digest: '示例图文摘要',
-            content: '示例图文内容',
+            title: '图文标题',
+            author: '作者',
+            digest: '图文摘要',
+            content: '图文正文',
             contentSourceUrl: 'https://example.com',
             thumbMediaId: 'r6ryvl6LrxBU0miaST4Y-tlQmcl3RdC-Jcgns6IQtf7zenGy3b86WLT7GzUcrb1T',
             showCoverPic: 0,
@@ -81,10 +81,10 @@ export default {
       content: {
         newsItem: [
           {
-            title: '示例图文标题',
-            author: '示例作者',
-            digest: '示例图文摘要',
-            content: '示例图文内容',
+            title: '图文标题',
+            author: '作者',
+            digest: '图文摘要',
+            content: '图文正文',
             contentSourceUrl: 'https://example.com',
             thumbMediaId: 'r6ryvl6LrxBU0miaST4Y-pgFtUNLu1foMSAMkoOsrQrTZ8EtTMssBLfTtzP0dfjG',
             showCoverPic: 0,
@@ -102,10 +102,10 @@ export default {
       content: {
         newsItem: [
           {
-            title: '示例图文标题',
-            author: '示例作者',
-            digest: '示例图文摘要',
-            content: '示例图文内容',
+            title: '图文标题',
+            author: '作者',
+            digest: '图文摘要',
+            content: '图文正文',
             contentSourceUrl: 'https://example.com',
             thumbMediaId: 'r6ryvl6LrxBU0miaST4Y-jVixJGgnBnkBPRbuVptOW0CHYuQFyiOVNtamctS8xU8',
             showCoverPic: 0,
@@ -123,10 +123,10 @@ export default {
       content: {
         newsItem: [
           {
-            title: '示例图文标题',
-            author: '示例作者',
-            digest: '示例图文摘要',
-            content: '示例图文内容',
+            title: '图文标题',
+            author: '作者',
+            digest: '图文摘要',
+            content: '图文正文',
             contentSourceUrl: 'https://example.com',
             thumbMediaId: 'r6ryvl6LrxBU0miaST4Y-pIcmK-zAAId-9TGgy-DrSLhjVuWbuT3ZBjk9K1yQ0Dn',
             showCoverPic: 0,

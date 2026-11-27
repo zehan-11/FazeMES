@@ -26,9 +26,6 @@
             <div key="3" class="mt-5 text-14px font-normal text-white">
               {{ localMes ? '工单、排产、报工、仓储、质量与设备管理' : t('login.message') }}
             </div>
-            <div v-if="localMes" key="4" class="mt-5 text-12px text-white">
-              FazeMES · 本地示例环境
-            </div>
           </TransitionGroup>
         </div>
       </div>

@@ -5,7 +5,7 @@ import { Setting as SettingsIcon } from '@element-plus/icons-vue'
 import { ThemeSwitch } from '@/layout/components/ThemeSwitch'
 import router from '@/router'
 import { Message } from '@/layout/components/Message'
-import { Collapse } from '@/layout/components/Collapse'
+import HistoryBackButton from '@/components/HistoryBackButton.vue'
 import { UserInfo } from '@/layout/components/UserInfo'
 import { Screenfull } from '@/layout/components/Screenfull'
 import { Breadcrumb } from '@/layout/components/Breadcrumb'
@@ -73,7 +73,8 @@ export default defineComponent({
     const { t } = useI18n()
     const { openSetting } = useSetting()
     const showSidebarControl = computed(
-      () => !isHorizontalMenuLayout(layout.value) || isMixedNavLayout(layout.value)
+      () => hamburger.value && !isTwoColumnLayout(layout.value) &&
+        (!isHorizontalMenuLayout(layout.value) || isMixedNavLayout(layout.value))
     )
     const showBreadcrumb = computed(() => !isHorizontalMenuLayout(layout.value))
 
@@ -82,14 +83,21 @@ export default defineComponent({
         id={`${variables.namespace}-tool-header`}
         class={[prefixCls, 'h-[var(--top-tool-height)] relative flex items-center justify-between']}
       >
-        {showSidebarControl.value || showBreadcrumb.value ? (
-          <div class="fm-header-path">
-            {showSidebarControl.value && hamburger.value && !isTwoColumnLayout(layout.value) ? (
-              <Collapse class="custom-hover" color="var(--top-header-text-color)"></Collapse>
-            ) : undefined}
-            {showBreadcrumb.value && breadcrumb.value ? <Breadcrumb /> : undefined}
-          </div>
-        ) : undefined}
+        <div class="fm-header-path">
+          <HistoryBackButton />
+          {appStore.getMobile && showSidebarControl.value ? (
+            <button
+              type="button"
+              class="fm-icon-button"
+              aria-label={appStore.getCollapse ? '展开导航' : '收起导航'}
+              aria-expanded={!appStore.getCollapse}
+              onClick={() => appStore.setCollapse(!appStore.getCollapse)}
+            >
+              <Icon icon="ep:menu" size={18} />
+            </button>
+          ) : undefined}
+          {showBreadcrumb.value && breadcrumb.value ? <Breadcrumb /> : undefined}
+        </div>
         <div class="fm-header-actions">
           <ThemeSwitch />
           {screenfull.value ? <Screenfull class="fm-icon-button" /> : undefined}
@@ -110,6 +118,17 @@ export default defineComponent({
               default: () => (
                 <div class="fm-workbench-tools">
                   <FmsAccountSetSwitch />
+                  {!appStore.getMobile && showSidebarControl.value ? (
+                    <button
+                      type="button"
+                      class="fm-tools-setting"
+                      aria-expanded={!appStore.getCollapse}
+                      onClick={() => appStore.setCollapse(!appStore.getCollapse)}
+                    >
+                      <Icon icon="ep:menu" size={16} />
+                      {appStore.getCollapse ? '展开导航' : '收起导航'}
+                    </button>
+                  ) : undefined}
                   {hasTenantVisitPermission.value ? <TenantVisit /> : undefined}
                   <button type="button" class="fm-tools-setting" onClick={openSetting}>
                     <Icon size={16} icon="ep:operation" />

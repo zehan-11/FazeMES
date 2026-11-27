@@ -47,8 +47,8 @@
           </template>
         </el-table-column>
         <el-table-column label="物料编码" align="center" prop="itemCode" width="150" />
-        <el-table-column label="物料名称" align="left" prop="itemName" min-width="200" />
-        <el-table-column label="规格型号" align="center" prop="specification" min-width="120" />
+        <el-table-column label="物料名称" align="left" :formatter="$catalogCell" prop="itemName" min-width="200" />
+        <el-table-column label="规格型号" align="center" :formatter="$catalogCell" prop="specification" min-width="120" />
         <el-table-column label="单位" align="center" prop="unitMeasureName" width="80" />
         <el-table-column label="批次号" align="center" prop="batchCode" width="130" />
         <el-table-column label="通知计划" align="right" prop="noticeQuantity" min-width="130" />

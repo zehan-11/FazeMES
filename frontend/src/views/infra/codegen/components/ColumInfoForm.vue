@@ -120,7 +120,7 @@
         </el-select>
       </template>
     </el-table-column>
-    <el-table-column label="示例" min-width="10%">
+    <el-table-column label="参考值" min-width="10%">
       <template #default="scope">
         <el-input v-model="scope.row.example" />
       </template>

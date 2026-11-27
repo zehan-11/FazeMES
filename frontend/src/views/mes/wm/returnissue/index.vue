@@ -84,7 +84,7 @@
         </template>
       </el-table-column>
       <el-table-column label="生产工单" align="center" prop="workOrderCode" min-width="140" />
-      <el-table-column label="工作站" align="center" prop="workstationName" min-width="120" />
+      <el-table-column label="工作站" align="center" :formatter="$catalogCell" prop="workstationName" min-width="120" />
       <el-table-column
         label="退料日期"
         align="center"

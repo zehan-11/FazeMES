@@ -19,7 +19,7 @@
           :teleported="false"
           @change="changeWorkshop"
         >
-          <el-option v-for="w in data?.workshops || []" :key="w.id" :label="w.name" :value="w.id" />
+          <el-option v-for="w in data?.workshops || []" :key="w.id" :label="$catalogLabel(w.name)" :value="w.id" />
         </el-select>
         <el-select
           v-model="filters.workstationId"
@@ -33,7 +33,7 @@
           <el-option
             v-for="w in workstationOptions"
             :key="w.id"
-            :label="`${w.name} · ${w.scheduleLabel}`"
+            :label="`${$catalogLabel(w.name)} · ${w.scheduleLabel}`"
             :value="w.id"
           />
         </el-select>
@@ -56,7 +56,7 @@
         <el-switch v-model="autoRefresh" active-text="30秒刷新" aria-label="自动刷新" />
         <el-button :loading="loading" @click="load">刷新</el-button>
         <el-button @click="toggleFullscreen">全屏</el-button>
-        <el-button @click="router.back()">返回</el-button>
+        <HistoryBackButton with-label />
       </div>
     </div>
     <div v-if="error" class="screen-error" role="alert"
@@ -98,12 +98,12 @@
         </section>
         <section class="screen-panel ranking-panel">
           <div class="panel-heading"
-            ><h2>城市排行</h2><span v-if="mapExample" class="example-badge">示例</span></div
+            ><h2>城市排行</h2><span v-if="mapExample" class="example-badge">静态参考</span></div
           >
           <ChinaDistributionMap
             :cities="mapCities"
-            :metric-label="mapExample ? '销售示例' : '当日关联工单数'"
-            :unit="mapExample ? '示例值' : '单'"
+            :metric-label="mapExample ? '市场参考' : '当日关联工单数'"
+            :unit="mapExample ? '参考值' : '单'"
             :is-example="mapExample"
             view="ranking"
           />
@@ -112,10 +112,10 @@
       <div class="production-column">
         <section
           class="screen-panel map-panel"
-          :title="mapExample ? '示例值，与本系统业务统计无关' : regionData?.basis"
+          :title="mapExample ? '静态市场参考资料' : regionData?.basis"
         >
           <div class="panel-heading">
-            <h2>{{ mapExample ? '产品销售市场 · 示例' : '客户区域工单分布' }}</h2>
+            <h2>{{ mapExample ? '产品销售市场 · 参考分布' : '客户区域工单分布' }}</h2>
             <div class="map-controls"
               ><span v-if="!mapExample" class="map-count"
                 >已定位
@@ -125,13 +125,13 @@
                   }}</b
                 >
                 · 待定位 <b>{{ regionData?.unlocatedOrderCount || 0 }}</b></span
-              ><el-switch v-model="mapExample" active-text="示例" aria-label="切换地图示例数据"
+              ><el-switch v-model="mapExample" active-text="参考分布" aria-label="切换市场参考分布"
             /></div>
           </div>
           <ChinaDistributionMap
             :cities="mapCities"
-            :metric-label="mapExample ? '销售示例' : '当日关联工单数'"
-            :unit="mapExample ? '示例值' : '单'"
+            :metric-label="mapExample ? '市场参考' : '当日关联工单数'"
+            :unit="mapExample ? '参考值' : '单'"
             :is-example="mapExample"
             view="map"
             :empty-text="
@@ -151,7 +151,7 @@
               <button class="topology-station" @click="openStation(station.id)"
                 ><span class="station-node" aria-hidden="true"><Icon icon="ep:setting" /></span
                 ><span
-                  ><strong>{{ station.name }}</strong
+                  ><strong>{{ $catalogLabel(station.name) }}</strong
                   ><small>{{
                     station.count
                       ? `${format(station.produced)} / ${format(station.target)}`
@@ -182,7 +182,7 @@
               <tbody
                 ><tr v-for="w in data.workOrders" :key="w.id"
                   ><td>{{ w.code }}</td
-                  ><td :title="w.name">{{ w.name }}</td
+                  ><td :title="$catalogLabel(w.name)">{{ $catalogLabel(w.name) }}</td
                   ><td>{{ format(w.producedQuantity) }} / {{ format(w.quantity) }}</td
                   ><td
                     ><el-progress
@@ -249,7 +249,7 @@
               class="station-row"
               @click="openStation(s.id)"
               ><div
-                ><strong>{{ s.name }}</strong
+                ><strong>{{ $catalogLabel(s.name) }}</strong
                 ><span>{{
                   s.count ? `${s.count} 项任务` : '工位已建档 · 所选日期未排产'
                 }}</span></div
@@ -270,7 +270,7 @@
     <div v-else class="screen-empty">数据尚未加载，请点击刷新重试。</div>
     <el-drawer
       v-model="drawer"
-      :title="`${selectedStationName} · ${data?.date || filters.date} 任务`"
+      :title="`${$catalogLabel(selectedStationName)} · ${data?.date || filters.date} 任务`"
       size="min(900px, 90vw)"
       class="production-screen-drawer"
       :append-to="screen"
@@ -292,6 +292,7 @@
 </template>
 
 <script setup lang="ts">
+import HistoryBackButton from '@/components/HistoryBackButton.vue'
 import GlassSkeleton from '@/components/GlassSkeleton.vue'
 import { formatQuantity, quantityText, quantityUnits } from '@/utils/mesQuantity'
 import { formatDate } from '@/utils/formatTime'

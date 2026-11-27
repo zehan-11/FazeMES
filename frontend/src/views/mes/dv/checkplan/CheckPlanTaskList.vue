@@ -9,7 +9,7 @@
     <el-button @click="load" class="mb-10px">刷新任务</el-button>
     <el-table :data="tasks" v-loading="loading">
       <el-table-column label="编号" prop="id" width="80" />
-      <el-table-column label="设备" prop="machineryName" />
+      <el-table-column label="设备" :formatter="$catalogCell" prop="machineryName" />
       <el-table-column label="计划时间" prop="dueTime" width="170" :formatter="dateFormatter" />
       <el-table-column label="状态" width="90"
         ><template #default="{ row }">{{

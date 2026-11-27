@@ -30,7 +30,7 @@
           <el-option
             v-for="item in primaryUnitList.filter((unit) => unit.id !== formData.id)"
             :key="item.id"
-            :label="item.name"
+            :label="$catalogLabel(item.name)"
             :value="item.id!"
           />
         </el-select>

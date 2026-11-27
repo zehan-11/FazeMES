@@ -104,7 +104,7 @@
           </template>
         </el-table-column>
         <el-table-column label="工单编码" align="center" prop="code" width="180" />
-        <el-table-column label="工单名称" align="center" prop="name" min-width="200" />
+        <el-table-column label="工单名称" align="center" :formatter="$catalogCell" prop="name" min-width="200" />
         <el-table-column label="工单来源" align="center" prop="orderSourceType" width="100">
           <template #default="scope">
             <dict-tag
@@ -115,11 +115,11 @@
         </el-table-column>
         <el-table-column label="订单编号" align="center" prop="orderSourceCode" width="140" />
         <el-table-column label="产品编号" align="center" prop="productCode" width="120" />
-        <el-table-column label="产品名称" align="center" prop="productName" min-width="200" />
+        <el-table-column label="产品名称" align="center" :formatter="$catalogCell" prop="productName" min-width="200" />
         <el-table-column
           label="规格型号"
           align="center"
-          prop="productSpecification"
+          :formatter="$catalogCell" prop="productSpecification"
           min-width="120"
         />
         <el-table-column label="单位" align="center" prop="unitMeasureName" width="80" />

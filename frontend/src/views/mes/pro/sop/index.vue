@@ -149,7 +149,7 @@
             v-for="item in items"
             :key="item.id"
             :value="item.id"
-            :label="`${item.code} · ${item.name}`" /></el-select
+            :label="`${item.code} · ${$catalogLabel(item.name)}`" /></el-select
       ></el-form-item>
       <el-form-item label="工序" required
         ><el-select v-model="documentForm.processId" filterable class="w-full"
@@ -157,7 +157,7 @@
             v-for="process in processes"
             :key="process.id"
             :value="process.id"
-            :label="`${process.code} · ${process.name}`" /></el-select
+            :label="`${process.code} · ${$catalogLabel(process.name)}`" /></el-select
       ></el-form-item>
     </el-form>
     <template #footer

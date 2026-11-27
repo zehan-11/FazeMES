@@ -27,7 +27,7 @@
     <el-tooltip :disabled="!selectedItem" placement="top" :show-after="500">
       <template #content>
         <div v-if="selectedItem" class="leading-6">
-          <div>物料：{{ selectedItem.itemName || '-' }}</div>
+          <div>物料：{{ $catalogLabel(selectedItem.itemName) || '-' }}</div>
           <div>批次：{{ selectedItem.batchCode || '-' }}</div>
           <div>工单：{{ selectedItem.workOrderCode || selectedItem.workOrderId || '-' }}</div>
           <div>数量：{{ selectedItem.quantity ?? '-' }}</div>

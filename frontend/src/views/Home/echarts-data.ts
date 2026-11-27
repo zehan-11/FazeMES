@@ -215,7 +215,7 @@ export const wordOptions = {
       },
       data: [
         {
-          name: '示例项目 1',
+          name: '项目 1',
           value: 10000,
           textStyle: {
             color: 'black'
@@ -227,79 +227,79 @@ export const wordOptions = {
           }
         },
         {
-          name: '示例项目 2',
+          name: '项目 2',
           value: 6181
         },
         {
-          name: '示例项目 3',
+          name: '项目 3',
           value: 4386
         },
         {
-          name: '示例项目 4',
+          name: '项目 4',
           value: 4055
         },
         {
-          name: '示例项目 5',
+          name: '项目 5',
           value: 2467
         },
         {
-          name: '示例项目 6',
+          name: '项目 6',
           value: 2244
         },
         {
-          name: '示例项目 7',
+          name: '项目 7',
           value: 1898
         },
         {
-          name: '示例项目 8',
+          name: '项目 8',
           value: 1484
         },
         {
-          name: '示例项目 9',
+          name: '项目 9',
           value: 1112
         },
         {
-          name: '示例项目 10',
+          name: '项目 10',
           value: 965
         },
         {
-          name: '示例项目 11',
+          name: '项目 11',
           value: 847
         },
         {
-          name: '示例项目 12',
+          name: '项目 12',
           value: 582
         },
         {
-          name: '示例项目 13',
+          name: '项目 13',
           value: 555
         },
         {
-          name: '示例项目 14',
+          name: '项目 14',
           value: 550
         },
         {
-          name: '示例项目 15',
+          name: '项目 15',
           value: 462
         },
         {
-          name: '示例项目 16',
+          name: '项目 16',
           value: 366
         },
         {
-          name: '示例项目 17',
+          name: '项目 17',
           value: 360
         },
         {
-          name: '示例项目 18',
+          name: '项目 18',
           value: 282
         },
         {
-          name: '示例项目 19',
+          name: '项目 19',
           value: 273
         },
         {
-          name: '示例项目 20',
+          name: '项目 20',
           value: 265
         }
       ]

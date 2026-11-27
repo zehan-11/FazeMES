@@ -76,7 +76,7 @@
       <el-table-column label="编号" align="center" prop="id" width="80" />
       <el-table-column label="用户" align="center" prop="userNickname" />
       <el-table-column label="工作站编码" align="center" prop="workstationCode" />
-      <el-table-column label="工作站名称" align="center" prop="workstationName" />
+      <el-table-column label="工作站名称" align="center" :formatter="$catalogCell" prop="workstationName" />
       <el-table-column label="操作类型" align="center" prop="type" width="100">
         <template #default="scope">
           <dict-tag :type="DICT_TYPE.MES_PRO_WORK_RECORD_TYPE" :value="scope.row.type" />

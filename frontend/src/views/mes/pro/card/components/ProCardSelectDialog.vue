@@ -91,8 +91,8 @@
         <el-table-column label="生产工单编号" align="center" prop="workOrderCode" width="160" />
         <el-table-column label="产品物料编码" align="center" prop="itemCode" width="140" />
         <el-table-column label="批次号" align="center" prop="batchCode" width="120" />
-        <el-table-column label="产品物料名称" align="left" prop="itemName" min-width="150" />
-        <el-table-column label="规格型号" align="center" prop="specification" width="120" />
+        <el-table-column label="产品物料名称" align="left" :formatter="$catalogCell" prop="itemName" min-width="150" />
+        <el-table-column label="规格型号" align="center" :formatter="$catalogCell" prop="specification" width="120" />
         <el-table-column label="单位" align="center" prop="unitMeasureName" width="80" />
         <el-table-column label="流转数量" align="center" prop="transferedQuantity" width="100" />
       </el-table>

@@ -78,7 +78,7 @@
           </el-button>
         </template>
       </el-table-column>
-      <el-table-column label="工序名称" align="center" prop="name" width="200" />
+      <el-table-column label="工序名称" align="center" :formatter="$catalogCell" prop="name" width="200" />
       <el-table-column label="状态" align="center" prop="status" width="100">
         <template #default="scope">
           <dict-tag :type="DICT_TYPE.COMMON_STATUS" :value="scope.row.status" />

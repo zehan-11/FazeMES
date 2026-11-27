@@ -2,6 +2,7 @@
 import { defineComponent, type Component, type VNode } from 'vue'
 import { useTagsViewStore } from '@/store/modules/tagsView'
 import { useAppStore } from '@/store/modules/app'
+import { restoreWorkspaceScroll } from '@/layout/workspaceScroll'
 import { Footer } from '@/layout/components/Footer'
 
 defineOptions({ name: 'AppView' })
@@ -49,7 +50,7 @@ provide('reload', reload)
 
 <template>
   <router-view v-if="routerAlive" v-slot="{ Component, route }">
-    <Transition name="glass-page" mode="out-in">
+    <Transition name="glass-page" mode="out-in" @after-enter="restoreWorkspaceScroll">
       <KeepAlive :include="getCaches">
         <component
           v-if="Component"
@@ -57,6 +58,8 @@ provide('reload', reload)
           :key="route.meta.viewKey || route.fullPath"
         >
           <section
+            :data-workspace-path="route.fullPath"
+            @vue:mounted="restoreWorkspaceScroll()"
             :class="[
               'fm-workspace p-[var(--app-content-padding)] w-full',
               {

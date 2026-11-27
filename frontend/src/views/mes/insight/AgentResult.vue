@@ -19,7 +19,7 @@
         <el-table-column prop="name" label="名称" min-width="180" />
         <el-table-column
           v-if="table.module === 'WORKORDER'"
-          prop="productName"
+          :formatter="$catalogCell" prop="productName"
           label="产品"
           min-width="160"
         />

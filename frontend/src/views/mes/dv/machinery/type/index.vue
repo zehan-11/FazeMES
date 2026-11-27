@@ -59,7 +59,7 @@
       v-if="refreshTable"
     >
       <el-table-column label="设备类型编码" align="center" prop="code" />
-      <el-table-column label="设备类型名称" align="left" prop="name" />
+      <el-table-column label="设备类型名称" align="left" :formatter="$catalogCell" prop="name" />
       <el-table-column label="状态" align="center" prop="status">
         <template #default="scope">
           <dict-tag :type="DICT_TYPE.COMMON_STATUS" :value="scope.row.status" />

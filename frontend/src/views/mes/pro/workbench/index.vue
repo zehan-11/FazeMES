@@ -19,7 +19,7 @@
               v-for="station in stations"
               :key="station.id"
               :value="station.id"
-              :label="`${station.name} · ${station.code}`"
+              :label="`${$catalogLabel(station.name)} · ${station.code}`"
             />
           </el-select>
           <el-button size="large" :loading="loading" @click="refreshTasks">刷新任务</el-button>
@@ -113,7 +113,7 @@
               >
                 <span class="task-sequence">{{ index + 1 }}</span>
                 <span class="task-summary">
-                  <strong>{{ task.itemName }} · {{ task.processName }}</strong>
+                  <strong>{{ $catalogLabel(task.itemName) }} · {{ $catalogLabel(task.processName) }}</strong>
                   <span>{{ task.workOrderCode }}</span>
                   <span>{{ time(task.startTime) }} → {{ time(task.endTime) }}</span>
                   <span>已生产 {{ task.producedQuantity || 0 }} / 排产 {{ task.quantity }}</span>
@@ -127,21 +127,21 @@
               <el-card shadow="never">
                 <template #header>
                   <div class="task-header">
-                    <strong>{{ context.task.itemName }} · {{ context.task.processName }}</strong>
+                    <strong>{{ $catalogLabel(context.task.itemName) }} · {{ $catalogLabel(context.task.processName) }}</strong>
                     <el-tag>{{ context.task.checkFlag ? '需质量检验' : '自主报工' }}</el-tag>
                   </div>
                 </template>
                 <el-descriptions :column="1" border>
                   <el-descriptions-item label="工单"
                     >{{ context.task.workOrderCode }} ·
-                    {{ context.task.workOrderName }}</el-descriptions-item
+                    {{ $catalogLabel(context.task.workOrderName) }}</el-descriptions-item
                   >
                   <el-descriptions-item label="产品"
                     >{{ context.task.itemCode }} ·
-                    {{ context.task.itemSpecification || '—' }}</el-descriptions-item
+                    {{ $catalogLabel(context.task.itemSpecification) || '—' }}</el-descriptions-item
                   >
                   <el-descriptions-item label="工作站">{{
-                    context.task.workstationName
+                    $catalogLabel(context.task.workstationName)
                   }}</el-descriptions-item>
                   <el-descriptions-item label="任务">{{ context.task.code }}</el-descriptions-item>
                   <el-descriptions-item label="进度"

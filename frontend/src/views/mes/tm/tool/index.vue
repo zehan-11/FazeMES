@@ -109,7 +109,7 @@
           </el-table-column>
           <el-table-column label="工具名称" align="center" prop="name" min-width="150" />
           <el-table-column label="品牌" align="center" prop="brand" width="100" />
-          <el-table-column label="型号规格" align="center" prop="specification" width="120" />
+          <el-table-column label="型号规格" align="center" :formatter="$catalogCell" prop="specification" width="120" />
           <el-table-column label="工具类型" align="center" prop="toolTypeName" width="120" />
           <el-table-column label="库存数量" align="center" prop="quantity" width="100" />
           <el-table-column label="可用数量" align="center" prop="availableQuantity" width="100" />

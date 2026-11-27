@@ -62,7 +62,7 @@
           </el-link>
         </template>
       </el-table-column>
-      <el-table-column label="车间名称" align="center" prop="name" width="150" />
+      <el-table-column label="车间名称" align="center" :formatter="$catalogCell" prop="name" width="150" />
       <el-table-column label="面积" align="center" prop="area" />
       <el-table-column label="负责人" align="center" prop="chargeUserName" />
       <el-table-column label="状态" align="center" prop="status">

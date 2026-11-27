@@ -40,6 +40,7 @@ function setup(t, production = async () => ({})) {
     '@/utils/formatTime': { formatDate: (value) => value },
     '@/components/Echart': {},
     '@/components/GlassSkeleton.vue': {},
+    '@/components/HistoryBackButton.vue': {},
     './components/ChinaDistributionMap.vue': {},
     './components/chinaDistribution': { YUNSHU_EXAMPLE_CITIES: [] },
     '@/api/mes/dashboard': {

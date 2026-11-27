@@ -132,7 +132,7 @@
       <el-table-column label="供应商简称" align="center" prop="vendorNickname" width="120" />
       <el-table-column label="供应商批次号" align="center" prop="vendorBatch" width="130" />
       <el-table-column label="产品物料编码" align="center" prop="itemCode" width="130" />
-      <el-table-column label="产品物料名称" align="center" prop="itemName" min-width="150" />
+      <el-table-column label="产品物料名称" align="center" :formatter="$catalogCell" prop="itemName" min-width="150" />
       <el-table-column label="接收数量" align="center" prop="receivedQuantity" width="100" />
       <el-table-column label="检测数量" align="center" prop="checkQuantity" width="100" />
       <el-table-column label="不合格数" align="center" prop="unqualifiedQuantity" width="100" />

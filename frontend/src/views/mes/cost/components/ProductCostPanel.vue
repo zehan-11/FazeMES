@@ -19,7 +19,7 @@
     <template v-if="product">
       <div class="cost-toolbar">
         <h2
-          >{{ product.itemName }}
+          >{{ $catalogLabel(product.itemName) }}
           <el-tag :type="product.status === 'COMPLETE' ? 'success' : 'warning'">{{
             product.status === 'COMPLETE' ? '成本完整' : '成本未完整'
           }}</el-tag></h2
@@ -83,7 +83,7 @@
             border
             :tree-props="{ children: 'children' }"
           >
-            <el-table-column label="产品 / 物料" prop="itemName" min-width="260" />
+            <el-table-column label="产品 / 物料" :formatter="$catalogCell" prop="itemName" min-width="260" />
             <el-table-column label="编码" prop="itemCode" min-width="150" />
             <el-table-column label="本层标准用量" min-width="130"
               ><template #default="{ row }"
@@ -129,7 +129,7 @@
         <el-tab-pane :label="`采购叶子汇总（${product.leaves?.length ?? 0}）`" name="leaves">
           <el-table :data="product.leaves" border>
             <el-table-column prop="itemCode" label="物料编码" min-width="150" />
-            <el-table-column prop="itemName" label="物料名称" min-width="200" />
+            <el-table-column :formatter="$catalogCell" prop="itemName" label="物料名称" min-width="200" />
             <el-table-column label="每产品需求" min-width="130"
               ><template #default="{ row }"
                 >{{ costNumber(row.quantity) }} {{ row.unitMeasureName }}</template
@@ -162,7 +162,7 @@
             border
           >
             <el-table-column prop="itemCode" label="编码" min-width="150" />
-            <el-table-column prop="itemName" label="物料" min-width="200" />
+            <el-table-column :formatter="$catalogCell" prop="itemName" label="物料" min-width="200" />
             <el-table-column label="缺失项目"
               ><template #default>参考采购单价</template></el-table-column
             >

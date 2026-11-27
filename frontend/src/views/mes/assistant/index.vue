@@ -259,7 +259,7 @@
                     <el-option
                       v-for="base in bases"
                       :key="base.id"
-                      :label="base.name"
+                      :label="$catalogLabel(base.name)"
                       :value="base.id"
                     />
                   </el-select>
@@ -328,7 +328,7 @@
             </div>
             <div v-if="!embedded" class="chat-extras">
               <DifyAssistant v-if="canChat && canKnowledge" @journey="openJourney" />
-              <el-button text size="small" @click="openJourney()">预览流程示例</el-button>
+              <el-button text size="small" @click="openJourney()">预览问答流程</el-button>
             </div>
             <el-button
               v-else-if="sessionId"
@@ -381,7 +381,7 @@
               <el-option
                 v-for="base in scopedBases"
                 :key="base.id"
-                :label="base.name"
+                :label="$catalogLabel(base.name)"
                 :value="base.id"
               />
             </el-select>
@@ -404,7 +404,7 @@
           </div>
           <template v-if="currentBase">
             <p v-if="currentBase.description" class="base-description">{{
-              currentBase.description
+              $catalogLabel(currentBase.description)
             }}</p>
             <div class="library-coverage" role="status">
               <span

@@ -25,8 +25,8 @@
         <div v-if="selectedItem" class="leading-6">
           <div>编码：{{ selectedItem.code }}</div>
           <div>名称：{{ selectedItem.name }}</div>
-          <div>所在车间：{{ selectedItem.workshopName || '-' }}</div>
-          <div>所属工序：{{ selectedItem.processName || '-' }}</div>
+          <div>所在车间：{{ $catalogLabel(selectedItem.workshopName) || '-' }}</div>
+          <div>所属工序：{{ $catalogLabel(selectedItem.processName) || '-' }}</div>
           <div>地点：{{ selectedItem.address || '-' }}</div>
         </div>
       </template>

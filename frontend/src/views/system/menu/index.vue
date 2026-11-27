@@ -86,6 +86,7 @@
 </template>
 <script lang="tsx" setup>
 import { DICT_TYPE, getIntDictOptions } from '@/utils/dict'
+import { catalogLabel } from '@/utils/catalogLabel'
 import { handleTree } from '@/utils/tree'
 import * as MenuApi from '@/api/system/menu'
 import { MenuVO } from '@/api/system/menu'
@@ -105,6 +106,7 @@ const columns: Column<MenuVO>[] = [
     key: 'name',
     title: '菜单名称',
     dataKey: 'name',
+    cellRenderer: ({ rowData }) => <span>{catalogLabel(rowData.name)}</span>,
     width: 250,
     fixed: TableV2FixedDir.LEFT
   },

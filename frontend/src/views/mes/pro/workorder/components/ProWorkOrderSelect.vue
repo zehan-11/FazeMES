@@ -25,7 +25,7 @@
         <div v-if="selectedItem" class="leading-6">
           <div>编码：{{ selectedItem.code }}</div>
           <div>名称：{{ selectedItem.name }}</div>
-          <div>产品：{{ selectedItem.productName || '-' }}</div>
+          <div>产品：{{ $catalogLabel(selectedItem.productName) || '-' }}</div>
           <div>数量：{{ selectedItem.quantity ?? '-' }}</div>
         </div>
       </template>

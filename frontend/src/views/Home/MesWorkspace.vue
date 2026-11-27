@@ -82,8 +82,8 @@
           </template>
           <el-table v-loading="loading" :data="workOrders" empty-text="暂无生产工单">
             <el-table-column prop="code" label="工单编码" min-width="150" />
-            <el-table-column prop="name" label="工单名称" min-width="150" />
-            <el-table-column prop="productName" label="生产产品" min-width="130" />
+            <el-table-column :formatter="$catalogCell" prop="name" label="工单名称" min-width="150" />
+            <el-table-column :formatter="$catalogCell" prop="productName" label="生产产品" min-width="130" />
             <el-table-column prop="quantity" label="计划数量" width="100" align="right" />
             <el-table-column prop="quantityProduced" label="已生产" width="100" align="right" />
             <el-table-column label="状态" width="100" align="center">

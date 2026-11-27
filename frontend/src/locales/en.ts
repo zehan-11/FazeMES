@@ -121,7 +121,7 @@ export default {
   },
   login: {
     welcome: 'Welcome to FazeMES',
-    message: 'Example manufacturing execution environment',
+    message: 'Manufacturing execution system',
     tenantname: 'TenantName',
     username: 'Username',
     password: 'Password',
@@ -350,7 +350,7 @@ export default {
       errMsg503: 'The service is unavailable, the server is temporarily overloaded or maintained!',
       errMsg504: 'Network timeout!',
       errMsg505: 'The http version does not support the request!',
-      errMsg901: 'Demo mode, no write operations are possible!'
+      errMsg901: 'This environment is read-only.'
     },
     app: {
       logoutTip: 'Reminder',

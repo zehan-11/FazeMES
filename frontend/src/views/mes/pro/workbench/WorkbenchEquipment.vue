@@ -19,7 +19,7 @@
           v-for="machine in machines"
           :key="machine.id"
           :value="machine.id"
-          :label="`${machine.name} · ${machine.code}`"
+          :label="`${$catalogLabel(machine.name)} · ${machine.code}`"
         />
       </el-select>
       <el-alert
@@ -35,7 +35,7 @@
         <article v-for="task in tasks" :key="task.id" class="equipment-task">
           <div>
             <h3>{{ task.planName }}</h3>
-            <p>{{ task.machineryName }} · {{ formatDate(task.dueTime, 'YYYY-MM-DD HH:mm') }}</p>
+            <p>{{ $catalogLabel(task.machineryName) }} · {{ formatDate(task.dueTime, 'YYYY-MM-DD HH:mm') }}</p>
             <el-tag :type="task.status === 2 ? 'success' : 'warning'">{{
               ['待领用', '执行中', '已完成'][task.status]
             }}</el-tag>
@@ -63,7 +63,7 @@
   <el-dialog v-model="visible" title="设备任务执行" width="min(900px, 96vw)" destroy-on-close>
     <div v-if="current" v-loading="saving">
       <h2>{{ current.planName }}</h2>
-      <p>{{ current.machineryName }} · {{ formatDate(current.dueTime, 'YYYY-MM-DD HH:mm') }}</p>
+      <p>{{ $catalogLabel(current.machineryName) }} · {{ formatDate(current.dueTime, 'YYYY-MM-DD HH:mm') }}</p>
       <article v-for="line in current.lines" :key="line.id" class="equipment-line">
         <h3>{{ line.subjectName }}</h3>
         <p>{{ line.content }}</p>

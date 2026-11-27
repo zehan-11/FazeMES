@@ -119,12 +119,12 @@
           <dict-tag :type="DICT_TYPE.MES_PRO_FEEDBACK_TYPE" :value="scope.row.type" />
         </template>
       </el-table-column>
-      <el-table-column label="工作站" align="center" prop="workstationName" width="120" />
-      <el-table-column label="工序" align="center" prop="processName" width="100" />
+      <el-table-column label="工作站" align="center" :formatter="$catalogCell" prop="workstationName" width="120" />
+      <el-table-column label="工序" align="center" :formatter="$catalogCell" prop="processName" width="100" />
       <el-table-column label="生产工单编码" align="center" prop="workOrderCode" width="160" />
       <el-table-column label="产品物料编码" align="center" prop="itemCode" width="120" />
-      <el-table-column label="产品物料名称" align="center" prop="itemName" width="120" />
-      <el-table-column label="规格型号" align="center" prop="itemSpecification" width="120" />
+      <el-table-column label="产品物料名称" align="center" :formatter="$catalogCell" prop="itemName" width="120" />
+      <el-table-column label="规格型号" align="center" :formatter="$catalogCell" prop="itemSpecification" width="120" />
       <el-table-column label="单位" align="center" prop="unitMeasureName" width="80" />
       <el-table-column label="报工数量" align="center" prop="feedbackQuantity" width="100" />
       <el-table-column label="报工人" align="center" prop="feedbackUserNickname" width="100" />

@@ -9,7 +9,7 @@
     </el-form>
     <el-table :data="rows" v-loading="loading" max-height="500">
       <el-table-column prop="code" label="物料编码" />
-      <el-table-column prop="name" label="物料名称" />
+      <el-table-column :formatter="$catalogCell" prop="name" label="物料名称" />
       <el-table-column prop="stockQuantity" label="当前库存" />
       <el-table-column prop="minStock" label="下限" />
       <el-table-column prop="maxStock" label="上限（0不启用）" />

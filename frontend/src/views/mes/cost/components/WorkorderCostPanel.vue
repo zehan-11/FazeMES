@@ -202,10 +202,10 @@
             description="未建立计划快照。已经发生生产或库存业务的历史工单不能事后伪造计划。"
           />
           <template v-else>
-            <p>{{ cost.planSnapshot.itemName }} · {{ cost.planSnapshot.itemCode }}</p>
+            <p>{{ $catalogLabel(cost.planSnapshot.itemName) }} · {{ cost.planSnapshot.itemCode }}</p>
             <el-table :data="cost.planSnapshot.leaves" border size="small">
               <el-table-column prop="itemCode" label="采购物料编码" min-width="150" />
-              <el-table-column prop="itemName" label="采购物料" min-width="160" />
+              <el-table-column :formatter="$catalogCell" prop="itemName" label="采购物料" min-width="160" />
               <el-table-column label="单位产品展开需求" min-width="150"
                 ><template #default="{ row }">{{
                   costNumber(row.quantity)

@@ -36,6 +36,7 @@ import { vTechCard } from '@/directives/techCard'
 import { vSpotlight } from '@/directives/spotlight'
 
 import { createApp } from 'vue'
+import { catalogCell, catalogLabel } from '@/utils/catalogLabel'
 
 import App from './App.vue'
 
@@ -60,6 +61,8 @@ window.addEventListener('vite:preloadError', (event) => {
 // 创建实例
 const setupAll = async () => {
   const app = createApp(App)
+  app.config.globalProperties.$catalogLabel = catalogLabel
+  app.config.globalProperties.$catalogCell = catalogCell
 
   await setupI18n(app)
 

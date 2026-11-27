@@ -67,7 +67,7 @@
                     :data="row.materials"
                     size="small"
                     empty-text="没有工单物料需求，齐套状态未知"
-                    ><el-table-column prop="itemName" label="物料" /><el-table-column
+                    ><el-table-column :formatter="$catalogCell" prop="itemName" label="物料" /><el-table-column
                       prop="outstandingQuantity"
                       label="尚需数量" /><el-table-column
                       prop="availableQuantity"
@@ -80,7 +80,7 @@
                     ><el-table-column prop="code" label="任务编码" /><el-table-column
                       prop="stationName"
                       label="工作站"
-                    /><el-table-column prop="processName" label="工序" /><el-table-column
+                    /><el-table-column :formatter="$catalogCell" prop="processName" label="工序" /><el-table-column
                       prop="remainingMinutes"
                       label="估算剩余分钟"
                     /><el-table-column label="计划开始"
@@ -91,7 +91,7 @@
               </template></el-table-column
             >
             <el-table-column prop="code" label="工单" min-width="130" /><el-table-column
-              prop="productName"
+              :formatter="$catalogCell" prop="productName"
               label="产品"
               min-width="120"
             />

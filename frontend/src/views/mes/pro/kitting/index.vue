@@ -60,7 +60,7 @@
         <el-table-column label="工单" prop="workOrderCode" min-width="175" show-overflow-tooltip>
           <template #default="{ row }">
             <span class="order-code">{{ row.workOrderCode }}</span>
-            <span class="workorder-name muted">{{ row.workOrderName }}</span>
+            <span class="workorder-name muted">{{ $catalogLabel(row.workOrderName) }}</span>
           </template>
         </el-table-column>
         <el-table-column label="齐套状态" min-width="100"
@@ -102,7 +102,7 @@
                   statusText(analysis.status)
                 }}</el-tag></h3
               ><span class="muted"
-                >{{ analysis.workOrderName }} · {{ orderStatusText(analysis.workOrderStatus) }} ·
+                >{{ $catalogLabel(analysis.workOrderName) }} · {{ orderStatusText(analysis.workOrderStatus) }} ·
                 分析时间 {{ formatDate(analysis.analyzedAt) }}</span
               ></div
             ><div class="analysis-actions"
@@ -159,7 +159,7 @@
                   min-width="135"
                   fixed
                 /><el-table-column
-                  prop="itemName"
+                  :formatter="$catalogCell" prop="itemName"
                   label="物料名称"
                   min-width="150"
                 /><el-table-column prop="unitName" label="单位" width="70" />

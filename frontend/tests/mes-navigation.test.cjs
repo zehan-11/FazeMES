@@ -31,6 +31,56 @@ function load(relativePath) {
   const filename = path.join(__dirname, '../src', relativePath)
   return loadSource(fs.readFileSync(filename, 'utf8'), filename)
 }
+test('built-in captions can be displayed without renaming records, identifiers or user documents', () => {
+  const { catalogCell, catalogLabel } = load('utils/catalogLabel.ts')
+  const row = Object.freeze({ name: '教学试制车间·大屏演练' })
+  assert.equal(catalogCell(row, { property: 'name' }, row.name), '试制车间 · 衬套试制')
+  assert.equal(row.name, '教学试制车间·大屏演练')
+  assert.equal(catalogLabel('项目教学 · 设备与质量手册'), '设备与质量手册')
+  assert.equal(catalogLabel('OA 示例'), 'OA 办公')
+  assert.equal(catalogLabel('TST-DASH-W980003'), 'TST-DASH-W980003')
+  assert.equal(catalogLabel('客户提供的设备教学说明'), '客户提供的设备教学说明')
+})
+
+test('back follows actual history and resolves a new tab to its source, including the original query', () => {
+  const vue = require('vue')
+  const { parse, compileScript } = require('vue/compiler-sfc')
+  const file = path.join(__dirname, '../src/components/HistoryBackButton.vue')
+  const { descriptor } = parse(fs.readFileSync(file, 'utf8'))
+  const compiled = ts.transpileModule(compileScript(descriptor, { id: 'history-back' }).content, {
+    compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022 }
+  }).outputText
+  const origin = 'https://factory.local'
+  const order = '/mes/kitting?workOrderId=42#materials'
+  function click({ back = null, preceding = null, referrer = '', signedIn = true } = {}) {
+    const calls = []
+    const module = { exports: {} }
+    const scope = vue.effectScope()
+    const router = {
+      currentRoute: vue.ref({ fullPath: '/customer-portal' }),
+      options: { history: { base: '', state: { back, position: 1 } } },
+      back: () => calls.push('back'),
+      replace: (path) => calls.push(path)
+    }
+    const imports = { vue, '@element-plus/icons-vue': {}, '@/utils/auth': { getAccessToken: () => signedIn } }
+    vm.runInNewContext(compiled, {
+      module, exports: module.exports, require: (key) => imports[key], ...vue, useRouter: () => router, URL,
+      location: new URL('/customer-portal', origin), document: { referrer },
+      window: { navigation: { currentEntry: { index: 1 }, entries: () => [{ url: preceding }, {}] } }
+    }, { filename: file })
+    const state = scope.run(() => module.exports.default.setup({}, { expose() {} }))
+    state.goBack()
+    scope.stop()
+    return calls
+  }
+  assert.deepEqual(click({ back: order }), ['back'])
+  assert.deepEqual(click({ preceding: origin + order }), ['back'])
+  assert.deepEqual(click({ preceding: 'about:blank', referrer: origin + order }), [order])
+  assert.deepEqual(click({ referrer: 'https://other.local/page' }), [])
+  assert.deepEqual(click({ back: '/login?redirect=%2Findex' }), [])
+  assert.deepEqual(click(), [])
+})
+
 aliases['@/utils/is'] = load('utils/is.ts')
 aliases['@/utils/layout'] = load('utils/layout.ts')
 aliases['@/utils/routeParams'] = load('utils/routeParams.ts')

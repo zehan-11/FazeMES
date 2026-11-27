@@ -25,7 +25,7 @@
         <div v-if="selectedItem" class="leading-6">
           <div>编码：{{ selectedItem.code }}</div>
           <div>名称：{{ selectedItem.name }}</div>
-          <div>规格：{{ selectedItem.specification || '-' }}</div>
+          <div>规格：{{ $catalogLabel(selectedItem.specification) || '-' }}</div>
           <div>单位：{{ selectedItem.unitMeasureName || '-' }}</div>
         </div>
       </template>

@@ -207,13 +207,13 @@ test('changing example data preserves the geo view and toggles the metric and se
   assert.equal(chart.options.at(-1).series[0].data.length, 0)
   map.props.cities = helperModule.exports.YUNSHU_EXAMPLE_CITIES
   map.props.isExample = true
-  map.props.metricLabel = '销售展示示例'
+  map.props.metricLabel = '市场参考'
   await settle()
   const example = chart.options.at(-1)
   assert.equal(example.series[0].data.length, 18)
-  assert.equal(example.series[0].name, '销售展示示例')
+  assert.equal(example.series[0].name, '市场参考')
   assert.equal(example.geo, undefined, 'data changes do not reset user pan/zoom')
-  assert.match(example.aria.label.description, /示例/)
+  assert.match(example.aria.label.description, /静态参考数据/)
   map.props.cities = []
   map.props.isExample = false
   await settle()

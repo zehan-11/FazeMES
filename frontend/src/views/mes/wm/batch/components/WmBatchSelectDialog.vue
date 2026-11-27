@@ -203,8 +203,8 @@
         </el-table-column>
         <el-table-column label="批次编号" align="center" prop="code" width="150" />
         <el-table-column label="物料编码" align="center" prop="itemCode" width="150" />
-        <el-table-column label="物料名称" align="left" prop="itemName" min-width="140" />
-        <el-table-column label="规格型号" align="center" prop="itemSpecification" width="120" />
+        <el-table-column label="物料名称" align="left" :formatter="$catalogCell" prop="itemName" min-width="140" />
+        <el-table-column label="规格型号" align="center" :formatter="$catalogCell" prop="itemSpecification" width="120" />
         <el-table-column label="单位" align="center" prop="unitName" width="80" />
         <el-table-column label="供应商编码" align="center" prop="vendorCode" width="120" />
         <el-table-column label="供应商名称" align="center" prop="vendorName" width="120" />

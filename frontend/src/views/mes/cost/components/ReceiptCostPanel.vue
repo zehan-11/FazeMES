@@ -36,7 +36,7 @@
       />
       <el-table :data="lines" border>
         <el-table-column prop="itemCode" label="物料编码" min-width="150" />
-        <el-table-column prop="itemName" label="物料名称" min-width="200" />
+        <el-table-column :formatter="$catalogCell" prop="itemName" label="物料名称" min-width="200" />
         <el-table-column prop="batchCode" label="批次" min-width="130" />
         <el-table-column label="入库数量" min-width="120"
           ><template #default="{ row }"

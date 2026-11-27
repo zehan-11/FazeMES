@@ -98,7 +98,7 @@ const tooltipFormatter = (params: unknown) => {
   const label = escapeChartText(props.metricLabel)
   const value = escapeChartText(formatValue(rawValue))
   const unit = escapeChartText(props.unit)
-  return `${title}<br/>${label}：<strong>${value}</strong> ${unit}${props.isExample ? '<br/>示例数据' : ''}`
+  return `${title}<br/>${label}：<strong>${value}</strong> ${unit}${props.isExample ? '<br/>静态参考数据' : ''}`
 }
 
 const chartTooltip = {
@@ -144,7 +144,7 @@ const renderMapData = () => {
       aria: {
         enabled: true,
         label: {
-          description: `中国城市${props.metricLabel}分布，${locatedCities.value.length}个已定位城市。${props.isExample ? '当前为示例数据。' : ''}`
+          description: `中国城市${props.metricLabel}分布，${locatedCities.value.length}个已定位城市。${props.isExample ? '当前为静态参考数据。' : ''}`
         }
       },
       series: [

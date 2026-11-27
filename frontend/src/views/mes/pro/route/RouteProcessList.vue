@@ -20,7 +20,7 @@
       <el-table-column
         label="工序名称"
         align="center"
-        prop="processName"
+        :formatter="$catalogCell" prop="processName"
         width="120"
         fixed="left"
       />
@@ -84,7 +84,7 @@
                 <el-option
                   v-for="item in processList"
                   :key="item.id"
-                  :label="item.name"
+                  :label="$catalogLabel(item.name)"
                   :value="item.id"
                 />
               </el-select>

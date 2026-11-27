@@ -2,6 +2,7 @@ import type { RouteLocationNormalized, Router, RouteRecordNormalized } from 'vue
 import { defineComponent, h } from 'vue'
 import { createRouter, createWebHashHistory, RouteRecordRaw, RouterView } from 'vue-router'
 import { isUrl } from '@/utils/is'
+import { catalogLabel } from '@/utils/catalogLabel'
 import { cloneDeep, omit } from 'lodash-es'
 import {
   getExternalRoutePath,
@@ -24,6 +25,7 @@ export const registerComponent = (componentPath: string) => {
     }
   }
 }
+
 /* Layout */
 export const Layout = () => import('@/layout/Layout.vue')
 
@@ -87,7 +89,7 @@ export const generateRoute = (routes: AppCustomRouteRecordRaw[]): AppRouteRecord
     }
     // 1. 生成 meta 菜单元数据
     const meta = {
-      title: route.name,
+      title: catalogLabel(route.name),
       icon: route.icon,
       hidden: !route.visible,
       noCache: !route.keepAlive,

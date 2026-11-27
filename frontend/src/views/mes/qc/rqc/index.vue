@@ -136,8 +136,8 @@
       <!-- DONE @AI：来源单据编码，后端 RespVO 已拼接返回 sourceDocCode -->
       <el-table-column label="来源单据编码" align="center" prop="sourceDocCode" width="160" />
       <el-table-column label="产品物料编码" align="center" prop="itemCode" width="130" />
-      <el-table-column label="产品物料名称" align="center" prop="itemName" min-width="150" />
-      <el-table-column label="规格型号" align="center" prop="itemSpecification" width="130" />
+      <el-table-column label="产品物料名称" align="center" :formatter="$catalogCell" prop="itemName" min-width="150" />
+      <el-table-column label="规格型号" align="center" :formatter="$catalogCell" prop="itemSpecification" width="130" />
       <el-table-column label="单位" align="center" prop="unitName" width="80" />
       <el-table-column label="批次号" align="center" prop="batchCode" width="130" />
       <el-table-column label="检测结果" align="center" prop="checkResult" width="110">

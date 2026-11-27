@@ -38,7 +38,7 @@
             </template>
           </el-table-column>
           <el-table-column label="前序报工" prop="code" min-width="140" />
-          <el-table-column label="工序" prop="processName" min-width="100" />
+          <el-table-column label="工序" :formatter="$catalogCell" prop="processName" min-width="100" />
           <el-table-column label="合格量" prop="qualified" />
           <el-table-column label="其他报工已占用" prop="used" min-width="120" />
           <el-table-column label="可用量" prop="available" />

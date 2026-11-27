@@ -29,7 +29,7 @@
         <div v-if="selectedItem" class="leading-6">
           <div>批次编号：{{ selectedItem.code }}</div>
           <div>物料编码：{{ selectedItem.itemCode || '-' }}</div>
-          <div>物料名称：{{ selectedItem.itemName || '-' }}</div>
+          <div>物料名称：{{ $catalogLabel(selectedItem.itemName) || '-' }}</div>
           <div>生产批号：{{ selectedItem.lotNumber || '-' }}</div>
         </div>
       </template>

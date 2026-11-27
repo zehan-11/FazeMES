@@ -62,7 +62,7 @@
           />
         </div>
         <div class="ml-22px" v-if="modelData.processIdRule.enable">
-          <el-text type="info"> 编码示例：{{ numberExample }} </el-text>
+          <el-text type="info"> 编码预览：{{ numberExample }} </el-text>
         </div>
       </div>
     </el-form-item>

@@ -12,7 +12,7 @@
         <el-button @click="handleQuery"><Icon icon="ep:search" class="mr-5px" /> 搜索</el-button>
         <el-button @click="resetQuery"><Icon icon="ep:refresh" class="mr-5px" /> 重置</el-button>
         <el-button type="primary" plain @click="openForm('create')">
-          <Icon icon="ep:plus" />创建示例提现单
+          <Icon icon="ep:plus" />创建提现单
         </el-button>
       </el-form-item>
     </el-form>

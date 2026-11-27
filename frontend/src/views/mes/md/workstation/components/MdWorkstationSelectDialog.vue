@@ -80,10 +80,10 @@
           </template>
         </el-table-column>
         <el-table-column label="工作站编码" align="center" prop="code" width="140" />
-        <el-table-column label="工作站名称" align="center" prop="name" min-width="160" />
+        <el-table-column label="工作站名称" align="center" :formatter="$catalogCell" prop="name" min-width="160" />
         <el-table-column label="工作站地点" align="center" prop="address" min-width="140" />
-        <el-table-column label="所在车间" align="center" prop="workshopName" width="120" />
-        <el-table-column label="所属工序" align="center" prop="processName" width="120" />
+        <el-table-column label="所在车间" align="center" :formatter="$catalogCell" prop="workshopName" width="120" />
+        <el-table-column label="所属工序" align="center" :formatter="$catalogCell" prop="processName" width="120" />
         <el-table-column label="备注" align="center" prop="remark" min-width="120" />
       </el-table>
       <Pagination

@@ -96,7 +96,7 @@
       </el-table-column>
       <el-table-column label="维修单名称" align="center" prop="name" min-width="150" />
       <el-table-column label="设备编码" align="center" prop="machineryCode" min-width="120" />
-      <el-table-column label="设备名称" align="center" prop="machineryName" min-width="120" />
+      <el-table-column label="设备名称" align="center" :formatter="$catalogCell" prop="machineryName" min-width="120" />
       <el-table-column
         label="报修日期"
         align="center"

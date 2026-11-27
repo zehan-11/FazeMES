@@ -11,8 +11,8 @@
       </el-table-column>
       <el-table-column label="采购订单号" align="center" prop="purchaseOrderCode" min-width="150" />
       <el-table-column label="物料编码" align="center" prop="itemCode" width="140" />
-      <el-table-column label="物料名称" align="center" prop="itemName" min-width="150" />
-      <el-table-column label="规格型号" align="center" prop="specification" min-width="120" />
+      <el-table-column label="物料名称" align="center" :formatter="$catalogCell" prop="itemName" min-width="150" />
+      <el-table-column label="规格型号" align="center" :formatter="$catalogCell" prop="specification" min-width="120" />
       <el-table-column label="单位" align="center" prop="unitMeasureName" width="80" />
       <el-table-column label="入库数量" align="center" prop="receivedQuantity" width="100" />
     </el-table>
