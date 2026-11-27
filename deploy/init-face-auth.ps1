@@ -6,10 +6,19 @@ $projectRoot = Split-Path -Parent $PSScriptRoot
 $faceRoot = Join-Path $projectRoot '.runtime\face-auth'
 $modelRoot = Join-Path $faceRoot 'models'
 New-Item -ItemType Directory -Force -Path $modelRoot | Out-Null
-$taskFacePython = Join-Path $faceRoot 'venv\Scripts\python.exe'
+if (!$IsWindows) {
+    & chmod 700 $faceRoot
+    if ($LASTEXITCODE) { throw 'Could not restrict access to the face service credentials.' }
+}
+$taskFacePython = Join-Path $faceRoot $(if ($IsWindows) { 'venv/Scripts/python.exe' } else { 'venv/bin/python' })
 if (-not (Test-Path -LiteralPath $taskFacePython)) {
-    & python -m venv (Join-Path $faceRoot 'venv')
-    if ($LASTEXITCODE -ne 0) { throw 'Python 3.11+ is required for the local face service.' }
+    if ($IsWindows -and (Get-Command py -CommandType Application -ErrorAction SilentlyContinue)) {
+        & py -3.13 -m venv (Join-Path $faceRoot 'venv')
+    } else {
+        $python = if ($IsWindows) { 'python' } elseif (Get-Command python3.13 -ErrorAction SilentlyContinue) { 'python3.13' } else { 'python3' }
+        & $python -m venv (Join-Path $faceRoot 'venv')
+    }
+    if ($LASTEXITCODE -ne 0) { throw 'Install 64-bit Python 3.13 to create the local face environment.' }
 }
 & $taskFacePython -m pip install --disable-pip-version-check --only-binary=:all: -r (Join-Path $projectRoot 'face-auth\requirements.txt')
 if ($LASTEXITCODE -ne 0) { throw 'Face runtime dependency installation failed.' }

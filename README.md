@@ -1,5 +1,7 @@
 # FazeMES
 
+在新电脑上启用人脸登录，见[本地部署步骤](deploy/FACE-LOGIN.md#在新电脑上启用本地人脸登录)。
+
 <img src="frontend/public/fazemes-logo.svg" alt="FazeMES" width="64" height="64">
 
 FazeMES 是基于 Spring Boot、Vue 3 和 TypeScript 的生产执行管理系统，供 Windows 本地开发和工厂业务适配使用。

@@ -1,0 +1,25 @@
+services:
+  vector:
+    image: pgvector/pgvector:pg16
+    command: ["postgres", "-c", "log_parameter_max_length=0", "-c", "log_parameter_max_length_on_error=0", "-c", "log_min_error_statement=panic"]
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: fazemes_face
+      POSTGRES_PASSWORD_FILE: /run/secrets/owner
+    ports:
+      - "127.0.0.1:${FACE_VECTOR_PORT:-55439}:5432"
+    volumes:
+      - samples:/var/lib/postgresql/data
+    secrets: [owner, app]
+    healthcheck:
+      test: ["CMD", "pg_isready", "-h", "127.0.0.1", "-U", "postgres", "-d", "fazemes_face"]
+      interval: 3s
+      timeout: 3s
+      retries: 45
+secrets:
+  owner:
+    file: ../../.runtime/face-vector/owner.key
+  app:
+    file: ../../.runtime/face-vector/app.key
+volumes:
+  samples:

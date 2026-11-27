@@ -4,6 +4,23 @@
 
 管理员在系统管理 → 角色管理中给指定员工角色分配 MES 系统父菜单和「本人人脸登录」（971290）。工作台使用该角色原有的业务权限。给管理角色分配「用户查询」与用户管理下的「管理人脸绑定」（971291），在用户管理列表的「更多」中填写原因后执行“停用刷脸”或“要求本人重录”。部门数据权限继续由 MES 维护。停用禁止本人自行开通；经管理员要求重录后，员工可用密码登录并录入新版。
 
+## 在新电脑上启用本地人脸登录
+
+适用于已能密码登录 FazeMES、准备使用一个新的人脸向量库的 Windows、macOS 和 Linux 电脑。如果当前 MES 已有向量绑定，继续使用原向量库及其凭据，迁移时应连同向量数据一起备份和恢复。
+
+1. 安装并启动支持 Linux 容器的 Docker 和 Docker Compose v2（支持 `up --wait`），安装 PowerShell 7.2 或更新版本和 64 位 Python 3.13。首次安装需要能下载 Python 二进制包、OpenCV 模型及 pgvector 镜像。
+2. 在项目根目录运行以下命令。已初始化的 Windows 电脑可在命令末尾加上 `-StartMes`，一次完成配置、后端构建和 MES 启动。
+
+   ```powershell
+   pwsh -NoProfile -File deploy/start-face-local.ps1
+   ```
+
+   脚本校验模型哈希，启动仅监听本机的识别服务，创建持久化向量库、行级隔离策略和独立应用账号。默认识别端口 8091、数据库端口 55439。重复执行会复用同一套凭据和数据。请一并备份 MySQL、`.runtime/face-vector`、`.runtime/face-auth` 及向量库数据卷。
+3. **Windows** 如果上一步已使用 `-StartMes`，直接进入第 4 步。也可以从项目根目录单独运行 `pwsh -NoProfile -File deploy/resume-local.ps1 -Build`，等待前后端就绪。常规启动器需要通过 `MYSQL_HOME`、既有安装路径或 `PATH` 找到 MySQL 工具。以后可以用「普通启动」。**macOS / Linux** 先按下节对 MySQL 执行增量迁移，再按原方式构建并从项目根目录重启 MES；从其他目录启动时，将 `.runtime/face-vector/connection.yaml` 的绝对文件 URI 追加到现有 `spring.config.additional-location` 列表。原有的 `MES_FACE_AUTH_*` 环境变量和 Java 命令行覆盖项需与所选实例一致。
+4. 密码登录，进入「人脸登录设置」，确认服务就绪后录入本人样本，再退出并刷脸验证。浏览器使用本机 localhost 或 HTTPS，并允许摄像头访问。主机重启后先启动 Docker，再启动人脸服务及 MES。
+
+如果已经安装原生 PostgreSQL 16、pgvector 和命令行工具 psql，也可以使用独立的新数据库 `fazemes_face`。通过环境变量 `PGUSER` 和本机密码文件为 psql 配置数据库所有者凭据，该账号须有创建角色和安装扩展的权限。运行 `pwsh -NoProfile -File deploy/start-face-local.ps1 -UseLocalPostgres -VectorPort 5432`（端口按实际调整），即可跳过 Docker。已有生产绑定的迁移按下节处理。
+
 ## 数据库升级与启动
 
 1. 备份 MySQL、权限配置以及原人脸主密钥，限制备份读权限。对已有环境使用增量迁移，安排维护窗口停止旧版人脸写入。先在独立 PostgreSQL 13+ 数据库安装 pgvector。以下以 psql 中的数据库所有者执行一次，运行账号使用独立密码。

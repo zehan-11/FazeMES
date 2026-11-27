@@ -16,6 +16,14 @@ function Resolve-LocalTool {
     return $command.Source
 }
 
+function Resolve-LocalMysqlTool {
+    param([Parameter(Mandatory)][string]$Name)
+    if ($env:MYSQL_HOME) { return Resolve-LocalTool -Name $Name -HomeVariable MYSQL_HOME -HomeRelativePath "bin\$Name" }
+    $legacy = "D:\MySQL\MySQL Server 8.0\bin\$Name"
+    if ([IO.File]::Exists($legacy)) { return $legacy }
+    return Resolve-LocalTool -Name $Name
+}
+
 function Test-LocalBackendJar {
     param([Parameter(Mandatory)][string]$JarPath)
     if (-not (Test-Path -LiteralPath $JarPath -PathType Leaf)) { return $false }
@@ -121,8 +129,8 @@ function Start-LocalBackupScheduler {
     $runtime = Join-Path $ProjectRoot '.runtime'
     $script = Join-Path $ProjectRoot 'database\tools\operational_backups.py'
     $python = Resolve-LocalTool -Name python.exe
-    $mysql = 'D:\MySQL\MySQL Server 8.0\bin\mysql.exe'
-    $dump = 'D:\MySQL\MySQL Server 8.0\bin\mysqldump.exe'
+    $mysql = Resolve-LocalMysqlTool mysql.exe
+    $dump = Resolve-LocalMysqlTool mysqldump.exe
     foreach ($required in @($script,$python,$mysql,$dump,(Join-Path $runtime 'mysql-admin.local.ini'))) {
         if (-not (Test-Path -LiteralPath $required -PathType Leaf)) { throw 'Operational backup prerequisite is missing.' }
     }

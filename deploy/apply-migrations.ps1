@@ -1,7 +1,7 @@
 #requires -Version 7.0
 [CmdletBinding()]
 param(
-    [string]$MysqlClient = 'D:\MySQL\MySQL Server 8.0\bin\mysql.exe',
+    [string]$MysqlClient,
     [string]$ClientOptions
 )
 $ErrorActionPreference = 'Stop'
@@ -9,6 +9,7 @@ $projectRoot = Split-Path -Parent $PSScriptRoot
 if (-not $ClientOptions) { $ClientOptions = Join-Path $projectRoot '.runtime\mysql-client.local.ini' }
 if (-not (Test-Path -LiteralPath $ClientOptions)) { throw 'Initialize the local database before applying migrations.' }
 . (Join-Path $PSScriptRoot 'local-tools.ps1')
+if (!$MysqlClient) { $MysqlClient = Resolve-LocalMysqlTool mysql.exe }
 $maintenanceLease = Enter-LocalMaintenanceLock -ProjectRoot $projectRoot
 try {
 function Invoke-MigrationSql([string]$Sql) {
