@@ -120,6 +120,22 @@ export default {
     small: 'Small'
   },
   login: {
+    scene: {
+      system: 'Manufacturing Execution System',
+      locale: 'Switch to Chinese',
+      theme: 'Switch color theme',
+      assembly: 'Fan assembly',
+      title: 'Workspace sign-in',
+      method: 'Sign-in method',
+      accountTab: 'Password',
+      faceTab: 'Face sign-in',
+      identity: 'Verify your identity',
+      verify: 'Start face verification',
+      portal: 'Customer portal',
+      showPassword: 'Show password',
+      hidePassword: 'Hide password',
+      account: 'Account'
+    },
     welcome: 'Welcome to FazeMES',
     message: 'Manufacturing execution system',
     tenantname: 'TenantName',

@@ -3,7 +3,15 @@ import FaceCapture from '@/views/mes/face/FaceCapture.vue'
 import { FaceApi } from '@/api/mes/face'
 import type { TokenType } from '@/api/login/types'
 const props = defineProps<{ modelValue: boolean; username: string }>()
-const emit = defineEmits<{ 'update:modelValue': [value: boolean]; success: [value: TokenType] }>()
+const emit = defineEmits<{
+  'update:modelValue': [value: boolean]
+  success: [value: TokenType]
+  usePassword: []
+}>()
+function returnToPassword() {
+  emit('update:modelValue', false)
+  emit('usePassword')
+}
 const working = ref(false)
 const error = ref('')
 const verified = ref(false)
@@ -72,9 +80,7 @@ onBeforeUnmount(() => {
     <p class="face-login-note"
       >首次使用请先密码登录，从右上角头像打开「人脸登录设置」。核验采用单人正脸，不含活体检测。</p
     >
-    <template #footer
-      ><el-button @click="emit('update:modelValue', false)">返回密码登录</el-button></template
-    >
+    <template #footer><el-button @click="returnToPassword">返回密码登录</el-button></template>
   </el-dialog>
 </template>
 <style scoped>

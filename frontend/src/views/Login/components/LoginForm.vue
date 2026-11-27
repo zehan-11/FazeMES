@@ -1,152 +1,16 @@
-<template>
-  <el-form
-    v-show="getShow"
-    ref="formLogin"
-    :model="loginData.loginForm"
-    :rules="LoginRules"
-    class="login-form"
-    :class="{ 'fm-invalid': badPassword }"
-    label-position="top"
-    label-width="120px"
-    size="large"
-  >
-    <el-row class="mx-[-10px]">
-      <el-col :span="24" class="px-10px">
-        <el-form-item>
-          <LoginFormTitle class="w-full" />
-        </el-form-item>
-      </el-col>
-      <el-col :span="24" class="px-10px">
-        <el-form-item v-if="loginData.tenantEnable === 'true'" prop="tenantName">
-          <el-input
-            v-model="loginData.loginForm.tenantName"
-            :placeholder="t('login.tenantNamePlaceholder')"
-            :prefix-icon="iconHouse"
-            link
-            type="primary"
-          />
-        </el-form-item>
-      </el-col>
-      <el-col :span="24" class="px-10px">
-        <el-form-item prop="username">
-          <el-input
-            v-model="loginData.loginForm.username"
-            :placeholder="t('login.usernamePlaceholder')"
-            :prefix-icon="iconAvatar"
-          />
-        </el-form-item>
-      </el-col>
-      <el-col :span="24" class="px-10px">
-        <el-form-item prop="password">
-          <el-input
-            v-model="loginData.loginForm.password"
-            @input="badPassword = false"
-            :placeholder="t('login.passwordPlaceholder')"
-            :prefix-icon="iconLock"
-            show-password
-            type="password"
-            @keyup.enter="getCode()"
-          />
-        </el-form-item>
-      </el-col>
-      <el-col :span="24" class="px-10px mt-[-20px] mb-[-20px]">
-        <el-form-item>
-          <el-row justify="space-between" style="width: 100%">
-            <el-col :span="6">
-              <el-checkbox v-model="loginData.loginForm.rememberMe">
-                {{ t('login.remember') }}
-              </el-checkbox>
-            </el-col>
-            <el-col :offset="6" :span="12">
-              <el-link
-                v-if="!localMes"
-                class="float-right"
-                type="primary"
-                @click="setLoginState(LoginStateEnum.RESET_PASSWORD)"
-              >
-                {{ t('login.forgetPassword') }}
-              </el-link>
-            </el-col>
-          </el-row>
-        </el-form-item>
-      </el-col>
-      <el-col :span="24" class="px-10px">
-        <el-form-item>
-          <el-button :loading="loginLoading" class="w-full" type="primary" @click="getCode()">
-            {{ t('login.login') }}
-          </el-button>
-        </el-form-item>
-      </el-col>
-      <Verify
-        v-if="loginData.captchaEnable === 'true'"
-        ref="verify"
-        :captchaType="captchaType"
-        :imgSize="{ width: '400px', height: '200px' }"
-        mode="pop"
-        @success="handleLogin"
-      />
-      <el-col :span="24" class="px-10px">
-        <el-form-item>
-          <el-button class="w-full" :disabled="loginLoading" @click="openFaceLogin">
-            <Icon icon="ep:camera" class="mr-8px" />本人人脸登录
-          </el-button>
-        </el-form-item>
-        <el-form-item
-          ><el-button link type="primary" class="w-full" @click="push('/customer-portal')"
-            >进入客户自助门户</el-button
-          ></el-form-item
-        >
-      </el-col>
-      <FaceLoginDialog
-        v-model="faceLoginOpen"
-        :username="loginData.loginForm.username"
-        @success="handleFaceLogin"
-      />
-      <el-col v-if="!localMes" :span="24" class="px-10px">
-        <el-form-item>
-          <el-row :gutter="5" justify="space-between" style="width: 100%">
-            <el-col :span="8">
-              <el-button class="w-full" @click="setLoginState(LoginStateEnum.MOBILE)">
-                {{ t('login.btnMobile') }}
-              </el-button>
-            </el-col>
-            <el-col :span="8">
-              <el-button class="w-full" @click="setLoginState(LoginStateEnum.QR_CODE)">
-                {{ t('login.btnQRCode') }}
-              </el-button>
-            </el-col>
-            <el-col :span="8">
-              <el-button class="w-full" @click="setLoginState(LoginStateEnum.REGISTER)">
-                {{ t('login.btnRegister') }}
-              </el-button>
-            </el-col>
-          </el-row>
-        </el-form-item>
-      </el-col>
-      <el-divider v-if="!localMes" content-position="center">{{
-        t('login.otherLogin')
-      }}</el-divider>
-      <el-col v-if="!localMes" :span="24" class="px-10px">
-        <el-form-item>
-          <div class="w-full flex justify-between">
-            <Icon
-              v-for="(item, key) in socialList"
-              :key="key"
-              :icon="item.icon"
-              :size="30"
-              class="anticon cursor-pointer"
-              color="#999"
-              @click="doSocialLogin(item.type)"
-            />
-          </div>
-        </el-form-item>
-      </el-col>
-    </el-row>
-  </el-form>
-</template>
 <script lang="ts" setup>
 import { ElLoading } from 'element-plus'
-import LoginFormTitle from './LoginFormTitle.vue'
+import {
+  ArrowRight,
+  Camera,
+  Connection,
+  FullScreen,
+  Hide,
+  Lock,
+  TopRight,
+  View
+} from '@element-plus/icons-vue'
+import GlassLens from '../scene/GlassLens.vue'
 import FaceLoginDialog from './FaceLoginDialog.vue'
 import type { TokenType } from '@/api/login/types'
 import type { RouteLocationNormalizedLoaded } from 'vue-router'
@@ -173,6 +37,34 @@ const { currentRoute, push, replace } = useRouter()
 const permissionStore = usePermissionStore()
 const redirect = ref<string>('')
 const loginLoading = ref(false)
+const mode = ref<'password' | 'face'>('password')
+const passwordVisible = ref(false)
+const passwordTab = ref<HTMLButtonElement>()
+const faceTab = ref<HTMLButtonElement>()
+function chooseMode(next: 'password' | 'face') {
+  mode.value = next
+  passwordVisible.value = false
+  formLogin.value?.clearValidate()
+}
+function keyMode(e: KeyboardEvent) {
+  if (!['ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(e.key)) return
+  e.preventDefault()
+  const next =
+    e.key === 'Home'
+      ? 'password'
+      : e.key === 'End'
+        ? 'face'
+        : mode.value === 'password'
+          ? 'face'
+          : 'password'
+  chooseMode(next)
+  ;(next === 'face' ? faceTab : passwordTab).value?.focus()
+}
+function submitSelected() {
+  if (loginLoading.value) return
+  if (mode.value === 'face') return openFaceLogin()
+  return getCode()
+}
 const badPassword = ref(false)
 const faceLoginOpen = ref(false)
 const verify = ref()
@@ -186,7 +78,6 @@ const LoginRules = {
   password: [required]
 }
 const loginData = reactive({
-  isShowPassword: false,
   captchaEnable: import.meta.env.VITE_APP_CAPTCHA_ENABLE,
   tenantEnable: import.meta.env.VITE_APP_TENANT_ENABLE,
   loginForm: {
@@ -198,12 +89,26 @@ const loginData = reactive({
   }
 })
 
+const alternateModes = [
+  [LoginStateEnum.RESET_PASSWORD, 'login.forgetPassword'],
+  [LoginStateEnum.MOBILE, 'login.btnMobile'],
+  [LoginStateEnum.QR_CODE, 'login.btnQRCode'],
+  [LoginStateEnum.REGISTER, 'login.btnRegister']
+] as const
+
 const socialList = [
   { icon: 'ant-design:wechat-filled', type: 30 },
   { icon: 'ant-design:dingtalk-circle-filled', type: 20 },
   { icon: 'ant-design:github-filled', type: 0 },
   { icon: 'ant-design:alipay-circle-filled', type: 0 }
 ]
+
+watch(
+  () => loginData.loginForm.password,
+  (value) => {
+    if (!value) passwordVisible.value = false
+  }
+)
 
 // 获取验证码
 const getCode = async () => {
@@ -221,7 +126,12 @@ const getTenantId = async () => {
   if (loginData.tenantEnable === 'true') {
     const res = await LoginApi.getTenantIdByName(loginData.loginForm.tenantName)
     authUtil.setTenantId(res)
+    if (!res) {
+      message.warning(t('login.invalidTenantName'))
+      return false
+    }
   }
+  return true
 }
 const openFaceLogin = async () => {
   if (!loginData.loginForm.username.trim()) {
@@ -229,10 +139,12 @@ const openFaceLogin = async () => {
     return
   }
   try {
-    await getTenantId()
-    faceLoginOpen.value = true
+    loginLoading.value = true
+    if (await getTenantId()) faceLoginOpen.value = true
   } catch {
     message.warning('无法确认租户，请检查租户名称或稍后重试')
+  } finally {
+    loginLoading.value = false
   }
 }
 const handleFaceLogin = async (result: TokenType) => {
@@ -279,9 +191,8 @@ const handleLogin = async (params: any) => {
   badPassword.value = false
   loginLoading.value = true
   try {
-    await getTenantId()
     const data = await validForm()
-    if (!data) {
+    if (!data || !(await getTenantId())) {
       return
     }
     const loginDataLoginForm = { ...loginData.loginForm }
@@ -312,7 +223,6 @@ const handleLogin = async (params: any) => {
     }
   } catch (error) {
     badPassword.value = error instanceof Error && error.message.includes('账号密码不正确')
-    throw error
   } finally {
     loginLoading.value = false
     loading.value?.close()
@@ -370,24 +280,164 @@ onMounted(() => {
 })
 </script>
 
-<style lang="scss" scoped>
-:deep(.anticon) {
-  &:hover {
-    color: var(--el-color-primary) !important;
-  }
-}
-
-.login-code {
-  float: right;
-  width: 100%;
-  height: 38px;
-
-  img {
-    width: 100%;
-    height: auto;
-    max-width: 100px;
-    vertical-align: middle;
-    cursor: pointer;
-  }
-}
-</style>
+<template>
+  <div v-show="getShow" class="workspace-auth">
+    <div class="modes" role="tablist" :aria-label="t('login.scene.method')" @keydown="keyMode">
+      <button
+        id="mode-password"
+        ref="passwordTab"
+        class="glass-control"
+        type="button"
+        role="tab"
+        aria-controls="login-fields"
+        :aria-selected="mode === 'password'"
+        :tabindex="mode === 'password' ? 0 : -1"
+        @click="chooseMode('password')"
+      >
+        <GlassLens /><ElIcon><Lock /></ElIcon><span>{{ t('login.scene.accountTab') }}</span>
+      </button>
+      <button
+        id="mode-face"
+        ref="faceTab"
+        class="glass-control"
+        type="button"
+        role="tab"
+        aria-controls="login-fields"
+        :aria-selected="mode === 'face'"
+        :tabindex="mode === 'face' ? 0 : -1"
+        @click="chooseMode('face')"
+      >
+        <GlassLens /><ElIcon><FullScreen /></ElIcon><span>{{ t('login.scene.faceTab') }}</span>
+      </button>
+    </div>
+    <div id="login-fields" role="tabpanel" :aria-labelledby="'mode-' + mode">
+      <el-form
+        ref="formLogin"
+        :model="loginData.loginForm"
+        :rules="LoginRules"
+        label-position="top"
+        class="workspace-fields"
+        :class="{ 'fm-invalid': badPassword }"
+        hide-required-asterisk
+        @submit.prevent="submitSelected"
+      >
+        <el-form-item
+          v-if="loginData.tenantEnable === 'true'"
+          class="field"
+          prop="tenantName"
+          :label="t('login.tenantname')"
+          for="tenant"
+        >
+          <el-input
+            id="tenant"
+            v-model="loginData.loginForm.tenantName"
+            :placeholder="t('login.tenantNamePlaceholder')"
+            :prefix-icon="iconHouse"
+            autocomplete="organization"
+          />
+        </el-form-item>
+        <el-form-item class="field" prop="username" :label="t('login.scene.account')" for="account">
+          <el-input
+            id="account"
+            v-model="loginData.loginForm.username"
+            :placeholder="t('login.usernamePlaceholder')"
+            :prefix-icon="iconAvatar"
+            autocomplete="username"
+          />
+        </el-form-item>
+        <el-form-item
+          v-if="mode === 'password'"
+          class="field"
+          prop="password"
+          :label="t('login.password')"
+          for="password"
+        >
+          <el-input
+            id="password"
+            v-model="loginData.loginForm.password"
+            :type="passwordVisible ? 'text' : 'password'"
+            :placeholder="t('login.passwordPlaceholder')"
+            :prefix-icon="iconLock"
+            autocomplete="current-password"
+            @input="badPassword = false"
+          >
+            <template #suffix
+              ><button
+                v-if="loginData.loginForm.password"
+                class="glass-control reveal"
+                type="button"
+                :aria-label="
+                  t(passwordVisible ? 'login.scene.hidePassword' : 'login.scene.showPassword')
+                "
+                :aria-pressed="passwordVisible"
+                @mousedown.prevent
+                @click="passwordVisible = !passwordVisible"
+                ><GlassLens /><ElIcon
+                  ><Hide v-if="passwordVisible" /><View v-else /></ElIcon></button
+            ></template>
+          </el-input>
+        </el-form-item>
+        <div v-else class="facepane"
+          ><span class="scan-icon"
+            ><ElIcon><Camera /></ElIcon></span
+          >{{ t('login.scene.identity') }}</div
+        >
+        <el-checkbox v-if="mode === 'password'" v-model="loginData.loginForm.rememberMe">{{
+          t('login.remember')
+        }}</el-checkbox>
+        <button
+          class="glass-control submit"
+          type="submit"
+          :disabled="loginLoading"
+          :aria-busy="loginLoading"
+        >
+          <GlassLens /><span>{{
+            t(mode === 'password' ? 'login.login' : 'login.scene.verify')
+          }}</span
+          ><span class="submit-arrow"
+            ><ElIcon><ArrowRight /></ElIcon
+          ></span>
+        </button>
+      </el-form>
+    </div>
+    <RouterLink class="glass-control portal" to="/customer-portal"
+      ><GlassLens /><span class="portal-icon"
+        ><ElIcon><Connection /></ElIcon></span
+      ><span>{{ t('login.scene.portal') }}</span
+      ><ElIcon class="portal-arrow"><TopRight /></ElIcon
+    ></RouterLink>
+    <div v-if="!localMes" class="extra-actions">
+      <button
+        v-for="[state, label] in alternateModes"
+        :key="state"
+        type="button"
+        class="glass-control"
+        @click="setLoginState(state)"
+        ><GlassLens /><span>{{ t(label) }}</span></button
+      >
+      <button
+        v-for="item in socialList"
+        :key="item.type"
+        class="glass-control"
+        type="button"
+        :aria-label="item.icon.split(':').pop()?.replace('-filled', '')"
+        @click="doSocialLogin(item.type)"
+        ><GlassLens /><Icon :icon="item.icon"
+      /></button>
+    </div>
+    <Verify
+      v-if="loginData.captchaEnable === 'true'"
+      ref="verify"
+      :captchaType="captchaType"
+      :imgSize="{ width: '400px', height: '200px' }"
+      mode="pop"
+      @success="handleLogin"
+    />
+    <FaceLoginDialog
+      v-model="faceLoginOpen"
+      :username="loginData.loginForm.username"
+      @success="handleFaceLogin"
+      @use-password="chooseMode('password')"
+    />
+  </div>
+</template>

@@ -1,82 +1,8 @@
-<template>
-  <div
-    :class="prefixCls"
-    class="relative h-[100%] lt-md:px-10px lt-sm:px-10px lt-xl:px-10px lt-xl:px-10px"
-  >
-    <div class="relative mx-auto h-full flex">
-      <div
-        :class="`${prefixCls}__left flex-1 relative p-30px lt-xl:hidden overflow-x-hidden overflow-y-auto`"
-      >
-        <!-- 左上角的 logo + 系统标题 -->
-        <div class="relative flex items-center text-white">
-          <img alt="FazeMES标识" class="mr-10px h-48px w-48px" src="/fazemes-logo.svg" />
-          <span class="text-20px font-bold">{{ underlineToHump(appStore.getTitle) }}</span>
-        </div>
-        <!-- 左边的背景图 + 欢迎语 -->
-        <div class="h-[calc(100%-60px)] flex items-center justify-center">
-          <TransitionGroup
-            appear
-            enter-active-class="fm-login-enter"
-            tag="div"
-          >
-            <img key="1" alt="" class="w-350px max-w-full rounded-2xl mb-6" src="/login-manufacturing.webp" />
-            <div key="2" class="text-3xl text-white">
-              {{ localMes ? '欢迎使用 FazeMES' : t('login.welcome') }}
-            </div>
-            <div key="3" class="mt-5 text-14px font-normal text-white">
-              {{ localMes ? '工单、排产、报工、仓储、质量与设备管理' : t('login.message') }}
-            </div>
-          </TransitionGroup>
-        </div>
-      </div>
-      <div
-        class="relative flex-1 p-30px lt-sm:p-10px overflow-x-hidden overflow-y-auto"
-      >
-        <!-- 右上角的主题、语言选择 -->
-        <div
-          class="flex items-center justify-between at-2xl:justify-end at-xl:justify-end"
-          style="color: var(--el-text-color-primary)"
-        >
-          <div class="flex items-center at-2xl:hidden at-xl:hidden">
-            <img alt="FazeMES标识" class="mr-10px h-48px w-48px" src="/fazemes-logo.svg" />
-            <span class="text-20px font-bold">{{ underlineToHump(appStore.getTitle) }}</span>
-          </div>
-          <div class="flex items-center justify-end space-x-10px h-48px">
-            <ThemeSwitch />
-            <LocaleDropdown />
-          </div>
-        </div>
-        <!-- 右边的登录界面 -->
-        <Transition appear enter-active-class="fm-login-enter">
-          <div
-            class="fm-login-form-wrap m-auto min-h-[calc(100%-60px)] w-[100%] flex items-center at-2xl:max-w-500px at-lg:max-w-500px at-md:max-w-500px at-xl:max-w-500px"
-          >
-            <!-- 账号登录 -->
-            <LoginForm class="fm-login-card m-auto h-auto" />
-            <!-- 手机登录 -->
-            <MobileForm class="fm-login-card m-auto h-auto" />
-            <!-- 二维码登录 -->
-            <QrCodeForm class="fm-login-card m-auto h-auto" />
-            <!-- 注册 -->
-            <RegisterForm class="fm-login-card m-auto h-auto" />
-            <!-- 三方登录 -->
-            <SSOLoginVue class="fm-login-card m-auto h-auto" />
-            <!-- 忘记密码 -->
-            <ForgetPasswordForm class="fm-login-card m-auto h-auto" />
-          </div>
-        </Transition>
-      </div>
-    </div>
-  </div>
-</template>
 <script lang="ts" setup>
-import { underlineToHump } from '@/utils'
-
-import { useDesign } from '@/hooks/web/useDesign'
+import { Collection, Moon, Sunny } from '@element-plus/icons-vue'
 import { useAppStore } from '@/store/modules/app'
-import { ThemeSwitch } from '@/layout/components/ThemeSwitch'
-import { LocaleDropdown } from '@/layout/components/LocaleDropdown'
-
+import { useLocaleStore } from '@/store/modules/locale'
+import { useLocale } from '@/hooks/web/useLocale'
 import {
   LoginForm,
   MobileForm,
@@ -85,12 +11,94 @@ import {
   SSOLoginVue,
   ForgetPasswordForm
 } from './components'
+import FanAssembly from './scene/FanAssembly.vue'
+import FluidBackdrop from './scene/FluidBackdrop.vue'
+import GlassLens from './scene/GlassLens.vue'
+import LoginOpening from './scene/LoginOpening.vue'
+import ParticleTitle from './scene/ParticleTitle.vue'
+import { enterLogin } from './scene/entrance.mjs'
+import './scene/login-scene.css'
 
 defineOptions({ name: 'Login' })
-
+const app = useAppStore()
+const locale = useLocaleStore()
+const { changeLocale } = useLocale()
 const { t } = useI18n()
-const localMes = import.meta.env.VITE_APP_LOCAL_MES === 'true'
-const appStore = useAppStore()
-const { getPrefixCls } = useDesign()
-const prefixCls = getPrefixCls('login')
+const en = computed(() => locale.getCurrentLocale.lang === 'en')
+const content = ref<HTMLElement>()
+const panel = ref<HTMLElement>()
+const destination = computed(() => panel.value?.querySelector<HTMLElement>('.fan') ?? null)
+const opening = ref(!document.hidden && !matchMedia('(prefers-reduced-motion: reduce)').matches)
+const entered = ref(!opening.value)
+const publicBase = import.meta.env.BASE_URL
+let stopEntrance: (() => void) | undefined
+function enter() {
+  entered.value = true
+  if (content.value) stopEntrance = enterLogin(content.value)
+}
+async function finish(focusForm: boolean) {
+  opening.value = false
+  if (focusForm) {
+    await nextTick()
+    content.value?.querySelector<HTMLInputElement>('form input:not([type="hidden"])')?.focus()
+  }
+}
+onMounted(() => {
+  if (!opening.value) enter()
+})
+onBeforeUnmount(() => stopEntrance?.())
 </script>
+<template>
+  <div class="mes-login">
+    <div ref="content" class="login-content" :class="{ entered }" :inert="opening">
+      <FluidBackdrop :dark="app.getIsDark" />
+      <header class="mast">
+        <div class="brand"
+          ><img :src="publicBase + 'fazemes-logo.svg'" alt="" /><strong>{{
+            app.getTitle
+          }}</strong></div
+        >
+        <span class="mast-title"><ParticleTitle compact :text="t('login.scene.system')" /></span>
+        <div class="utilities">
+          <button
+            class="glass-control locale"
+            type="button"
+            :aria-label="t('login.scene.locale')"
+            @click="changeLocale(en ? 'zh-CN' : 'en')"
+            ><GlassLens /><ElIcon><Collection /></ElIcon
+            ><span>{{ en ? 'EN' : '中文' }}</span></button
+          >
+          <button
+            class="glass-control theme"
+            type="button"
+            :aria-label="t('login.scene.theme')"
+            @click="app.setIsDark(!app.getIsDark)"
+            ><GlassLens /><ElIcon><Sunny v-if="app.getIsDark" /><Moon v-else /></ElIcon
+          ></button>
+        </div>
+      </header>
+      <main>
+        <section ref="panel" class="fan-panel" :aria-label="t('login.scene.assembly')"
+          ><FanAssembly :dark="app.getIsDark" :english="en"
+        /></section>
+        <section class="signin" aria-labelledby="login-title">
+          <header class="signin-head"
+            ><img class="factory" :src="publicBase + 'login-manufacturing.webp'" alt="" />
+            <h1 id="login-title"
+              ><ParticleTitle :text="t('login.scene.title')" :active="entered"
+            /></h1>
+          </header>
+          <div class="formwrap">
+            <LoginForm />
+            <MobileForm />
+            <QrCodeForm />
+            <RegisterForm />
+            <SSOLoginVue />
+            <ForgetPasswordForm />
+          </div>
+        </section>
+      </main>
+    </div>
+    <LoginOpening v-if="opening" :destination="destination" @enter="enter" @finish="finish" />
+  </div>
+</template>

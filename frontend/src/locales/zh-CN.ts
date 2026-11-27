@@ -121,6 +121,22 @@ export default {
     small: '小'
   },
   login: {
+    scene: {
+      system: '制造执行系统',
+      locale: '切换为英语',
+      theme: '切换明暗主题',
+      assembly: '风扇装配展示',
+      title: '登录工作台',
+      method: '登录方式',
+      accountTab: '账号登录',
+      faceTab: '人脸登录',
+      identity: '验证本人身份',
+      verify: '开始人脸验证',
+      portal: '客户自助门户',
+      showPassword: '显示密码',
+      hidePassword: '隐藏密码',
+      account: '账号'
+    },
     welcome: '欢迎使用 FazeMES',
     message: '制造执行管理系统',
     tenantname: '租户名称',
