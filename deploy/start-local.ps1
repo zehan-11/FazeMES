@@ -55,7 +55,7 @@ if (-not (Test-Path -LiteralPath $facePython) -or -not (Test-Path -LiteralPath $
 Start-Managed 'face-auth' 8091 $facePython @((Join-Path $projectRoot 'face-auth\app.py'),'--model-dir',(Join-Path $faceRuntime 'models'),'--token-file',$faceTokenFile) $projectRoot
 $jarPath = Join-Path $projectRoot 'backend\yudao-server\target\yudao-server.jar'
 if (-not (Test-Path -LiteralPath $jarPath)) { throw 'Backend JAR missing. Run with -Build first.' }
-Start-Managed 'backend' 48080 $javaExe @('-Xms128m','-Xmx1536m','-Dfile.encoding=UTF-8','-jar',$jarPath,'--spring.profiles.active=meslocal',('--spring.config.additional-location=file:'+(Join-Path $runtimeRoot 'application-meslocal.yaml').Replace('\','/'))) $projectRoot
+Start-Managed 'backend' 48080 $javaExe @('-Xms128m','-Xmx1536m','-Dfile.encoding=UTF-8','-jar',$jarPath,'--spring.profiles.active=meslocal',('--mes.face-auth.token-file='+$faceTokenFile),('--spring.config.additional-location=file:'+(Join-Path $runtimeRoot 'application-meslocal.yaml').Replace('\','/'))) $projectRoot
 $vitePath = Join-Path $projectRoot 'frontend\node_modules\vite\bin\vite.js'
 if (-not (Test-Path -LiteralPath $vitePath)) { throw 'Frontend dependencies missing. Run pnpm install in frontend first.' }
 Start-Managed 'frontend' 5173 $nodeExe @('--max-old-space-size=4096',$vitePath,'--mode','env.local','--host','127.0.0.1','--port','5173','--strictPort') (Join-Path $projectRoot 'frontend')

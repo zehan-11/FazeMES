@@ -22,9 +22,11 @@
 
    ```sh
    mvn -s deploy/maven-local-settings.xml -f backend/pom.xml -pl yudao-server -am package -DskipTests
-   python3 face-auth/app.py --model-dir .runtime/face-auth/models --token-file .runtime/face-auth/service.key
-   # 另一终端，从项目根目录运行
-   java -jar backend/yudao-server/target/yudao-server.jar --spring.profiles.active=meslocal --spring.config.additional-location=file:./.runtime/application-meslocal.yaml
+   export FACE_RUNTIME_DIR="$(pwd -P)/.runtime/face-auth"
+   python3 face-auth/app.py --model-dir "$FACE_RUNTIME_DIR/models" --token-file "$FACE_RUNTIME_DIR/service.key"
+   # 另一终端，从项目根目录运行。FACE_RUNTIME_DIR 指向上一步 worker 使用的目录。
+   export FACE_RUNTIME_DIR="$(pwd -P)/.runtime/face-auth"
+   java -jar backend/yudao-server/target/yudao-server.jar --spring.profiles.active=meslocal --spring.config.additional-location=file:./.runtime/application-meslocal.yaml --mes.face-auth.token-file="$FACE_RUNTIME_DIR/service.key"
    # 前端终端
    cd frontend
    pnpm install --frozen-lockfile

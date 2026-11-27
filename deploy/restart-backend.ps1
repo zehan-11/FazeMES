@@ -54,7 +54,7 @@ if($Build) {
  catch { throw "Backend remains stopped. Fix the build and rerun with -Build, or restore .runtime/backups/yudao-server.previous.jar if available. $($_.Exception.Message)" }
 }
 New-Item -ItemType Directory -Force -Path $logRoot | Out-Null
-$backendArgs=@('-Xms128m','-Xmx1536m','-Dfile.encoding=UTF-8','-jar',$jar,'--spring.profiles.active=meslocal',('--spring.config.additional-location=file:'+$config.Replace('\','/'))) | ForEach-Object { if($_ -match '\s'){'"'+$_+'"'}else{$_} }
+$backendArgs=@('-Xms128m','-Xmx1536m','-Dfile.encoding=UTF-8','-jar',$jar,'--spring.profiles.active=meslocal',('--mes.face-auth.token-file='+(Join-Path $runtimeRoot 'face-auth/service.key')),('--spring.config.additional-location=file:'+$config.Replace('\','/'))) | ForEach-Object { if($_ -match '\s'){'"'+$_+'"'}else{$_} }
 $backend=Start-Process -FilePath $javaExe -ArgumentList $backendArgs -WorkingDirectory $projectRoot -WindowStyle Hidden -PassThru -RedirectStandardOutput (Join-Path $logRoot 'backend.stdout.log') -RedirectStandardError (Join-Path $logRoot 'backend.stderr.log')
 Set-Content -LiteralPath $pidPath -Value $backend.Id
 for($attempt=0;$attempt -lt 120;$attempt++) {
