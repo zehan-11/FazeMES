@@ -14,6 +14,10 @@
         inset 0 1px var(--fm-highlight),
         var(--fm-shadow);
     }
+    .el-card:hover,
+    .fm-panel:hover {
+      background-color: var(--fm-card-over);
+    }
     .el-card__header,
     .el-card__footer {
       border-color: var(--fm-divider);

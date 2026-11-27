@@ -530,6 +530,11 @@ defineExpose({ refresh })
   overflow-wrap: anywhere;
 }
 
+.business-stream { color: var(--fm-text); }
+.answer-text.markdown-view,
+.answer-text :deep(:is(h1, h2, h3, h4, h5, h6, ul, ol, li)) {
+  color: var(--fm-text);
+}
 .answer-text {
   white-space: normal;
   overflow-wrap: anywhere;
@@ -538,7 +543,7 @@ defineExpose({ refresh })
 .note {
   font-size: 13px;
   line-height: 1.8;
-  color: var(--el-text-color-secondary);
+  color: var(--fm-secondary);
 }
 
 .clarification {

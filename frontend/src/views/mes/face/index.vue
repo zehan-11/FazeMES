@@ -1,4 +1,6 @@
 <script setup lang="ts">
+import { ElMessage } from 'element-plus'
+import SuccessMark from '@/components/SuccessMark.vue'
 import FaceCapture from './FaceCapture.vue'
 import { FaceApi, type FaceStatus } from '@/api/mes/face'
 defineOptions({ name: 'MesFaceEnrollment' })
@@ -33,7 +35,7 @@ const save = async () => {
     enrollmentFeedback.value = 'confirmed'
     images.value = []
     password.value = ''
-    message.success('本人人脸已录入')
+    ElMessage.success({ message: '本人人脸已录入', icon: SuccessMark, customClass: 'fm-success-toast' })
     await load()
   } finally {
     if (enrollmentFeedback.value === 'processing') enrollmentFeedback.value = 'idle'
@@ -88,7 +90,7 @@ onBeforeUnmount(() => {
           >
         </div>
       </div>
-      <section class="enrollment-settings">
+      <section v-tech-card class="enrollment-settings fm-hud">
         <h3>当前账号绑定</h3>
         <p class="face-status">
           <el-tag :type="status?.ready ? 'success' : 'warning'">{{

@@ -1,4 +1,5 @@
 <script lang="ts" setup>
+import { bindTactile } from '@/directives/tactile'
 import { useAppStore } from '@/store/modules/app'
 import { useDesign } from '@/hooks/web/useDesign'
 import routerSearch from '@/components/RouterSearch/index.vue'
@@ -12,6 +13,9 @@ const currentSize = computed(() => appStore.getCurrentSize)
 const greyMode = computed(() => appStore.getGreyMode)
 
 appStore.setIsDark(appStore.getIsDark)
+let stopTactile: (() => void) | undefined
+onMounted(() => { stopTactile = bindTactile() })
+onBeforeUnmount(() => stopTactile?.())
 </script>
 <template>
   <ConfigGlobal :size="currentSize">

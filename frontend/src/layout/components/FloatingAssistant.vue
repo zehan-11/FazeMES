@@ -108,6 +108,8 @@ watch(
       <button
         ref="trigger"
         type="button"
+        v-tactile
+        v-magnetic
         class="ai-trigger"
         :aria-controls="mounted ? 'workbench-ai-panel' : undefined"
         :aria-expanded="open"

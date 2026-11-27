@@ -1,9 +1,10 @@
 <template>
-  <div v-spotlight class="kpi-grid mb-16px">
+  <div class="kpi-grid mb-16px">
     <el-card
       v-for="(item, i) in cards"
       :key="item.label"
-      class="fm-spotlight fm-stagger"
+      v-tech-card
+      class="fm-stagger"
       :style="{ '--i': i }"
       shadow="never"
     >

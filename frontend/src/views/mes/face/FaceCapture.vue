@@ -6,6 +6,7 @@ const props = withDefaults(
     disabled?: boolean
     captureLabel?: string
     processing?: boolean
+    failed?: boolean
     confirmed?: boolean
   }>(),
   { active: true, disabled: false, captureLabel: '采集当前画面' }
@@ -49,7 +50,7 @@ defineExpose({ stop: camera.stop })
     class="face-capture"
     :class="{ 'is-live': state.ready, 'is-processing': processing, 'is-confirmed': confirmed }"
   >
-    <div class="camera-frame"
+    <div v-tech-card class="camera-frame fm-hud fm-auto-scan" :class="{ 'fm-invalid': failed }"
       ><video ref="video" autoplay playsinline muted aria-label="本人人脸摄像头预览"></video
       ><span class="face-guide" aria-hidden="true"></span
     ></div>
@@ -58,6 +59,7 @@ defineExpose({ stop: camera.stop })
       <el-button
         :loading="state.loading"
         :disabled="disabled || state.loading"
+        :type="state.ready ? undefined : 'primary'"
         @click="startPreview"
         >开启摄像头</el-button
       >
@@ -101,10 +103,8 @@ defineExpose({ stop: camera.stop })
   overflow: hidden;
   border: 1px solid var(--fm-strong-line);
   border-radius: 16px;
-  background:
-    radial-gradient(ellipse at 50% 46%, rgb(42 131 179 / 33%), transparent 58%),
-    radial-gradient(circle, rgb(151 209 245 / 16%) 0.75px, transparent 1px) 0 0 / 21px 21px,
-    linear-gradient(150deg, #183866, #102947 60%, #113a52);
+  background: radial-gradient(ellipse at 50% 46%, rgb(0 176 222 / 16%), transparent 62%), var(--fm-card);
+  backdrop-filter: var(--fm-card-filter);
   box-shadow:
     inset 0 1px var(--fm-highlight),
     var(--fm-shadow);

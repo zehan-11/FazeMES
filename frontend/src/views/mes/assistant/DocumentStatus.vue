@@ -1,7 +1,24 @@
 <script setup lang="ts">
+import SuccessMark from '@/components/SuccessMark.vue'
 import type { KnowledgeDocument } from '@/api/mes/assistant'
 
 const props = defineProps<{ doc: KnowledgeDocument; kind: 'vector' | 'graph' }>()
+const justIndexed = ref(false)
+let pulse: ReturnType<typeof setTimeout> | undefined
+// A background refresh can replace the row. Only signal a newly usable version of the same document.
+watch(
+  [() => props.doc.id, () => props.doc.version, () => props.doc.vectorUsable],
+  ([id, version, usable], [lastId, lastVersion, wasUsable]) => {
+    clearTimeout(pulse)
+    justIndexed.value =
+      props.kind === 'vector' && id === lastId && usable && (!wasUsable || lastVersion !== version)
+    if (justIndexed.value)
+      pulse = setTimeout(() => {
+        justIndexed.value = false
+      }, 1600)
+  }
+)
+onBeforeUnmount(() => clearTimeout(pulse))
 const vectorLabels = {
   NOT_INDEXED: '未索引',
   READY: '待发布',
@@ -83,7 +100,9 @@ const state = computed(() => {
       }}</div>
     </template>
     <button type="button" class="status-pill" :class="state.tone">
-      <i v-if="state.tone === 'ready'" class="fm-live-dot" aria-hidden="true"></i>{{ state.text }}
+      <SuccessMark v-if="justIndexed" />
+      <i v-else-if="state.tone === 'ready'" class="fm-live-dot" aria-hidden="true"></i
+      >{{ state.text }}
     </button>
   </el-tooltip>
 </template>

@@ -363,6 +363,7 @@
               <el-button
                 v-if="currentBase?.canManage"
                 type="primary"
+                v-magnetic
                 :icon="Upload"
                 @click="openUpload()"
                 >上传文档</el-button
@@ -857,6 +858,7 @@ import WorkflowJourney from './WorkflowJourney.vue'
 import { messageJourney, searchJourney, type Journey, type JourneySource } from './workflowJourney'
 import GlassSegmented from '@/components/GlassSegmented.vue'
 import { Lock, Share, Upload } from '@element-plus/icons-vue'
+import SuccessMark from '@/components/SuccessMark.vue'
 import DocumentCollection from './DocumentCollection.vue'
 import PromptGrid from './PromptGrid.vue'
 import type { DocumentAction } from './DocumentMenu.vue'
@@ -1527,11 +1529,13 @@ async function uploadDocument() {
           uploadFile.value
         )
       : await AssistantApi.upload(knowledgeBaseId.value, uploadTitle.value, uploadFile.value)
-    ElMessage.success(
-      target
+    ElMessage.success({
+      message: target
         ? '新版本已保存为草稿，旧版向量和图谱进入清理队列。请审核后重新发布。'
-        : `解析完成，生成${result.chunkCount}个片段，请审核后发布`
-    )
+        : `解析完成，生成${result.chunkCount}个片段，请审核后发布`,
+      icon: SuccessMark,
+      customClass: 'fm-success-toast'
+    })
     uploadVisible.value = false
     uploadTitle.value = ''
     uploadFile.value = undefined

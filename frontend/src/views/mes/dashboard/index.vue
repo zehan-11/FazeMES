@@ -266,7 +266,7 @@
         </section>
       </div>
     </main>
-    <div v-else-if="loading" class="screen-empty">正在读取生产业务数据…</div>
+    <GlassSkeleton v-else-if="loading" variant="dashboard" label="正在读取生产业务数据" />
     <div v-else class="screen-empty">数据尚未加载，请点击刷新重试。</div>
     <el-drawer
       v-model="drawer"
@@ -292,6 +292,7 @@
 </template>
 
 <script setup lang="ts">
+import GlassSkeleton from '@/components/GlassSkeleton.vue'
 import { formatQuantity, quantityText, quantityUnits } from '@/utils/mesQuantity'
 import { formatDate } from '@/utils/formatTime'
 import dayjs from 'dayjs'

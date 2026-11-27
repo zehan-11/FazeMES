@@ -122,11 +122,12 @@ onBeforeUnmount(() => {
 </script>
 
 <template>
-  <section v-if="cards.length" v-spotlight class="capabilities" aria-label="阶段二能力直达">
+  <section v-if="cards.length" class="capabilities" aria-label="阶段二能力直达">
     <button
       v-for="(card, i) in cards"
       :key="card.key"
-      class="capability fm-spotlight fm-stagger"
+      v-tech-card
+      class="capability fm-hud fm-auto-scan fm-stagger"
       :style="{ '--i': i }"
       :class="card.key"
       type="button"

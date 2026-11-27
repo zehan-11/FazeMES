@@ -63,6 +63,7 @@ onBeforeUnmount(() => {
       :disabled="working"
       :processing="working"
       :confirmed="verified"
+      :failed="!!error"
       :capture-label="working ? '正在核验…' : '开始人脸核验'"
       @capture="capture"
     />

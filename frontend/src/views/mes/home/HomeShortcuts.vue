@@ -6,11 +6,12 @@
         <span class="shortcut-hint">根据当前账号的业务权限提供</span>
       </div>
     </template>
-    <div v-spotlight class="shortcuts">
+    <div class="shortcuts">
       <el-button
         v-for="(item, i) in items"
         :key="item.path"
-        class="shortcut fm-spotlight fm-stagger"
+        v-tech-card
+        class="shortcut fm-stagger"
         :style="{ '--i': Math.min(i, 7) }"
         @click="emit('navigate', item.path)"
       >
@@ -48,7 +49,11 @@ const emit = defineEmits<{ navigate: [path: string] }>()
   gap: 12px;
 }
 
-.shortcut {
+.shortcut.fm-tech-card {
+  background: var(--fm-card-glass);
+  border-color: var(--fm-line);
+  box-shadow: inset 0 1px var(--fm-highlight), var(--fm-shadow);
+  backdrop-filter: var(--fm-card-filter);
   height: 64px;
   margin: 0;
   font-size: 14px;

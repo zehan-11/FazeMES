@@ -1,0 +1,144 @@
+// Optics are pointer-transparent and separate from the face camera's own two HUD rings.
+.fm-tech-card {
+  position: relative;
+  isolation: isolate;
+}
+.v-layout .fm-workspace .fm-tech-card,
+.fm-face-login-dialog .face-capture .fm-tech-card {
+  transition:
+    transform 0.38s var(--fm-spring),
+    border-color 0.2s,
+    background-color 0.2s;
+}
+.fm-card-optics {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  overflow: hidden;
+  pointer-events: none;
+  border-radius: inherit;
+  --grid: color-mix(in srgb, var(--fm-focus) 5%, transparent);
+  background:
+    linear-gradient(var(--grid) 1px, transparent 1px) 50% 50% / 24px 24px,
+    linear-gradient(90deg, var(--grid) 1px, transparent 1px) 50% 50% / 24px 24px;
+}
+.fm-hud .fm-card-optics > i::after {
+  content: '';
+  position: absolute;
+  inset: 4px;
+  --leg: linear-gradient(currentColor, currentColor);
+  color: var(--fm-glow-edge);
+  opacity: 0.55;
+  background:
+    var(--leg) left top / 6px 1px,
+    var(--leg) left top / 1px 6px,
+    var(--leg) right top / 6px 1px,
+    var(--leg) right top / 1px 6px,
+    var(--leg) left bottom / 6px 1px,
+    var(--leg) left bottom / 1px 6px,
+    var(--leg) right bottom / 6px 1px,
+    var(--leg) right bottom / 1px 6px;
+  background-repeat: no-repeat;
+  filter: drop-shadow(0 0 2px currentColor);
+  transition: opacity 0.2s;
+}
+.fm-tech-card:is(:hover, :focus-within) > .fm-card-optics > i::after {
+  opacity: 1;
+}
+.fm-card-optics::before,
+.fm-card-optics::after,
+.fm-card-optics > i::before,
+.fm-card-optics > b {
+  content: '';
+  position: absolute;
+  pointer-events: none;
+  opacity: 0;
+}
+.fm-card-optics::before {
+  width: 520px;
+  height: 520px;
+  top: 0;
+  left: 0;
+  background: radial-gradient(260px circle, var(--fm-spotlight), transparent 65%);
+  transform: translate3d(calc(var(--spot-x, 0px) - 260px), calc(var(--spot-y, 0px) - 260px), 0);
+}
+.fm-card-optics::after {
+  inset: 0;
+  border-radius: inherit;
+  padding: 1px;
+  background: radial-gradient(
+    150px at var(--edge-x) var(--edge-y),
+    var(--fm-glow-edge),
+    transparent
+  );
+  mask:
+    linear-gradient(#000 0 0) content-box,
+    linear-gradient(#000 0 0);
+  mask-composite: exclude;
+}
+.fm-card-optics > i::before,
+.fm-card-optics > b {
+  inset: 0 0 auto;
+  height: 35%;
+  background: linear-gradient(transparent, rgb(56 224 255 / 7%) 98%, rgb(109 240 255 / 49%));
+}
+@keyframes fm-card-scan {
+  0% {
+    opacity: 0;
+    transform: translateY(-100%);
+  }
+  12% {
+    opacity: 0.85;
+  }
+  90% {
+    opacity: 0.65;
+  }
+  100% {
+    opacity: 0;
+    transform: translateY(290%);
+  }
+}
+@keyframes fm-auto-scan {
+  0%,
+  75% {
+    opacity: 0;
+    transform: translateY(-100%);
+  }
+  80% {
+    opacity: 0.65;
+  }
+  99%,
+  100% {
+    opacity: 0;
+    transform: translateY(290%);
+  }
+}
+@media (prefers-reduced-motion: no-preference) {
+  .fm-auto-scan > .fm-card-optics > b {
+    animation: fm-auto-scan 7s ease-in-out infinite;
+    animation-delay: calc(var(--i, 3) * -1.6s);
+  }
+  @media (hover: hover) and (pointer: fine) {
+    .v-layout .fm-workspace .fm-tech-card.is-lit:not(:active),
+    .fm-face-login-dialog .face-capture .fm-tech-card.is-lit {
+      transition-timing-function: ease-out, ease, ease;
+      transform: perspective(900px) rotateX(var(--tilt-x)) rotateY(var(--tilt-y)) translateY(-3px);
+      border-color: var(--fm-primary-edge);
+    }
+    .fm-tech-card.is-lit:not(.camera-frame) {
+      background: var(--fm-card-over);
+    }
+    .is-lit > .fm-card-optics::before,
+    .is-lit > .fm-card-optics::after {
+      opacity: 1;
+    }
+    .is-lit > .fm-card-optics > i::before {
+      animation: fm-card-scan 0.85s ease-out 1;
+    }
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .fm-tech-card {
+    transition: none !important;
+  }
+}

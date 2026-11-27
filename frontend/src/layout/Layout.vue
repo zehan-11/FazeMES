@@ -2,6 +2,7 @@
 import { computed, defineComponent, unref } from 'vue'
 import { useAppStore } from '@/store/modules/app'
 import { Backtop } from '@/components/Backtop'
+import AmbientParticles from './components/AmbientParticles.vue'
 import FloatingAssistant from './components/FloatingAssistant.vue'
 import { Setting } from '@/layout/components/Setting'
 import { useRenderLayout } from './components/useRenderLayout'
@@ -60,7 +61,7 @@ export default defineComponent({
         <div class="fazemes-ambient-backdrop" aria-hidden="true">
           <i class="aurora-blue" />
           <i class="aurora-cyan" />
-          <i class="aurora-indigo" />
+          <AmbientParticles />
         </div>
         <div class="fm-layout-frame">
           {mobile.value && !collapse.value ? (

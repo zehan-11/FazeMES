@@ -111,6 +111,9 @@
       default-expand-all
       :tree-props="{ children: 'children', hasChildren: 'hasChildren' }"
     >
+      <template v-if="loading" #empty>
+        <GlassSkeleton label="正在加载工单" />
+      </template>
       <el-table-column label="工单编码" prop="code" width="220" fixed="left">
         <template #default="scope">
           <el-button link type="primary" @click="openForm('detail', scope.row.id)">
@@ -227,6 +230,7 @@
 </template>
 
 <script setup lang="ts">
+import GlassSkeleton from '@/components/GlassSkeleton.vue'
 import { dateFormatter, dateFormatter2 } from '@/utils/formatTime'
 import { DICT_TYPE, getIntDictOptions } from '@/utils/dict'
 import download from '@/utils/download'

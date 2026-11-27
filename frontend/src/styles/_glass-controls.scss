@@ -1,0 +1,300 @@
+@scope (html:not(:has(.v-login)), .fm-face-login-dialog) to (.knowledge-graph) {
+  :scope :is(.el-button, .fm-icon-button, [data-tactile], [data-magnetic]) {
+    position: relative;
+    translate: var(--mag-x, 0px) var(--mag-y, 0px);
+    transition:
+      transform 0.38s var(--fm-spring),
+      translate 0.38s var(--fm-spring),
+      background-color 0.18s,
+      border-color 0.18s,
+      box-shadow 0.2s;
+  }
+  // Follow the pointer without overshoot; the spring runs when the control returns to rest.
+  :scope .fm-tracking:is(.el-button, .fm-icon-button, [data-tactile], [data-magnetic]) {
+    transition-timing-function: var(--fm-spring), ease-out, ease, ease, ease;
+  }
+  :scope .el-button:not(.is-text, .is-link, .is-disabled, .is-loading, .fm-tech-card),
+  :scope .ai-trigger {
+    background: var(--fm-tool-fill, var(--fm-secondary-button));
+    border: 1px solid var(--fm-tool-edge, var(--fm-button-edge));
+    color: var(--fm-tool-ink, var(--fm-text));
+    box-shadow: var(--fm-tool-shadow, inset 0 1px rgb(200 245 255 / 10%));
+    &:hover {
+      border-color: var(--fm-glow-edge);
+      box-shadow: var(--fm-tool-hover-shadow, 0 0 12px rgb(34 211 238 / 18%));
+    }
+  }
+  :scope
+    :is(
+      .el-button.el-button--primary:not(.is-text, .is-link, .is-disabled, .is-loading),
+      .ai-trigger[data-tactile]
+    ) {
+    background: var(--fm-tool-fill, var(--fm-primary-glass));
+    color: var(--fm-tool-ink, var(--fm-primary-ink));
+    border-color: var(--fm-tool-edge, var(--fm-primary-edge));
+    box-shadow: var(--fm-tool-shadow, var(--fm-button-glow));
+    backdrop-filter: blur(10px);
+    text-shadow: var(--fm-tool-text-shadow, 0 0 8px rgb(125 245 255 / 45%));
+    &:hover {
+      border-color: var(--fm-glow-edge);
+      box-shadow: var(--fm-tool-hover-shadow, var(--fm-button-hover-glow));
+    }
+  }
+  :scope .el-button:is(.is-disabled, .is-loading):not(.is-link, .is-text) {
+    color: var(--fm-muted);
+    background: var(--fm-secondary-button);
+    border-color: var(--fm-line);
+    box-shadow: none;
+    text-shadow: none;
+  }
+  :scope .el-button--primary.is-loading:not(.is-link, .is-text) {
+    color: var(--fm-primary-ink);
+    background: var(--fm-primary-glass);
+    border-color: var(--fm-primary-edge);
+  }
+  :scope .el-button.el-button--danger:not(.is-disabled) {
+    color: var(--fm-tone-danger);
+  }
+  :scope .el-button.el-button--danger:not(.is-disabled):hover {
+    color: var(--fm-danger-hover);
+  }
+  :scope
+    :is(.el-button, .fm-icon-button, [data-tactile], [data-magnetic]):not(
+      .is-disabled,
+      .is-loading,
+      :disabled
+    ):active {
+    transform: scale(0.93);
+    transition-duration: 75ms;
+  }
+  .fm-tactile-layer {
+    pointer-events: none;
+    position: absolute;
+    inset: 0;
+    overflow: hidden;
+    border-radius: inherit;
+    &::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background: radial-gradient(
+        80px circle at var(--rx) var(--ry),
+        rgb(93 227 255 / 19%),
+        transparent
+      );
+      opacity: 0;
+    }
+  }
+  .fm-tracking > .fm-tactile-layer::before {
+    opacity: 1;
+  }
+  .fm-ripple {
+    position: absolute;
+    aspect-ratio: 1;
+    border-radius: 50%;
+    border: 1px solid rgba(124, 238, 255, 0.7);
+    background: radial-gradient(circle, transparent 38%, rgb(116 230 255 / 18%) 71%, transparent);
+    animation: fm-ripple 0.56s ease-out both;
+  }
+  :scope .el-switch:not(.is-disabled) {
+    --el-switch-on-color: color-mix(in srgb, var(--fm-focus) 32%, transparent);
+    .el-switch__core {
+      border-color: var(--fm-button-edge);
+    }
+    &.is-checked .el-switch__core {
+      border-color: var(--fm-primary-edge);
+      box-shadow: 0 0 12px rgb(56 224 255 / 26%);
+    }
+    .el-switch__action {
+      transition:
+        left 0.38s var(--fm-spring),
+        transform 0.28s var(--fm-spring),
+        background-color 0.18s;
+      transform-origin: left center;
+    }
+    &.is-checked .el-switch__action {
+      transform-origin: right center;
+    }
+    &:active .el-switch__action {
+      transform: scaleX(1.25) scaleY(0.93);
+    }
+  }
+  :scope .el-checkbox__input:not(.is-disabled) {
+    --el-checkbox-checked-bg-color: color-mix(in srgb, var(--fm-focus) 25%, transparent);
+    --el-checkbox-checked-input-border-color: var(--fm-glow-edge);
+    --el-checkbox-checked-icon-color: var(--fm-text);
+    .el-checkbox__inner {
+      border-radius: 4px;
+      background-color: var(--fm-slot);
+    }
+    &.is-checked .el-checkbox__inner {
+      background-color: var(--el-checkbox-checked-bg-color);
+    }
+    &.is-focus .el-checkbox__inner {
+      outline: 2px solid var(--fm-focus);
+      outline-offset: 2px;
+    }
+    &.is-checked:not(.is-indeterminate) .el-checkbox__inner {
+      animation: fm-check-pop 0.3s var(--fm-spring);
+      &::before {
+        content: '';
+        position: absolute;
+        inset: -1px;
+        border: 1px solid var(--fm-glow-edge);
+        border-radius: inherit;
+        opacity: 0;
+        animation: fm-check-pulse 0.46s ease-out;
+      }
+      &:has(> .fm-checkmark)::after {
+        display: none;
+      }
+    }
+  }
+  .fm-checkmark {
+    display: none;
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    pointer-events: none;
+  }
+  .el-checkbox__input.is-checked:not(.is-indeterminate, .is-disabled) .fm-checkmark {
+    display: block;
+    path {
+      fill: none;
+      stroke: var(--fm-primary-ink);
+      stroke-width: 1.9;
+      stroke-linecap: round;
+      stroke-linejoin: round;
+      stroke-dasharray: 1;
+      animation: fm-draw-check 0.22s ease-out both;
+    }
+  }
+  .v-menu__vertical .el-sub-menu__icon-arrow {
+    transition: transform 0.28s var(--fm-spring);
+  }
+  .v-menu__vertical
+    :is(
+      .el-collapse-transition-enter-active,
+      .el-collapse-transition-leave-active,
+      .el-collapse-transition
+    ) {
+    transition:
+      height 0.24s ease,
+      padding-top 0.24s ease,
+      padding-bottom 0.24s ease;
+  }
+  @media (prefers-reduced-motion: reduce) {
+    :scope
+      :is(
+        .el-button,
+        .fm-icon-button,
+        [data-tactile],
+        [data-magnetic],
+        .el-switch__action,
+        .el-sub-menu__icon-arrow
+      ),
+    .v-menu__vertical
+      :is(
+        .el-collapse-transition-enter-active,
+        .el-collapse-transition-leave-active,
+        .el-collapse-transition
+      ) {
+      transition-duration: 0s !important;
+    }
+    :scope :is(.el-button, .fm-icon-button, [data-tactile], [data-magnetic]):active,
+    :scope .el-switch:active .el-switch__action {
+      transform: none !important;
+    }
+    .el-checkbox__inner,
+    .el-checkbox__inner::before,
+    .fm-checkmark path {
+      animation: none !important;
+    }
+  }
+}
+@keyframes fm-ripple {
+  from {
+    opacity: 0.9;
+    transform: translate(-50%, -50%) scale(0.03);
+  }
+  to {
+    opacity: 0;
+    transform: translate(-50%, -50%) scale(1);
+  }
+}
+@keyframes fm-check-pop {
+  0% {
+    transform: scale(0.83);
+  }
+  64% {
+    transform: scale(1.13);
+  }
+  to {
+    transform: scale(1);
+  }
+}
+@keyframes fm-check-pulse {
+  from {
+    opacity: 0.75;
+    transform: scale(0.9);
+  }
+  to {
+    opacity: 0;
+    transform: scale(1.85);
+  }
+}
+@keyframes fm-draw-check {
+  from {
+    stroke-dashoffset: 1;
+  }
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+
+// Keep error labels and focus on the same elements while signalling the existing authentication result.
+.fm-invalid {
+  animation: glass-shake 340ms ease-in-out;
+}
+@keyframes glass-shake {
+  0%,
+  100% {
+    translate: 0;
+  }
+  18%,
+  65% {
+    translate: -4px 0;
+  }
+  40%,
+  83% {
+    translate: 3px 0;
+  }
+  12%,
+  72% {
+    outline: 1px solid #ff7b89;
+    box-shadow: 0 0 14px rgb(255 123 137 / 27%);
+  }
+}
+.fm-success-toast.el-message {
+  --el-message-bg-color: var(--fm-overlay);
+  --el-message-border-color: color-mix(in srgb, var(--fm-tone-success) 55%, transparent);
+  --el-message-text-color: var(--fm-tone-success);
+  backdrop-filter: var(--fm-overlay-filter);
+}
+.el-table:has(.fm-skeleton) > .el-loading-mask {
+  background: transparent;
+}
+.el-table:has(.fm-skeleton) > .el-loading-mask .el-loading-spinner {
+  visibility: hidden;
+}
+.el-table .el-table__empty-text:has(.fm-skeleton) {
+  width: 100%;
+  line-height: 1.4;
+}
+@media (prefers-reduced-motion: reduce) {
+  .fm-invalid {
+    animation: none;
+    outline: 1px solid #ff7b89;
+  }
+}

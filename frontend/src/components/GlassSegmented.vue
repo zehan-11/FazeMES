@@ -1,5 +1,5 @@
 <script setup lang="ts" generic="T extends string | number">
-import { computed, useId } from 'vue'
+import { computed, onActivated, onBeforeUnmount, onMounted, ref, useId, watch } from 'vue'
 
 const props = defineProps<{
   label: string
@@ -9,15 +9,38 @@ const props = defineProps<{
 const model = defineModel<T>({ required: true })
 const group = useId()
 const selected = computed(() => props.options.findIndex((option) => option.value === model.value))
+const track = ref<HTMLElement>()
+let observer: ResizeObserver | undefined
+function measure() {
+  const host = track.value
+  const choice = host?.querySelector<HTMLElement>('.fm-segmented__option:has(input:checked)')
+  if (!host || !choice?.offsetWidth) return
+  host.style.setProperty('--slider-x', choice.offsetLeft + 'px')
+  host.style.setProperty('--slider-width', choice.offsetWidth + 'px')
+  host.classList.add('is-measured')
+}
+function observe() {
+  const host = track.value
+  if (!host || !observer) return
+  observer.disconnect()
+  observer.observe(host)
+  host.querySelectorAll('.fm-segmented__option').forEach((label) => observer!.observe(label))
+  measure()
+}
+onMounted(() => {
+  observer = new ResizeObserver(measure)
+  observe()
+})
+watch(() => props.options.map((option) => option.value), observe, { flush: 'post' })
+watch(model, measure, { flush: 'post' })
+onActivated(measure)
+onBeforeUnmount(() => observer?.disconnect())
 </script>
 
 <template>
   <div class="fm-segmented" role="radiogroup" :aria-label="label">
-    <div
-      class="fm-segmented__track"
-      :class="{ 'has-selection': selected >= 0 }"
-      :style="{ '--count': Math.max(1, options.length), '--selected': selected }"
-    >
+    <div class="fm-segmented__track" :class="{ 'has-selection': selected >= 0 }" ref="track">
+      <span class="fm-segmented__slider" aria-hidden="true"></span>
       <label v-for="option in options" :key="option.value" class="fm-segmented__option">
         <input
           type="radio"
@@ -43,30 +66,33 @@ const selected = computed(() => props.options.findIndex((option) => option.value
   background: var(--fm-slot);
 }
 .fm-segmented__track {
-  display: grid;
   position: relative;
+  display: flex;
   width: 100%;
-  grid-template-columns: repeat(var(--count), minmax(0, 1fr));
+  min-width: 0;
 }
-.fm-segmented__track::before {
-  content: '';
+.fm-segmented__slider {
   position: absolute;
   inset: 0 auto 0 0;
-  width: calc(100% / var(--count));
-  border-radius: 999px;
-  background: linear-gradient(120deg, var(--el-color-primary), #2048ba);
-  box-shadow:
-    inset 0 1px rgb(255 255 255 / 20%),
-    0 2px 9px rgb(37 99 235 / 28%);
-  transform: translateX(calc(100% * var(--selected)));
-  transition: transform 220ms var(--fm-ease);
+  width: var(--slider-width, 0px);
   pointer-events: none;
+  border: 1px solid var(--fm-primary-edge);
+  border-radius: 999px;
+  background: var(--fm-primary-glass);
+  box-shadow:
+    inset 0 1px var(--fm-highlight),
+    0 0 9px rgb(34 211 238 / 22%);
+  transform: translateX(var(--slider-x, 0px));
   opacity: 0;
 }
-.fm-segmented__track.has-selection::before {
+.fm-segmented__track.is-measured.has-selection .fm-segmented__slider {
   opacity: 1;
+  transition:
+    transform 0.38s var(--fm-spring),
+    width 0.38s var(--fm-spring);
 }
 .fm-segmented__option {
+  flex: 1 1 auto;
   position: relative;
   min-width: 0;
   cursor: pointer;
@@ -88,7 +114,7 @@ const selected = computed(() => props.options.findIndex((option) => option.value
   overflow-wrap: anywhere;
 }
 .fm-segmented__option input:checked + span {
-  color: white;
+  color: var(--fm-primary-ink);
 }
 .fm-segmented__option input:focus-visible + span {
   outline: 2px solid var(--fm-focus);
@@ -104,7 +130,7 @@ const selected = computed(() => props.options.findIndex((option) => option.value
   }
 }
 @media (prefers-reduced-motion: reduce) {
-  .fm-segmented__track::before {
+  .fm-segmented__track.is-measured.has-selection .fm-segmented__slider {
     transition: none;
   }
 }

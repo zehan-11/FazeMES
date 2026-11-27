@@ -40,13 +40,6 @@
     bottom: -37%;
     animation-direction: alternate-reverse;
   }
-  .aurora-indigo {
-    --glow: var(--fm-aurora-indigo);
-    --period: 22s;
-    left: 18%;
-    top: -42%;
-    animation-delay: -9s;
-  }
 }
 @keyframes fm-aurora-drift {
   from {
@@ -56,7 +49,12 @@
     transform: translate3d(7%, 8%, 0) scale(1.12);
   }
 }
-.v-layout:has(.mes-assistant-page.is-graph) .fazemes-ambient-backdrop i {
+body:has(> .module-intro) .ambient-particles,
+.v-layout:has(.mes-assistant-page.is-graph, .production-screen) .ambient-particles {
+  display: none;
+}
+body:has(> .module-intro) .fazemes-ambient-backdrop i,
+.v-layout:has(.mes-assistant-page.is-graph, .production-screen) .fazemes-ambient-backdrop i {
   animation-play-state: paused;
 }
 
@@ -142,7 +140,10 @@
     .el-button:not(.is-text, .is-link, .is-disabled, .is-loading) {
       --fm-tool-fill: var(--fm-secondary-button);
       --fm-tool-ink: var(--fm-text);
-      --fm-tool-edge: var(--fm-strong-line);
+      --fm-tool-edge: var(--fm-button-edge);
+      --fm-tool-shadow: inset 0 1px rgb(200 245 255 / 10%);
+      --fm-tool-hover-shadow: 0 0 12px rgb(34 211 238 / 18%);
+      --fm-tool-text-shadow: none;
       --fm-tool-sheen: 0;
       color: var(--fm-tool-ink);
       border-color: var(--fm-tool-edge);
@@ -166,10 +167,13 @@
     }
     .el-button--primary:not(.is-text, .is-link, .is-disabled, .is-loading) {
       --fm-tool-fill: var(--fm-primary-glass);
-      --fm-tool-ink: white;
-      --fm-tool-edge: transparent;
+      --fm-tool-ink: var(--fm-primary-ink);
+      --fm-tool-edge: var(--fm-primary-edge);
+      --fm-tool-shadow: var(--fm-button-glow);
+      --fm-tool-hover-shadow: var(--fm-button-hover-glow);
+      --fm-tool-text-shadow: 0 0 8px rgb(125 245 255 / 45%);
       --fm-tool-sheen: 1;
-      --fm-icon-tone: white;
+      --fm-icon-tone: var(--fm-primary-ink);
     }
     // Suppress later primary buttons, including buttons in subsequent form items/action groups.
     :is(.el-button--primary, :has(.el-button--primary))
@@ -179,7 +183,10 @@
       .el-button--primary:not(.is-text, .is-link, .is-disabled, .is-loading) {
       --fm-tool-fill: var(--fm-secondary-button);
       --fm-tool-ink: var(--fm-text);
-      --fm-tool-edge: var(--fm-strong-line);
+      --fm-tool-edge: var(--fm-button-edge);
+      --fm-tool-shadow: inset 0 1px rgb(200 245 255 / 10%);
+      --fm-tool-hover-shadow: 0 0 12px rgb(34 211 238 / 18%);
+      --fm-tool-text-shadow: none;
       --fm-tool-sheen: 0;
       --fm-icon-tone: var(--fm-blue-ink);
     }
@@ -204,7 +211,7 @@
       }
     }
     &:active {
-      transform: scale(0.96);
+      transform: scale(var(--fm-press-scale));
     }
   }
 }

@@ -1,19 +1,29 @@
 <script setup lang="ts">
 import type { KnowledgeDocument } from '@/api/mes/assistant'
-import { Document } from '@element-plus/icons-vue'
+import GlassSkeleton from '@/components/GlassSkeleton.vue'
+import { Document, Search } from '@element-plus/icons-vue'
 import DocumentMenu, { type DocumentAction } from './DocumentMenu.vue'
 import DocumentStatus from './DocumentStatus.vue'
 import { formatAssistantTime } from './assistantTime'
 
 // The list endpoint includes updateTime; older deployments only return createTime.
 type ListedDocument = KnowledgeDocument & { updateTime?: string | number }
-defineProps<{
+const props = defineProps<{
   documents: ListedDocument[]
   view: 'cards' | 'list'
   manage: boolean
   loading: boolean
   submitting: Set<number>
 }>()
+const filterText = ref('')
+const visibleDocuments = computed(() => {
+  const term = filterText.value.trim().toLocaleLowerCase()
+  return term
+    ? props.documents.filter((doc) =>
+        [doc.title, doc.fileName].some((name) => name.toLocaleLowerCase().includes(term))
+      )
+    : props.documents
+})
 const emit = defineEmits<{
   preview: [id: number]
   action: [command: DocumentAction, doc: KnowledgeDocument]
@@ -25,49 +35,74 @@ const timestamp = (doc: ListedDocument) =>
 </script>
 
 <template>
-  <section v-loading="loading" class="document-collection" aria-label="知识文档">
+  <section
+    v-loading="loading && documents.length > 0"
+    class="document-collection"
+    aria-label="知识文档"
+    :aria-busy="loading"
+  >
+    <el-input
+      v-if="documents.length || filterText"
+      v-model="filterText"
+      class="document-filter"
+      aria-label="筛选当前库文档"
+      placeholder="按标题或文件名筛选"
+      :prefix-icon="Search"
+      clearable
+    />
+    <GlassSkeleton
+      v-if="loading && !documents.length"
+      :variant="view === 'cards' ? 'cards' : 'list'"
+      label="正在加载文档"
+    />
     <el-empty
-      v-if="!documents.length"
-      :description="loading ? '正在加载文档' : '当前知识库没有可见文档'"
+      v-else-if="!visibleDocuments.length"
+      :description="filterText.trim() ? '没有匹配的文档' : '当前知识库没有可见文档'"
       :image-size="65"
     />
-    <div v-else-if="view === 'cards'" v-spotlight class="document-grid">
-      <article
-        v-for="(doc, i) in documents"
-        :key="doc.id"
-        class="document-card fm-spotlight fm-stagger"
-        :style="{ '--i': Math.min(i, 7) }"
-      >
-        <header>
-          <span class="format-badge"
-            ><el-icon><Document /></el-icon>{{ format(doc) }}</span
+    <TransitionGroup v-if="view === 'cards'" tag="div" name="card-grid" class="document-grid">
+      <div v-for="(doc, i) in visibleDocuments" :key="doc.id" class="document-slot">
+        <article
+          v-tech-card
+          class="document-card fm-hud fm-stagger"
+          :style="{ '--i': Math.min(i, 7) }"
+        >
+          <header>
+            <span class="format-badge"
+              ><el-icon><Document /></el-icon>{{ format(doc) }}</span
+            >
+            <span class="version">v{{ doc.version }}</span>
+            <DocumentMenu
+              :doc="doc"
+              :manage="manage"
+              :submitting="submitting.has(doc.id)"
+              @action="emit('action', $event, doc)"
+            />
+          </header>
+          <button
+            class="doc-title"
+            type="button"
+            :title="doc.title"
+            @click="emit('preview', doc.id)"
+            >{{ doc.title }}</button
           >
-          <span class="version">v{{ doc.version }}</span>
-          <DocumentMenu
-            :doc="doc"
-            :manage="manage"
-            :submitting="submitting.has(doc.id)"
-            @action="emit('action', $event, doc)"
-          />
-        </header>
-        <button
-          class="doc-title"
-          type="button"
-          :title="doc.title"
-          @click="emit('preview', doc.id)"
-          >{{ doc.title }}</button
-        >
-        <small class="filename" :title="doc.fileName">{{ doc.fileName }}</small>
-        <div class="metadata"
-          ><span>{{ doc.status === 'PUBLISHED' ? '已发布' : '草稿' }}</span
-          ><time>{{ timestamp(doc) }}</time></div
-        >
-        <footer
-          ><DocumentStatus :doc="doc" kind="vector" /><DocumentStatus :doc="doc" kind="graph"
-        /></footer>
-      </article>
-    </div>
-    <el-table v-else :data="documents" row-key="id" class="document-list">
+          <small class="filename" :title="doc.fileName">{{ doc.fileName }}</small>
+          <div class="metadata"
+            ><span>{{ doc.status === 'PUBLISHED' ? '已发布' : '草稿' }}</span
+            ><time>{{ timestamp(doc) }}</time></div
+          >
+          <footer
+            ><DocumentStatus :doc="doc" kind="vector" /><DocumentStatus :doc="doc" kind="graph"
+          /></footer>
+        </article>
+      </div>
+    </TransitionGroup>
+    <el-table
+      v-else-if="visibleDocuments.length"
+      :data="visibleDocuments"
+      row-key="id"
+      class="document-list"
+    >
       <el-table-column prop="title" label="文档" min-width="180" show-overflow-tooltip />
       <el-table-column label="格式" width="78"
         ><template #default="{ row }">{{ format(row) }}</template></el-table-column
@@ -107,6 +142,42 @@ const timestamp = (doc: ListedDocument) =>
 </template>
 
 <style scoped>
+.document-filter {
+  display: flex;
+  width: min(100%, 260px);
+  margin: 0 0 12px auto;
+}
+.document-slot {
+  min-width: 0;
+  display: grid;
+}
+.card-grid-move {
+  transition: transform 0.32s var(--fm-ease);
+}
+.card-grid-enter-active {
+  transition:
+    opacity 0.2s,
+    transform 0.28s var(--fm-ease);
+}
+.card-grid-enter-from {
+  opacity: 0;
+  transform: translateY(6px);
+}
+/* Hide removed documents immediately while their neighbours settle. */
+.card-grid-leave-active {
+  display: none;
+}
+@media (prefers-reduced-motion: reduce) {
+  .card-grid-move,
+  .card-grid-enter-active {
+    transition: none;
+  }
+  .card-grid-enter-from {
+    opacity: 1;
+    transform: none;
+  }
+}
+
 .document-collection {
   container-type: inline-size;
   min-width: 0;

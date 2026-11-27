@@ -10,6 +10,7 @@
         <div>
           <el-button
             v-if="checkPermi(['mes:insight:query'])"
+            v-magnetic
             type="primary"
             @click="router.push('/mes/insight')"
             >进入生产决策中心</el-button
@@ -22,9 +23,9 @@
     <CapabilityCards ref="capabilityCards" />
     <HomeShortcuts v-if="shortcuts.length" :items="shortcuts" @navigate="navigate" />
 
-    <el-row v-if="statistics.length" v-spotlight :gutter="16" class="statistics">
+    <el-row v-if="statistics.length" :gutter="16" class="statistics">
       <el-col v-for="(stat, i) in statistics" :key="stat.key" :xs="24" :sm="8">
-        <el-card v-loading="loading" shadow="never" class="fm-spotlight fm-stagger" :style="{ '--i': i }">
+        <el-card v-tech-card v-loading="loading" shadow="never" class="fm-stagger" :style="{ '--i': i }">
           <div class="stat-label">{{ stat.label }}</div>
           <div class="stat-value"><AnimatedNumber :value="counts[stat.key]" /></div>
           <div class="stat-hint">{{ stat.hint }}</div>

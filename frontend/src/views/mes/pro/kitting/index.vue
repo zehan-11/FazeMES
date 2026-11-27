@@ -54,6 +54,9 @@
         empty-text="当前筛选下无已确认工单"
         @row-click="openAnalysis"
       >
+      <template v-if="boardLoading" #empty>
+        <GlassSkeleton label="正在加载工单" />
+      </template>
         <el-table-column label="工单" prop="workOrderCode" min-width="175" show-overflow-tooltip>
           <template #default="{ row }">
             <span class="order-code">{{ row.workOrderCode }}</span>
@@ -317,6 +320,7 @@
 </template>
 
 <script setup lang="ts">
+import GlassSkeleton from '@/components/GlassSkeleton.vue'
 import type { FormInstance } from 'element-plus'
 import { formatQuantity } from '@/utils/mesQuantity'
 import { formatDate } from '@/utils/formatTime'
