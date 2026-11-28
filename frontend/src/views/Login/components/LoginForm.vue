@@ -10,7 +10,7 @@ import {
   TopRight,
   View
 } from '@element-plus/icons-vue'
-import GlassLens from '../scene/GlassLens.vue'
+import LoginButtonSparkle from '../scene/LoginButtonSparkle.vue'
 import FaceLoginDialog from './FaceLoginDialog.vue'
 import type { TokenType } from '@/api/login/types'
 import type { RouteLocationNormalizedLoaded } from 'vue-router'
@@ -294,7 +294,8 @@ onMounted(() => {
         :tabindex="mode === 'password' ? 0 : -1"
         @click="chooseMode('password')"
       >
-        <GlassLens /><ElIcon><Lock /></ElIcon><span>{{ t('login.scene.accountTab') }}</span>
+        <LoginButtonSparkle /><ElIcon><Lock /></ElIcon
+        ><span>{{ t('login.scene.accountTab') }}</span>
       </button>
       <button
         id="mode-face"
@@ -307,7 +308,8 @@ onMounted(() => {
         :tabindex="mode === 'face' ? 0 : -1"
         @click="chooseMode('face')"
       >
-        <GlassLens /><ElIcon><FullScreen /></ElIcon><span>{{ t('login.scene.faceTab') }}</span>
+        <LoginButtonSparkle /><ElIcon><FullScreen /></ElIcon
+        ><span>{{ t('login.scene.faceTab') }}</span>
       </button>
     </div>
     <div id="login-fields" role="tabpanel" :aria-labelledby="'mode-' + mode">
@@ -372,7 +374,7 @@ onMounted(() => {
                 :aria-pressed="passwordVisible"
                 @mousedown.prevent
                 @click="passwordVisible = !passwordVisible"
-                ><GlassLens /><ElIcon
+                ><LoginButtonSparkle /><ElIcon
                   ><Hide v-if="passwordVisible" /><View v-else /></ElIcon></button
             ></template>
           </el-input>
@@ -391,7 +393,7 @@ onMounted(() => {
           :disabled="loginLoading"
           :aria-busy="loginLoading"
         >
-          <GlassLens /><span>{{
+          <LoginButtonSparkle /><span>{{
             t(mode === 'password' ? 'login.login' : 'login.scene.verify')
           }}</span
           ><span class="submit-arrow"
@@ -401,7 +403,7 @@ onMounted(() => {
       </el-form>
     </div>
     <RouterLink class="glass-control portal" to="/customer-portal"
-      ><GlassLens /><span class="portal-icon"
+      ><LoginButtonSparkle /><span class="portal-icon"
         ><ElIcon><Connection /></ElIcon></span
       ><span>{{ t('login.scene.portal') }}</span
       ><ElIcon class="portal-arrow"><TopRight /></ElIcon
@@ -413,7 +415,7 @@ onMounted(() => {
         type="button"
         class="glass-control"
         @click="setLoginState(state)"
-        ><GlassLens /><span>{{ t(label) }}</span></button
+        ><LoginButtonSparkle /><span>{{ t(label) }}</span></button
       >
       <button
         v-for="item in socialList"
@@ -422,7 +424,7 @@ onMounted(() => {
         type="button"
         :aria-label="item.icon.split(':').pop()?.replace('-filled', '')"
         @click="doSocialLogin(item.type)"
-        ><GlassLens /><Icon :icon="item.icon"
+        ><LoginButtonSparkle /><Icon :icon="item.icon"
       /></button>
     </div>
     <Verify

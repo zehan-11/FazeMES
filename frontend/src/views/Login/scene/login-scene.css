@@ -676,7 +676,7 @@ html.dark .mes-login {
     border-color 0.18s ease,
     box-shadow 0.18s ease;
 }
-.mes-login .glass-control > :not(.glass-lens) {
+.mes-login .glass-control > :not(.glass-lens, .login-sparkles) {
   position: relative;
   z-index: 1;
 }
