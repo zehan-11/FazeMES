@@ -1,110 +1,107 @@
 <template>
   <div class="mes-workspace">
-    <el-card shadow="never" class="mb-16px fm-stagger fm-optical-rim">
-      <div class="welcome">
-        <div>
-          <div class="eyebrow">FazeMES / 生产执行</div>
-          <h1>{{ userStore.getUser.nickname }}，欢迎进入工作台</h1>
-          <p>查看生产动态、处理岗位待办，快速进入日常业务。</p>
-        </div>
-        <div>
-          <el-button
-            v-if="checkPermi(['mes:insight:query'])"
-            v-magnetic
-            type="primary"
-            @click="router.push('/mes/insight')"
-            >进入生产决策中心</el-button
-          >
-          <el-button v-if="canLoadData" :loading="loading" @click="refreshWorkspace">刷新数据</el-button>
+    <header class="welcome fm-panel">
+      <div>
+        <div class="eyebrow">FazeMES / 生产执行</div>
+        <div class="welcome-title">
+          <h1>生产工作台</h1>
+          <span>{{ userStore.getUser.nickname }}，欢迎回来</span>
         </div>
       </div>
-    </el-card>
-
-    <CapabilityCards ref="capabilityCards" />
-    <HomeShortcuts v-if="shortcuts.length" :items="shortcuts" @navigate="navigate" />
-
-    <el-row v-if="statistics.length" :gutter="16" class="statistics">
-      <el-col v-for="(stat, i) in statistics" :key="stat.key" :xs="24" :sm="8">
-        <el-card v-tech-card v-loading="loading" shadow="never" class="fm-interactive-card fm-stagger" :style="{ '--i': i }">
-          <div class="stat-label">{{ stat.label }}</div>
-          <div class="stat-value"><AnimatedNumber :value="counts[stat.key]" /></div>
-          <div class="stat-hint">{{ stat.hint }}</div>
-        </el-card>
-      </el-col>
-    </el-row>
+      <div class="welcome-actions">
+        <el-button
+          v-if="checkPermi(['mes:insight:query'])"
+          type="primary"
+          @click="router.push('/mes/insight')"
+          >进入生产决策中心</el-button
+        >
+        <el-button v-if="canLoadData" :loading="loading" @click="refreshWorkspace"
+          >刷新数据</el-button
+        >
+      </div>
+    </header>
 
     <el-alert
       v-if="loadFailed"
-      class="mb-16px"
-      title="部分数据加载失败，请点击刷新数据重试。"
+      title="部分统计加载失败，请刷新数据重试。"
       type="warning"
       show-icon
       :closable="false"
     />
-
     <template v-if="canQueryHomeStatistics">
       <HomeKpiCards
         v-if="summary"
         :summary="summary"
+        :feedback-total="counts.feedback"
         :destinations="destinations"
         @navigate="navigate"
       />
-      <el-skeleton v-else-if="loading" :rows="3" animated class="mb-16px" />
-      <el-row :gutter="16">
-        <el-col :lg="summary && hasAlerts ? 16 : 24" :xs="24" class="mb-16px">
-          <HomeProductionTrend v-if="refreshToken > 0" :refresh-token="refreshToken" />
-        </el-col>
-        <el-col v-if="summary && hasAlerts" :lg="8" :xs="24" class="mb-16px">
-          <HomeAlertPanel :summary="summary" :destinations="destinations" @navigate="navigate" />
-        </el-col>
-      </el-row>
+      <el-skeleton v-else-if="loading" :rows="2" animated />
     </template>
 
-    <el-row v-if="canQueryWorkOrders || canQueryHomeStatistics" :gutter="16">
-      <el-col
-        v-if="canQueryWorkOrders"
-        :lg="canQueryHomeStatistics ? 16 : 24"
-        :xs="24"
-        class="mb-16px"
-      >
-        <el-card shadow="never">
-          <template #header>
-            <div class="section-header">
-              <span>最近生产工单</span>
-              <el-link
-                v-if="destinations.MesProWorkOrder"
-                type="primary"
-                :underline="false"
-                @click="navigate(destinations.MesProWorkOrder)"
-                >全部工单</el-link
-              >
-            </div>
-          </template>
-          <el-table v-loading="loading" :data="workOrders" empty-text="暂无生产工单">
-            <el-table-column prop="code" label="工单编码" min-width="150" />
-            <el-table-column :formatter="$catalogCell" prop="name" label="工单名称" min-width="150" />
-            <el-table-column :formatter="$catalogCell" prop="productName" label="生产产品" min-width="130" />
-            <el-table-column prop="quantity" label="计划数量" width="100" align="right" />
-            <el-table-column prop="quantityProduced" label="已生产" width="100" align="right" />
-            <el-table-column label="状态" width="100" align="center">
-              <template #default="scope">
-                <dict-tag :type="DICT_TYPE.MES_PRO_WORK_ORDER_STATUS" :value="scope.row.status" />
-              </template>
-            </el-table-column>
-          </el-table>
-        </el-card>
-      </el-col>
-      <el-col
-        v-if="canQueryHomeStatistics"
-        :lg="canQueryWorkOrders ? 8 : 24"
-        :xs="24"
-        class="mb-16px"
-      >
-        <HomeWorkOrderChart v-if="refreshToken > 0" :refresh-token="refreshToken" />
-      </el-col>
-    </el-row>
+    <div v-if="canQueryWorkOrders" class="workspace-columns">
+      <WorkspaceOrders
+        :orders="workOrders"
+        :loading="loading"
+        :failed="workOrdersFailed"
+        :all-orders-path="destinations.MesProWorkOrder"
+        @navigate="navigate"
+        @retry="loadData"
+      />
+    </div>
 
-    <p class="attribution">FazeMES · 所有统计来自当前企业数据库</p>
+    <div
+      v-if="canQueryHomeStatistics || shortcuts.length"
+      class="workspace-columns"
+      :class="{ 'one-column': !canQueryHomeStatistics || !shortcuts.length }"
+    >
+      <HomeProductionTrend
+        v-if="canQueryHomeStatistics && refreshToken"
+        :refresh-token="refreshToken"
+        :feedback-path="destinations.MesProFeedback"
+        @navigate="navigate"
+      />
+      <HomeShortcuts v-if="shortcuts.length" :items="shortcuts" @navigate="navigate" />
+    </div>
+
+    <CapabilityCards ref="capabilityCards" />
+
+    <footer v-if="statistics.length || canQueryHomeStatistics" class="workspace-footer">
+      <div v-if="statistics.length" class="total-section">
+        <span class="totals-title">累计概况</span>
+        <dl class="totals" aria-label="当前企业累计概况">
+          <div v-for="stat in statistics" :key="stat.key" :title="stat.hint">
+            <dt>{{ stat.label }}</dt>
+            <dd><AnimatedNumber :value="counts[stat.key]" /></dd>
+          </div>
+        </dl>
+      </div>
+      <button
+        v-if="canQueryHomeStatistics"
+        type="button"
+        class="details-toggle"
+        :aria-expanded="showDetails"
+        aria-controls="workspace-detail-panels"
+        @click="showDetails = !showDetails"
+      >
+        待办与工单分布
+        <Icon :icon="showDetails ? 'ep:arrow-up' : 'ep:arrow-down'" :size="12" />
+      </button>
+    </footer>
+    <div
+      v-if="canQueryHomeStatistics && showDetails"
+      id="workspace-detail-panels"
+      class="workspace-columns"
+      :class="{ 'one-column': !(summary && hasAlerts) }"
+    >
+      <HomeAlertPanel
+        v-if="summary && hasAlerts"
+        :summary="summary"
+        :destinations="destinations"
+        @navigate="navigate"
+      />
+      <HomeWorkOrderChart v-if="refreshToken" :refresh-token="refreshToken" />
+    </div>
   </div>
 </template>
 
@@ -117,7 +114,6 @@ import { ProWorkOrderApi, type ProWorkOrderVO } from '@/api/mes/pro/workorder'
 import { usePermissionStore } from '@/store/modules/permission'
 import { useUserStore } from '@/store/modules/user'
 import { checkPermi } from '@/utils/permission'
-import { DICT_TYPE } from '@/utils/dict'
 import { collectNavigationPages } from '@/utils/mesNavigation'
 import HomeKpiCards from '@/views/mes/home/HomeKpiCards.vue'
 import HomeAlertPanel from '@/views/mes/home/HomeAlertPanel.vue'
@@ -125,6 +121,7 @@ import HomeProductionTrend from '@/views/mes/home/HomeProductionTrend.vue'
 import HomeWorkOrderChart from '@/views/mes/home/HomeWorkOrderChart.vue'
 import HomeShortcuts from '@/views/mes/home/HomeShortcuts.vue'
 import CapabilityCards from './CapabilityCards.vue'
+import WorkspaceOrders from './WorkspaceOrders.vue'
 
 defineOptions({ name: 'Index' })
 
@@ -136,6 +133,8 @@ const loadFailed = ref(false)
 const refreshToken = ref(0)
 const summary = ref<MesHomeSummaryVO>()
 const workOrders = ref<ProWorkOrderVO[]>([])
+const workOrdersFailed = ref(false)
+const showDetails = ref(false)
 const canQueryWorkOrders = computed(() => checkPermi(['mes:pro-work-order:query']))
 // 三个首页统计接口使用同一权限，缺少该权限时不挂载图表或请求汇总。
 const canQueryHomeStatistics = computed(() => checkPermi(['mes:home:query']))
@@ -226,12 +225,17 @@ const loadData = async () => {
   }
   if (canQueryWorkOrders.value) {
     counts.workOrder = undefined
-    workOrders.value = []
+    workOrdersFailed.value = false
     requests.push(
-      ProWorkOrderApi.getWorkOrderPage({ pageNo: 1, pageSize: 5 }).then((page) => {
-        counts.workOrder = page.total
-        workOrders.value = page.list
-      })
+      ProWorkOrderApi.getWorkOrderPage({ pageNo: 1, pageSize: 5 })
+        .then((page) => {
+          counts.workOrder = page.total
+          workOrders.value = page.list
+        })
+        .catch(() => {
+          workOrdersFailed.value = true
+          workOrders.value = []
+        })
     )
   }
   if (checkPermi(['mes:pro-feedback:query'])) {
@@ -243,11 +247,15 @@ const loadData = async () => {
     )
   }
   if (canQueryHomeStatistics.value) {
-    summary.value = undefined
     requests.push(
-      MesHomeStatisticsApi.getHomeSummary().then((data) => {
-        summary.value = data
-      })
+      MesHomeStatisticsApi.getHomeSummary()
+        .then((data) => {
+          summary.value = data
+        })
+        .catch((error) => {
+          summary.value = undefined
+          throw error
+        })
     )
   }
   try {
@@ -267,70 +275,133 @@ onMounted(loadData)
 </script>
 
 <style scoped lang="scss">
+.mes-workspace {
+  display: grid;
+  gap: 12px;
+  container-type: inline-size;
+  color: var(--fm-text);
+}
+
 .welcome,
-.section-header {
+.welcome-title,
+.welcome-actions,
+.workspace-footer,
+.total-section,
+.totals,
+.totals > div,
+.details-toggle {
   display: flex;
   align-items: center;
+}
+
+.welcome {
+  min-height: 73px;
+  padding: 10px 18px;
+  box-sizing: border-box;
   justify-content: space-between;
-  gap: 16px;
+  gap: 12px;
 }
 
 .eyebrow {
-  font-size: 13px;
-  letter-spacing: 1px;
-  color: var(--el-color-primary);
-}
-
-h1 {
-  margin: 12px 0;
-  font-size: 24px;
-  font-weight: 600;
-}
-
-.welcome p,
-.stat-hint,
-.attribution {
-  color: var(--el-text-color-secondary);
-}
-
-.welcome p {
-  margin: 0;
-  line-height: 1.7;
-}
-
-.statistics .el-col {
-  margin-bottom: 16px;
-}
-
-.stat-label {
-  font-size: 14px;
-}
-
-.stat-value {
-  margin: 12px 0;
-  font-size: 32px;
-  font-weight: 600;
-  line-height: 1.2;
-}
-
-.stat-hint,
-.attribution {
+  margin-bottom: 3px;
   font-size: 12px;
+  color: var(--fm-blue-ink);
 }
 
-.attribution {
-  margin: 20px 0 8px;
-  text-align: center;
+.welcome-title {
+  flex-wrap: wrap;
+  gap: 2px 22px;
 }
 
-@media (width <= 767px) {
+.welcome-title h1 {
+  margin: 0;
+  font-size: 25px;
+  line-height: 1.35;
+}
+
+.welcome-title span {
+  font-size: 13px;
+  color: var(--fm-secondary);
+}
+
+.welcome-actions {
+  flex-shrink: 0;
+}
+
+.workspace-columns {
+  display: grid;
+  grid-template-columns: minmax(0, 1.9fr) minmax(0, 1fr);
+  gap: 12px 16px;
+}
+
+.workspace-columns > * {
+  min-width: 0;
+}
+
+.workspace-columns.one-column {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+.workspace-footer {
+  padding: 4px 0 8px;
+  font-size: 12px;
+  color: var(--fm-secondary);
+  flex-wrap: wrap;
+  gap: 6px 28px;
+}
+
+.totals {
+  gap: 5px 20px;
+  flex-wrap: wrap;
+  margin: 0;
+}
+
+.totals > div {
+  gap: 6px;
+}
+
+.totals dd {
+  margin: 0;
+  color: var(--fm-text);
+}
+
+.total-section {
+  flex-wrap: wrap;
+  gap: 4px 16px;
+}
+
+.totals-title {
+  font-weight: 600;
+}
+
+.details-toggle {
+  min-height: 30px;
+  font: inherit;
+  color: var(--fm-blue-ink);
+  cursor: pointer;
+  background: transparent;
+  border: 0;
+  gap: 5px;
+}
+
+.details-toggle:hover {
+  text-decoration: underline;
+}
+
+@container (max-width: 870px) {
+  .workspace-columns {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+@container (max-width: 560px) {
   .welcome {
-    align-items: flex-start;
-    flex-direction: column;
+    flex-wrap: wrap;
+    padding: 12px 14px;
   }
 
-  h1 {
-    font-size: 20px;
+  .welcome-title {
+    column-gap: 12px;
   }
 }
 </style>

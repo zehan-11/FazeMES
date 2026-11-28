@@ -1,67 +1,65 @@
 <template>
-  <el-card shadow="never" class="mb-16px fm-stagger">
-    <template #header>
-      <div class="shortcut-header">
-        <span>岗位常用入口</span>
-        <span class="shortcut-hint">根据当前账号的业务权限提供</span>
-      </div>
-    </template>
+  <section class="shortcuts-panel fm-panel" aria-label="岗位常用入口">
+    <h2><Icon icon="ep:grid" :size="18" />岗位常用入口</h2>
     <div class="shortcuts">
       <el-button
-        v-for="(item, i) in items"
+        v-for="item in items"
         :key="item.path"
-        v-tech-card
-        class="shortcut fm-interactive-card fm-stagger"
-        :style="{ '--i': Math.min(i, 7) }"
+        class="shortcut"
         @click="emit('navigate', item.path)"
       >
-        <Icon :icon="item.icon" :size="22" />
+        <Icon :icon="item.icon" :size="16" />
         <span>{{ item.name }}</span>
       </el-button>
     </div>
-  </el-card>
+  </section>
 </template>
 
 <script setup lang="ts">
 defineOptions({ name: 'HomeShortcuts' })
-
 defineProps<{ items: { name: string; path: string; icon: string }[] }>()
 const emit = defineEmits<{ navigate: [path: string] }>()
 </script>
 
 <style scoped lang="scss">
-.shortcut-header {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  justify-content: space-between;
-  gap: 8px;
+.shortcuts-panel {
+  padding: 14px 18px 18px;
+  box-sizing: border-box;
 }
 
-.shortcut-hint {
-  font-size: 12px;
-  color: var(--el-text-color-secondary);
+.shortcuts-panel h2 {
+  display: flex;
+  margin: 0 0 16px;
+  font-size: 18px;
+  line-height: 1.4;
+  color: var(--fm-text);
+  align-items: center;
+  gap: 9px;
+}
+
+.shortcuts-panel h2 :deep(.iconify) {
+  color: var(--fm-blue-ink);
 }
 
 .shortcuts {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
-  gap: 12px;
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 96px), 1fr));
+  gap: 9px;
 }
 
-.shortcut.fm-tech-card {
-  background: var(--fm-card-glass);
-  border-color: var(--fm-line);
-  box-shadow: inset 0 1px var(--fm-highlight), var(--fm-shadow);
-  backdrop-filter: var(--fm-card-filter);
-  height: 64px;
+.shortcut {
+  height: auto;
+  min-height: 38px;
+  padding: 7px;
   margin: 0;
-  font-size: 14px;
+  font-size: 13px;
+  white-space: normal;
+  justify-content: flex-start;
+}
 
-  :deep(> span) {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-  }
+.shortcut :deep(> span) {
+  display: flex;
+  align-items: center;
+  gap: 6px;
 }
 </style>

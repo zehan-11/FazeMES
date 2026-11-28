@@ -1,5 +1,4 @@
 <script setup lang="ts">
-import AnimatedNumber from '@/components/AnimatedNumber.vue'
 import { ArrowRight, Connection, Files, View } from '@element-plus/icons-vue'
 import { useUserStore } from '@/store/modules/user'
 import { FaceApi } from '@/api/mes/face'
@@ -44,7 +43,7 @@ const cards = computed(() =>
   ].filter((card) => card.allowed)
 )
 
-type Metric = { value: string; detail: string; live?: boolean }
+type Metric = { value: string; detail: string; live?: boolean; failed?: boolean }
 async function faceMetric(): Promise<Metric> {
   const face = await FaceApi.status()
   return {
@@ -89,20 +88,19 @@ async function graphMetric(): Promise<Metric> {
 }
 const metrics = reactive<Record<string, Metric>>({})
 let generation = 0
+async function readCard(card: (typeof cards.value)[number], version: number) {
+  metrics[card.key] = { value: '读取中…', detail: '' }
+  try {
+    const result = await card.read()
+    if (version === generation) metrics[card.key] = result
+  } catch {
+    if (version === generation)
+      metrics[card.key] = { value: '读取失败', detail: '进入模块查看', failed: true }
+  }
+}
 async function refresh() {
   const version = ++generation
-  await Promise.all(
-    cards.value.map(async (card) => {
-      metrics[card.key] = { value: '读取中…', detail: '' }
-      try {
-        const result = await card.read()
-        if (version === generation) metrics[card.key] = result
-      } catch {
-        if (version === generation)
-          metrics[card.key] = { value: '暂时无法读取', detail: '进入模块查看或重试' }
-      }
-    })
-  )
+  await Promise.all(cards.value.map((card) => readCard(card, version)))
 }
 watch([() => user.getUser.id, hasFace, hasLibrary], refresh, { immediate: true })
 defineExpose({ refresh })
@@ -122,97 +120,133 @@ onBeforeUnmount(() => {
 </script>
 
 <template>
-  <section v-if="cards.length" class="capabilities" aria-label="阶段二能力直达">
-    <button
-      v-for="(card, i) in cards"
-      :key="card.key"
-      v-tech-card
-      class="capability fm-interactive-card fm-hud fm-auto-scan fm-stagger fm-optical-rim"
-      :style="{ '--i': i }"
-      :class="card.key"
-      type="button"
-      @click="router.push(card.path)"
-    >
-      <span class="feature-icon"
-        ><el-icon><component :is="card.icon" /></el-icon
-      ></span>
-      <span class="capability-copy"
-        ><span>{{ card.title }}</span
-        ><strong
-          ><i v-if="metrics[card.key]?.live" class="fm-live-dot" aria-hidden="true"></i
-          ><AnimatedNumber :value="metrics[card.key]?.value ?? ''" /></strong
-        ><small><AnimatedNumber :value="metrics[card.key]?.detail ?? ''" /></small
-      ></span>
-      <el-icon class="open-feature"><ArrowRight /></el-icon>
-    </button>
+  <section v-if="cards.length" class="capabilities fm-panel" aria-label="系统能力直达">
+    <div v-for="card in cards" :key="card.key" class="capability" :class="card.key">
+      <button
+        type="button"
+        class="feature-link"
+        :title="metrics[card.key]?.detail"
+        @click="router.push(card.path)"
+      >
+        <span class="feature-icon"
+          ><el-icon><component :is="card.icon" /></el-icon
+        ></span>
+        <span class="capability-copy">
+          <strong>{{ card.title }}</strong>
+          <span :class="{ live: metrics[card.key]?.live, failed: metrics[card.key]?.failed }">{{
+            metrics[card.key]?.value
+          }}</span>
+        </span>
+        <el-icon class="open-feature"><ArrowRight /></el-icon>
+      </button>
+      <button
+        v-if="metrics[card.key]?.failed"
+        type="button"
+        class="retry"
+        :aria-label="'重试' + card.title"
+        @click="readCard(card, generation)"
+        >重试</button
+      >
+    </div>
   </section>
 </template>
 
-<style scoped>
+<style scoped lang="scss">
 .capabilities {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(min(100%, 235px), 1fr));
-  gap: 13px;
-  margin-bottom: 16px;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 210px), 1fr));
+  padding: 8px 0;
 }
+
 .capability {
-  --accent: var(--fm-blue-ink);
-  display: grid;
-  grid-template-columns: auto minmax(0, 1fr) auto;
-  align-items: start;
-  gap: 12px;
-  padding: 17px;
-  border: 1px solid var(--fm-line);
-  border-radius: var(--fm-panel-radius);
-  background: var(--fm-card-glass);
-  backdrop-filter: var(--fm-card-filter);
-  box-shadow:
-    inset 0 1px var(--fm-highlight),
-    var(--fm-shadow);
-  font-family: inherit;
+  display: flex;
+  min-width: 0;
+  padding: 0 14px;
+  align-items: center;
+}
+
+.capability + .capability {
+  border-left: 1px solid var(--fm-divider);
+}
+
+.feature-link,
+.retry {
+  font: inherit;
   color: var(--fm-text);
-  text-align: left;
   cursor: pointer;
-  transition:
-    border-color var(--fm-motion),
-    transform var(--fm-motion);
+  background: none;
+  border: 0;
 }
-.face {
-  --accent: var(--fm-tone-success);
+
+.feature-link {
+  display: flex;
+  min-width: 0;
+  min-height: 44px;
+  padding: 0 3px;
+  text-align: left;
+  flex: 1;
+  align-items: center;
+  gap: 10px;
 }
+
+.feature-link:hover .capability-copy strong,
+.retry:hover {
+  text-decoration: underline;
+}
+
 .feature-icon {
   display: grid;
-  place-items: center;
-  width: 38px;
-  height: 38px;
-  border-radius: 11px;
-  color: var(--accent);
+  width: 35px;
+  height: 35px;
   font-size: 19px;
-  background: color-mix(in srgb, var(--accent) 12%, transparent);
+  color: var(--fm-blue-ink);
+  background: var(--fm-card);
+  border-radius: 9px;
+  flex-shrink: 0;
+  place-items: center;
 }
+
+.face .feature-icon,
+.live {
+  color: var(--fm-tone-success);
+}
+
 .capability-copy {
   display: grid;
-  gap: 5px;
-  font-size: 13px;
-}
-.capability-copy strong {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  font-size: clamp(16px, 1.3vw, 20px);
-  font-variant-numeric: tabular-nums;
-}
-.capability-copy small {
+  gap: 2px;
   font-size: 12px;
-  color: var(--fm-muted);
+  color: var(--fm-secondary);
 }
+
+.capability-copy strong {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--fm-text);
+}
+
 .open-feature {
-  margin-top: 4px;
+  margin-inline-start: auto;
   color: var(--fm-muted);
 }
-@media (prefers-reduced-motion: reduce) {
-  .capability:hover {
-    transform: none;
+
+.capability-copy .failed,
+.retry {
+  color: var(--fm-tone-warning);
+}
+
+.retry {
+  padding: 4px;
+  font-size: 12px;
+}
+
+@container (max-width: 700px) {
+  .capabilities {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .capability + .capability {
+    border-top: 1px solid var(--fm-divider);
+    border-left: 0;
   }
 }
 </style>
