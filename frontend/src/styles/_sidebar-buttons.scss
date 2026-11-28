@@ -1,0 +1,139 @@
+/*!
+ * From Uiverse.io by kleenpulse - https://uiverse.io/kleenpulse/dangerous-horse-41
+ * MIT License, Copyright (c) kleenpulse (Liquid)
+ */
+/* stylelint-disable selector-class-pattern -- The sidebar and Element Plus expose BEM classes. */
+:is(.v-menu__vertical, .v-menu-popper--vertical, .v-tab-menu) {
+  :is(.el-menu-item, .el-sub-menu__title, .v-tab-menu__item) {
+    --fm-nav-edge: 0.125em;
+    --fm-nav-cut: 0.5em;
+    --fm-nav-inner-cut: calc(var(--fm-nav-cut) + var(--fm-nav-edge) * 0.5);
+    --fm-nav-far-edge: calc(100% - var(--fm-nav-edge));
+    --fm-nav-far-cut: calc(100% - var(--fm-nav-inner-cut));
+    --left-menu-text-color: color-mix(in srgb, var(--fm-text) 70%, var(--fm-secondary));
+    --left-menu-text-active-color: var(--fm-text);
+
+    position: relative;
+    isolation: isolate;
+    margin: 3px 10px;
+    color: var(--left-menu-text-color);
+    text-transform: uppercase;
+    border: 0;
+    border-radius: 0;
+    box-shadow: 10px 10px 20px var(--fm-scrim);
+    clip-path: polygon(
+      0 var(--fm-nav-cut),
+      var(--fm-nav-cut) 0,
+      100% 0,
+      100% calc(100% - var(--fm-nav-cut)),
+      calc(100% - var(--fm-nav-cut)) 100%,
+      0 100%
+    );
+    transition: color 250ms;
+
+    &::before,
+    &::after {
+      position: absolute;
+      inset: 0;
+      pointer-events: none;
+      content: '';
+    }
+
+    &::before {
+      z-index: -2;
+      background: linear-gradient(
+        -45deg,
+        color-mix(in srgb, var(--fm-action) 60%, var(--fm-surface)),
+        color-mix(in srgb, var(--fm-blue-ink) 15%, var(--fm-raised)),
+        color-mix(in srgb, var(--fm-glow-edge) 38%, var(--fm-depth))
+      );
+      background-position: 31% 0;
+      background-size: 300% 300%;
+      animation: fm-sidebar-gradient 5s ease infinite;
+    }
+
+    &::after {
+      z-index: -1;
+      background: var(--fm-nav-face, var(--fm-depth));
+      clip-path: polygon(
+        var(--fm-nav-edge) var(--fm-nav-inner-cut),
+        var(--fm-nav-inner-cut) var(--fm-nav-edge),
+        var(--fm-nav-far-edge) var(--fm-nav-edge),
+        var(--fm-nav-far-edge) var(--fm-nav-far-cut),
+        var(--fm-nav-far-cut) var(--fm-nav-far-edge),
+        var(--fm-nav-edge) var(--fm-nav-far-edge)
+      );
+      transition: clip-path 500ms;
+    }
+  }
+
+  .el-menu-item.is-active,
+  .el-sub-menu.is-active > .el-sub-menu__title,
+  .v-tab-menu__item.is-active {
+    --fm-nav-face: color-mix(in srgb, var(--fm-focus) 24%, var(--fm-surface));
+
+    font-weight: 600;
+    color: var(--left-menu-text-active-color);
+  }
+
+  :is(.el-menu-item, .el-sub-menu__title, .v-tab-menu__item):where(:hover, :focus),
+  .el-sub-menu:focus > .el-sub-menu__title {
+    &:not(.is-disabled, .is-disabled *) {
+      color: var(--left-menu-text-active-color);
+
+      &::after {
+        clip-path: polygon(
+          var(--fm-nav-far-edge) var(--fm-nav-far-cut),
+          var(--fm-nav-far-edge) var(--fm-nav-edge),
+          var(--fm-nav-far-edge) var(--fm-nav-edge),
+          var(--fm-nav-far-edge) var(--fm-nav-far-cut),
+          var(--fm-nav-far-cut) var(--fm-nav-far-edge),
+          var(--fm-nav-far-cut) var(--fm-nav-far-edge)
+        );
+        transition-duration: 200ms;
+      }
+    }
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  :is(.v-menu__vertical, .v-menu-popper--vertical, .v-tab-menu)
+    :is(.el-menu-item, .el-sub-menu__title, .v-tab-menu__item) {
+    &,
+    &::after {
+      transition: none !important;
+    }
+
+    &::before {
+      animation: none;
+    }
+  }
+}
+
+@keyframes fm-sidebar-gradient {
+  0%,
+  100% {
+    background-position: 31% 0;
+  }
+
+  50% {
+    background-position: 70% 100%;
+  }
+}
+
+:is(.v-menu__vertical, .v-menu-popper--vertical) .el-menu {
+  --el-menu-base-level-padding: 10px;
+  --el-menu-icon-width: 18px;
+  --el-menu-item-font-size: 17px;
+  --el-menu-item-height: 56px;
+  --el-menu-level-padding: 12px;
+  --el-menu-sub-item-height: 44px;
+}
+
+.v-menu__vertical .el-menu--collapse {
+  --el-menu-item-height: 44px;
+}
+
+.v-tab-menu .v-tab-menu__item {
+  margin-inline: min(10px, 8%);
+}
